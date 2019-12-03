@@ -3,23 +3,23 @@
 
 # A short blurb about the package. This is not rendered in any format when
 # uploaded to crates.io (aka this is not markdown).
-description = "..."
+description = "the kettle toils and boils"
 
 # These URLs point to more information about the package. These are
 # intended to be webviews of the relevant data, not necessarily compatible
 # with VCS tools and the like.
-documentation = "..."
-homepage = "..."
-repository = "..."
+documentation = "https://github.com/Bestowinc/darkroom/"
+homepage = "https://github.com/Bestowinc/darkroom/"
+repository = "https://github.com/Bestowinc/darkroom/"
 # Multiple licenses can be separated with a `/`, although that usage
 # is deprecated. Instead, use a license expression with AND and OR
 # operators to get more explicit semantics.
-license = "..."
+license = "GPL-3.0"
 
 # If a package is using a nonstandard license, then this key may be specified in
 # lieu of the above key and must point to a file relative to this manifest
 # (similar to the readme key).
-license-file = "..."
+# license-file = "LICENSE"
 
 
 name = "darkroom"
