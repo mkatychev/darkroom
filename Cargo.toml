@@ -1,0 +1,32 @@
+[package]
+# ...
+
+# A short blurb about the package. This is not rendered in any format when
+# uploaded to crates.io (aka this is not markdown).
+description = "..."
+
+# These URLs point to more information about the package. These are
+# intended to be webviews of the relevant data, not necessarily compatible
+# with VCS tools and the like.
+documentation = "..."
+homepage = "..."
+repository = "..."
+# Multiple licenses can be separated with a `/`, although that usage
+# is deprecated. Instead, use a license expression with AND and OR
+# operators to get more explicit semantics.
+license = "..."
+
+# If a package is using a nonstandard license, then this key may be specified in
+# lieu of the above key and must point to a file relative to this manifest
+# (similar to the readme key).
+license-file = "..."
+
+
+name = "darkroom"
+version = "0.1.0"
+authors = ["Mikhail Katychev <mkatych@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
