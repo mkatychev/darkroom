@@ -1,0 +1,19 @@
+[package]
+name = "filmreel"
+version = "0.1.0"
+description = "filmReel parser for Rust"
+authors = ["Mikhail Katychev <mkatych@gmail.com>"]
+edition = "2018"
+license = "GPL-3.0"
+
+documentation = "https://docs.rs/crate/filmreel-rust/"
+homepage = "https://crates.io/crates/filmreel-rust"
+repository = "https://github.com/Bestowinc/darkroom"
+
+[lib]
+name = "filmreel"
+path = "src/lib.rs"
+
+[dependencies]
+jql = "2.4.8"
+serde_json = "1.0.44"
