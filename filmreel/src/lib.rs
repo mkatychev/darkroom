@@ -1,6 +1,10 @@
-use serde_json::{json, Value};
+use crate::types::*;
+use jql;
+// use serde_json;
+
+mod types;
 
 // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 pub fn get_it() -> &'static str { "filmreel" }
-//
-// pub fn payload(json: &Value, selectors: Option<&str>) -> Selection
+
+// pub type WriteInstruction = Result<[String; 2]>;
