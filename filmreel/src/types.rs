@@ -1,8 +1,10 @@
 use jql;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
+/// Represents the protocol used to send the frame payload.
+///
 /// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum Protocol {
@@ -10,7 +12,9 @@ enum Protocol {
     HTTP,
 }
 
-// /// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame
+/// Represents the entire deserialized frame file.
+///
+/// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Frame<'a> {
     protocol: Protocol,
@@ -20,7 +24,9 @@ struct Frame<'a> {
     response: Response,
 }
 
-// /// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request
+/// Encapsulates the request payload to be sent.
+///
+/// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Request {
     body: Value,
@@ -29,17 +35,35 @@ struct Request {
     uri:  String,
 }
 
+/// Contains read and write instructions for the [Cut
+/// Register](::Cut::Register), `InstructionSet` should be immutable once
+/// initialized.
+///
 /// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set
-// This contains read and write instructions for the cut register, struct should be immutable after
-// creation
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 struct InstructionSet<'a> {
-    #[serde(alias = "from", borrow)]
+    #[serde(rename(serialize = "from", deserialize = "from"), borrow)]
+    #[serde(serialize_with = "ordered_set")]
     reads:  HashSet<&'a str>,
-    #[serde(alias = "to", borrow)]
+    #[serde(rename(serialize = "to", deserialize = "to"), borrow)]
+    #[serde(serialize_with = "ordered_map")]
     writes: HashMap<&'a str, &'a str>,
 }
 
+fn ordered_map<S>(value: &HashMap<&str, &str>, serializer: S) -> Result<S::Ok, S::Error>
+where S: Serializer {
+    let ordered: BTreeMap<_, _> = value.iter().collect();
+    ordered.serialize(serializer)
+}
+
+fn ordered_set<S>(value: &HashSet<&str>, serializer: S) -> Result<S::Ok, S::Error>
+where S: Serializer {
+    let ordered: BTreeSet<_> = value.iter().collect();
+    ordered.serialize(serializer)
+}
+
+/// Encapsulates the expected response payload.
+///
 /// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Response {
@@ -72,43 +96,52 @@ mod tests {
     use super::*;
     use serde_json::{from_str, json, to_string};
 
-    macro_rules! test_deserialize {
-        ($name:ident, $expected:expr, $str_json:expr) => {
+    macro_rules! test_ser_de {
+        ($ser:ident, $de:ident, $type:ty, $struct:expr, $str_json:expr) => {
             #[test]
-            fn $name() {
-                let actual = from_str($str_json).unwrap();
-                assert_eq!($expected, actual);
+            fn $ser() {
+                let str_val: Value = from_str($str_json).unwrap();
+                let actual = serde_json::value::to_value(&$struct).unwrap();
+                assert_eq!(str_val, actual);
+            }
+            #[test]
+            fn $de() {
+                let actual: $type = from_str($str_json).unwrap();
+                assert_eq!(&$struct, &actual);
             }
         };
     }
 
-    // TODO
-    // macro_rules! test_serialize {
-    //     ($name:ident, $struct:expr, $str_json:expr) => {
-    //         #[test]
-    //         fn $name() {
-    //             let formatted_str_json =
-    // to_string(from_str($str_json).unwrap()).unwrap();
-    // let serialized_struct = to_string($struct).unwrap();
-    // assert_eq!(formatted_str_json, serialized_struct);         }
-    //     };
-    // }
-
     const PROTOCOL_GRPC_JSON: &str = r#""GRPC""#;
+    test_ser_de!(
+        protocol_grpc_ser,  // serialization test name
+        protocol_grpc_de,   // deserialization test name
+        Protocol,           // struct type
+        Protocol::GRPC,     // struct
+        PROTOCOL_GRPC_JSON  // json format
+    );
+
     const PROTOCOL_HTTP_JSON: &str = r#""HTTP""#;
-    test_deserialize!(protocol_grpc_de, Protocol::GRPC, PROTOCOL_GRPC_JSON);
-    test_deserialize!(protocol_http_de, Protocol::HTTP, PROTOCOL_HTTP_JSON);
+    test_ser_de!(
+        protocol_http_ser,
+        protocol_http_de,
+        Protocol,
+        Protocol::HTTP,
+        PROTOCOL_HTTP_JSON
+    );
 
     const REQUEST_JSON: &str = r#"
-{
-  "body": {
-    "email": "new_user@humanmail.com"
-  },
-  "uri": "user_api.User/CreateUser"
-}
-"#;
-    test_deserialize!(
+    {
+      "body": {
+        "email": "new_user@humanmail.com"
+      },
+      "uri": "user_api.User/CreateUser"
+    }
+    "#;
+    test_ser_de!(
+        request_ser,
         request_de,
+        Request,
         Request {
             body: json!({"email": "new_user@humanmail.com"}),
             etc:  json!({}),
@@ -117,18 +150,20 @@ mod tests {
         REQUEST_JSON
     );
     const REQUEST_ETC_JSON: &str = r#"
-{
-  "header": {
-    "Authorization": "${USER_TOKEN}"
-  },
-  "id" : "007",
-  "body": {},
-  "uri": "POST /logout/${USER_ID}"
-}
-"#;
+    {
+      "header": {
+        "Authorization": "${USER_TOKEN}"
+      },
+      "id" : "007",
+      "body": {},
+      "uri": "POST /logout/${USER_ID}"
+    }
+    "#;
 
-    test_deserialize!(
+    test_ser_de!(
+        request_etc_ser,
         request_etc_de,
+        Request,
         Request {
             body: json!({}),
             etc:  json!({"header": { "Authorization": "${USER_TOKEN}" }, "id": "007"}),
@@ -138,13 +173,15 @@ mod tests {
     );
 
     const RESPONSE_JSON: &str = r#"
-{
-  "body": "created user: ${USER_ID}",
-  "status": 0
-}
-"#;
-    test_deserialize!(
+    {
+      "body": "created user: ${USER_ID}",
+      "status": 0
+    }
+    "#;
+    test_ser_de!(
+        response_ser,
         response_de,
+        Response,
         Response {
             body:   json!("created user: ${USER_ID}"),
             etc:    json!({}),
@@ -153,83 +190,90 @@ mod tests {
         RESPONSE_JSON
     );
 
-    const RESPONSE_ETC: &str = r#"
-{
-  "body": "created user: ${USER_ID}",
-  "user_level": "admin",
-  "status": 0
-}
-"#;
-    test_deserialize!(
+    const RESPONSE_ETC_JSON: &str = r#"
+    {
+      "body": "created user: ${USER_ID}",
+      "user_level": "admin",
+      "status": 0
+    }
+    "#;
+    test_ser_de!(
+        response_etc_ser,
         response_etc_de,
+        Response,
         Response {
             body:   json!("created user: ${USER_ID}"),
             etc:    json!({"user_level": "admin"}),
             status: 0,
         },
-        RESPONSE_ETC
+        RESPONSE_ETC_JSON
     );
 
     const INSTRUCTION_SET_JSON: &str = r#"
-{
-  "from": [
-    "USER_ID",
-    "USER_TOKEN"
-  ],
-  "to": {
-    "SESSION_ID": ".response.body.session_id",
-    "DATETIME": ".response.body.timestamp"
-  }
-}
-"#;
-    test_deserialize!(
+    {
+      "from": [
+        "USER_ID",
+        "USER_TOKEN"
+      ],
+      "to": {
+        "SESSION_ID": ".response.body.session_id",
+        "DATETIME": ".response.body.timestamp"
+      }
+    }
+    "#;
+    test_ser_de!(
+        instruction_set_ser,
         instruction_set_de,
+        InstructionSet,
         InstructionSet {
             reads:  from!["USER_ID", "USER_TOKEN"],
             writes: to![
-            "SESSION_ID" => ".response.body.session_id",
-            "DATETIME" => ".response.body.timestamp"],
+                "SESSION_ID" => ".response.body.session_id",
+                "DATETIME" => ".response.body.timestamp"],
         },
         INSTRUCTION_SET_JSON
     );
 
     const FRAME_JSON: &str = r#"
-{
-  "protocol": "HTTP",
-  "cut": {
-    "from": [
-      "USER_ID",
-      "USER_TOKEN"
-    ],
-    "to": {
-      "SESSION_ID": ".response.body.session_id",
-      "DATETIME": ".response.body.timestamp"
+    {
+      "protocol": "HTTP",
+      "cut": {
+        "from": [
+          "USER_ID",
+          "USER_TOKEN"
+        ],
+        "to": {
+          "SESSION_ID": ".response.body.session_id",
+          "DATETIME": ".response.body.timestamp"
+        }
+      },
+      "request": {
+        "header": {
+          "Authorization": "${USER_TOKEN}"
+        },
+        "body": {},
+        "uri": "POST /logout/${USER_ID}"
+      },
+      "response": {
+        "body": {
+          "message": "User ${USER_ID} logged out",
+          "session_id": "${SESSION_ID}",
+          "timestamp": "${DATETIME}"
+        },
+        "status": 200
+      }
     }
-  },
-  "request": {
-    "header": {
-      "Authorization": "${USER_TOKEN}"
-    },
-    "body": {},
-    "uri": "POST /logout/${USER_ID}"
-  },
-  "response": {
-    "body": {
-      "message": "User ${USER_ID} logged out",
-      "session_id": "${SESSION_ID}",
-      "timestamp": "${DATETIME}"
-    },
-    "status": 200
-  }
-}
-"#;
-    test_deserialize!(
+    "#;
+    test_ser_de!(
+        frame_ser,
         frame_de,
+        Frame,
         Frame {
             protocol: Protocol::HTTP,
             cut:      InstructionSet {
                 reads:  from!["USER_ID", "USER_TOKEN"],
-                writes: to!["SESSION_ID" => ".response.body.session_id", "DATETIME" => ".response.body.timestamp"],
+                writes: to!["SESSION_ID" => ".response.body.session_id",
+    "DATETIME" => ".response.body.timestamp"],
             },
             request:  Request {
                 body: json!({}),
