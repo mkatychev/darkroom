@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Represents the protocol used to send the frame payload.
 ///
-/// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature
+/// [Protocol example](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum Protocol {
     GRPC,
@@ -14,7 +14,7 @@ enum Protocol {
 
 /// Represents the entire deserialized frame file.
 ///
-/// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame
+/// [Frame spec](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Frame<'a> {
     protocol: Protocol,
@@ -26,7 +26,7 @@ struct Frame<'a> {
 
 /// Encapsulates the request payload to be sent.
 ///
-/// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request
+/// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Request {
     body: Value,
@@ -39,7 +39,7 @@ struct Request {
 /// Register](::Cut::Register), `InstructionSet` should be immutable once
 /// initialized.
 ///
-/// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set
+/// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set)
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 struct InstructionSet<'a> {
     #[serde(rename(serialize = "from", deserialize = "from"))]
@@ -68,7 +68,7 @@ where
 
 /// Encapsulates the expected response payload.
 ///
-/// https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request
+/// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Response {
     body: Value,
@@ -86,7 +86,8 @@ struct Response {
 ///     "DATETIME" => ".response.body.timestamp"];
 /// ```
 ///
-/// https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#from-to
+/// [`"from"` key](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#from-to)
+#[macro_export]
 macro_rules! to {
     ($( $key: expr => $val: expr ),*) => {{
          let mut map: HashMap<&str, &str> = std::collections::HashMap::new();
@@ -102,8 +103,9 @@ macro_rules! to {
 /// let read_instructions = from!["USER_ID", "USER_TOKEN"];
 /// ```
 ///
-/// https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#from-to
+/// [`"to"` key](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#from-to)
 /// TODO check Cut Register during macro call
+#[macro_export]
 macro_rules! from {
     ($( $cut_var: expr ),*) => {{
          let mut set:HashSet<&str> = std::collections::HashSet::new();
@@ -128,7 +130,7 @@ mod tests {
     ///      PROTOCOL_GRPC_JSON  // json format
     /// );
     /// ```
-    ///
+    #[macro_export]
     macro_rules! test_ser_de {
         ($ser:ident, $de:ident, $type:ty, $struct:expr, $str_json:expr) => {
             #[test]
