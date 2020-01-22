@@ -1,9 +1,8 @@
-use crate::types::*;
-use jql;
-
-mod types;
+mod cut;
+mod frame;
+mod utils;
 
 // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-pub fn get_it() -> &'static str { "filmreel" }
-
-// pub type WriteInstruction = Result<[String; 2]>;
+pub fn get_it() -> &'static str {
+    "filmreel"
+}
