@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::ops::{Index, Range};
+use std::ops::Range;
 
 /// Holds Cut Variables and their corresonding values stored in a series of key/value pairs.
 ///
