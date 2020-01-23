@@ -73,12 +73,13 @@ impl<'a> Register<'a> {
             .unwrap();
         }
 
-        // store matches to replace and the range index of the match
+        // store valid found Cut Variable references and their character range within json_string
+        // itself
         type Replacement<'a> = (&'a str, Range<usize>);
+
         let mut valid_matches: Vec<Replacement> = Vec::new();
 
         for mat in VAR_MATCH.captures_iter(json_string) {
-            dbg!(&mat);
             // continue if the leading brace is escaped but strip "\\" from the match
             if mat.name("esc_char").is_some() {
                 valid_matches.push(("", mat.name("esc_char").expect("Capture missing").range()));
@@ -93,7 +94,6 @@ impl<'a> Register<'a> {
             let val: &str = match self.get(var) {
                 Some(&i) => i,
                 None => {
-                    dbg!(self.get(var));
                     return Err("ReadInstructionError: Key is not present in the Cut Register");
                 }
             };
@@ -228,7 +228,7 @@ mod tests {
             "INANE_RANT"=> TRAGIC_STORY
         });
         let mut str_with_var = input.to_string();
-        reg.from(&mut str_with_var);
+        reg.from(&mut str_with_var).unwrap();
         assert_eq!(expected.to_string(), str_with_var)
     }
 
