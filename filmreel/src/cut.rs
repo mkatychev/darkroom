@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::{Index, Range};
 
-/// Holds cut variables and their corresonding values stored in a series of key/value pairs.
+/// Holds Cut Variables and their corresonding values stored in a series of key/value pairs.
 ///
 /// [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
@@ -23,7 +23,7 @@ impl<'a> Register<'a> {
         Default::default()
     }
 
-    /// Inserts entry into the Register's cut variables/
+    /// Inserts entry into the Register's Cut Variables/
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
     pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, &str> {
@@ -33,7 +33,7 @@ impl<'a> Register<'a> {
         }
         if !KEY_CHECK.is_match(key) {
             return Err(
-                "Only alphanumeric characters, dashes, and underscores are permitted in cut variable names: [A-za-z_]");
+                "Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names: [A-za-z_]");
         }
         Ok(self.vars.insert(key, val))
     }
@@ -43,7 +43,7 @@ impl<'a> Register<'a> {
         self.vars.get(key)
     }
 
-    /// An iterator visiting all cut variables in arbitrary order.
+    /// An iterator visiting all Cut Variables in arbitrary order.
     pub fn iter(&self) -> std::collections::hash_map::Iter<&str, &str> {
         self.vars.iter()
     }
@@ -53,15 +53,15 @@ impl<'a> Register<'a> {
         self.vars.contains_key(key)
     }
 
-    /// Replaces a cut variable reference with the corresonding value if a match is found
-    /// with a valid cut delimiter.
+    /// Replaces a Cut Variable reference with the corresonding value if a match is found
+    /// with a valid Cut delimiter.
     pub fn from(&self, json_string: &mut String) -> Result<(), &str> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
                 (?P<esc_char>\\)?   # escape character
                 (?P<leading_b>\$\{) # leading brace
-                (?P<var>[A-za-z_]+) # cut variable
+                (?P<var>[A-za-z_]+) # Cut Variable
                 (?P<trailing_b>})?  # trailing brace
                 "
             )
@@ -155,7 +155,7 @@ mod tests {
         });
 
         assert_eq!(reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#).unwrap_err(),
-                "Only alphanumeric characters, dashes, and underscores are permitted in cut variable names: [A-za-z_]");
+                "Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names: [A-za-z_]");
 
         reg.insert("FIRST_NAME", "Pietre").unwrap();
         assert_eq!(
