@@ -207,49 +207,18 @@ mod tests {
             "My name is \\${FIRST_NAME} \\${LAST_NAME}",
             "My name is ${FIRST_NAME} ${LAST_NAME}"
         ),
-        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${RAMBLING_STORY}", 
+        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}", 
             &["Did you ever hear the tragedy of Darth Plagueis the Wise? ", TRAGIC_STORY].concat())
     )]
     fn test_read_operation(input: &str, expected: &str) {
         let reg = register!({
             "FIRST_NAME"=> "Slim",
             "LAST_NAME"=> "Shady",
-            "RAMBLING_STORY"=> TRAGIC_STORY
+            "INANE_RANT"=> TRAGIC_STORY
         });
         let mut str_with_var = input.to_string();
         reg.from(&mut str_with_var);
         assert_eq!(expected.to_string(), str_with_var)
-    }
-
-    #[test]
-    fn test_regex() {
-        let re = Regex::new(
-            r"(?x)
-        (\\)? # escape character
-        (\$\{) # leading brace
-        (.+) # cut variable
-        (}) # trailing brace
-        ",
-        )
-        .unwrap();
-        let test_string = "ok ${SOME_VAR}";
-        let caps = re.captures(test_string).unwrap();
-
-        assert_eq!(caps.get(0).unwrap().as_str(), "${SOME_VAR}");
-        assert_eq!(caps.get(1), None);
-        assert_eq!(caps.get(2).unwrap().as_str(), "${");
-        assert_eq!(caps.get(3).unwrap().as_str(), "SOME_VAR");
-        assert_eq!(caps.get(4).unwrap().as_str(), "}");
-
-        let test_escaped_string = r#"ok \\${SOME_VAR}"#;
-        let esc_caps = re.captures(test_escaped_string).unwrap();
-
-        // ${${OK}}
-        assert_eq!(esc_caps.get(0).unwrap().as_str(), "\\${SOME_VAR}");
-        assert_eq!(esc_caps.get(1).unwrap().as_str(), "\\");
-        assert_eq!(esc_caps.get(2).unwrap().as_str(), "${");
-        assert_eq!(esc_caps.get(3).unwrap().as_str(), "SOME_VAR");
-        assert_eq!(esc_caps.get(4).unwrap().as_str(), "}");
     }
 }
 
