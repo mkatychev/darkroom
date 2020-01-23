@@ -55,7 +55,7 @@ impl<'a> Register<'a> {
 
     /// Replaces a cut variable reference with the corresonding value if a match is found
     /// with a valid cut delimiter.
-    pub fn from(&self, json_string: &mut String) -> Result<(), &'static str> {
+    pub fn from(&self, json_string: &mut String) -> Result<(), &str> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
@@ -153,6 +153,10 @@ mod tests {
             "FIRST_NAME"=> "Primus",
             "RESPONSE"=> "ALRIGHT"
         });
+
+        assert_eq!(reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#).unwrap_err(),
+                "Only alphanumeric characters, dashes, and underscores are permitted in cut variable names: [A-za-z_]");
+
         reg.insert("FIRST_NAME", "Pietre").unwrap();
         assert_eq!(
             register!({
@@ -161,6 +165,9 @@ mod tests {
             }),
             reg
         );
+        // assert_eq!(
+        //     Err("YARR"),
+        // );
     }
 
     #[test]
@@ -210,7 +217,7 @@ mod tests {
         case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}", 
             &["Did you ever hear the tragedy of Darth Plagueis the Wise? ", TRAGIC_STORY].concat())
     )]
-    fn test_read_operation(input: &str, expected: &str) {
+    fn test_read_op(input: &str, expected: &str) {
         let reg = register!({
             "FIRST_NAME"=> "Slim",
             "LAST_NAME"=> "Shady",
@@ -219,6 +226,27 @@ mod tests {
         let mut str_with_var = input.to_string();
         reg.from(&mut str_with_var);
         assert_eq!(expected.to_string(), str_with_var)
+    }
+
+    #[rstest(
+        input,
+        expected,
+        case(
+            "My name is ${MIDDLE_NAME} ${LAST_NAME}",
+            "ReadInstructionError: Key is not present in the Cut Register"
+        ),
+        case(
+            "My name is ${FIRST_NAME} ${LAST_NAME",
+            "ReadInstructionError: Missing trailing brace for Cut Variable"
+        )
+    )]
+    fn test_read_op_err(input: &str, expected: &str) {
+        let reg = register!({
+            "FIRST_NAME"=> "Slim",
+            "LAST_NAME"=> "Shady"
+        });
+        let mut str_with_var = input.to_string();
+        assert_eq!(reg.from(&mut str_with_var).unwrap_err(), expected)
     }
 }
 
@@ -249,7 +277,7 @@ mod serde_tests {
             "FIRST_NAME"=> "Primus",
             "RESPONSE"=> "ALRIGHT"
         });
-        reg.insert("LAST_NAME", "Secundus");
+        reg.insert("LAST_NAME", "Secundus").unwrap();
         assert_eq!(
             register!({
                 "FIRST_NAME"=> "Primus",
