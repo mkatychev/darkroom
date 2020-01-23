@@ -119,6 +119,8 @@ impl<'a> Register<'a> {
     }
 }
 
+/// Constructs a [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
+/// from the provided series of key value pairs
 #[macro_export]
 macro_rules! register {
     ({$( $key: expr => $val: expr ),*}) => {{
