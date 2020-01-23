@@ -172,9 +172,6 @@ mod tests {
             }),
             reg
         );
-        // assert_eq!(
-        //     Err("YARR"),
-        // );
     }
 
     #[test]

@@ -25,9 +25,8 @@ where
 ///  test_ser_de!(
 ///      protocol_grpc_ser,  // serialization test name
 ///      protocol_grpc_de,   // deserialization test name
-///      Protocol,           // struct type
-///      Protocol::GRPC,     // struct
-///      PROTOCOL_GRPC_JSON  // json format
+///      Protocol::GRPC,     // struct/enum to test
+///      PROTOCOL_GRPC_JSON  // json string to test
 /// );
 /// ```
 #[cfg(test)]
