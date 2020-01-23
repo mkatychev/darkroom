@@ -15,6 +15,7 @@ pub struct Register<'a> {
     vars: Vars<'a>,
 }
 
+/// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
 type Vars<'a> = HashMap<&'a str, &'a str>;
 
 impl<'a> Register<'a> {
@@ -39,6 +40,7 @@ impl<'a> Register<'a> {
     }
 
     /// Gets a reference to the string slice value for the given var name
+    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
     pub fn get(&self, key: &str) -> Option<&&str> {
         self.vars.get(key)
     }
@@ -48,13 +50,16 @@ impl<'a> Register<'a> {
         self.vars.iter()
     }
 
-    /// Returns a boolean idicating whether the register contais a Cut Variable
+    /// Returns a boolean idicating whether the register contais a \
+    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
     pub fn contains_key(&self, key: &str) -> bool {
         self.vars.contains_key(key)
     }
 
     /// Replaces a Cut Variable reference with the corresonding value if a match is found
     /// with a valid Cut delimiter.
+    ///
+    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
     pub fn from(&self, json_string: &mut String) -> Result<(), &str> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
