@@ -16,12 +16,47 @@ pub struct Frame<'a> {
     response: Response,
 }
 
-// impl<'a> Frame<'a> {
-//     fn hydrate(mut self, register: &Register) -> Self {
-//         let cut_vars: Vec<&str> = register.map(|k, _| k).collect();
-//         for (k, _) in register {}
-//     }
-// }
+impl<'a> Frame<'a> {
+    fn hydrate(self, reg: &'static Register) -> Result<(), &'static str> {
+        // let cut_vars: Vec<&str> = register.map(|k, _| k).collect();
+        let mut to_hydrate = vec![
+            self.request.body,
+            self.request.etc,
+            self.response.body,
+            self.response.etc,
+        ];
+        for prop in to_hydrate.iter_mut() {
+            if let Err(i) = self.hydrate_val(prop, reg) {
+                return Err(i);
+            }
+        }
+        Ok(())
+    }
+
+    fn hydrate_val(&self, val: &mut Value, reg: &'static Register) -> Result<(), &'static str> {
+        match val {
+            // Value::Object => {}
+            Value::Array(vec) => {
+                for obj in vec.iter_mut() {
+                    return self.hydrate_val(obj, reg);
+                }
+            }
+            Value::String(s) => return reg.from(s),
+        }
+        Ok(())
+    }
+
+    pub fn r_contains(&self, var: &str) -> bool {
+        // let val: &str = match self.cut.reads.contains(var) {
+        self.cut.reads.contains(var)
+        // {
+        //     Some(&i) => i,
+        //     None => {
+        //         return Err("FrameParseError: Variable is not present in Frame Read Instructions");
+        //     }
+        // }
+    }
+}
 
 /// Represents the protocol used to send the frame payload.
 ///
