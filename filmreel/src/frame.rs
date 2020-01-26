@@ -17,44 +17,49 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    fn hydrate(self, reg: &'static Register) -> Result<(), &'static str> {
-        // let cut_vars: Vec<&str> = register.map(|k, _| k).collect();
-        let mut to_hydrate = vec![
-            self.request.body,
-            self.request.etc,
-            self.response.body,
-            self.response.etc,
-        ];
-        for prop in to_hydrate.iter_mut() {
-            if let Err(i) = self.hydrate_val(prop, reg) {
-                return Err(i);
-            }
-        }
+    fn hydrate(&'a mut self, reg: &Register) -> Result<(), &'static str> {
+        let set = self.cut.clone();
+        Self::hydrate_val(&set, &mut self.request.body, reg)?;
+        Self::hydrate_val(&set, &mut self.request.etc, reg)?;
+        Self::hydrate_val(&set, &mut self.response.body, reg)?;
+        Self::hydrate_val(&set, &mut self.response.etc, reg)?;
         Ok(())
     }
 
-    fn hydrate_val(&self, val: &mut Value, reg: &'static Register) -> Result<(), &'static str> {
+    fn hydrate_val<'b>(
+        set: &InstructionSet,
+        val: &'a mut Value,
+        reg: &'b Register,
+    ) -> Result<(), &'static str> {
         match val {
-            // Value::Object => {}
-            Value::Array(vec) => {
-                for obj in vec.iter_mut() {
-                    return self.hydrate_val(obj, reg);
+            Value::Object(map) => {
+                for (_, val) in map.iter_mut() {
+                    Self::hydrate_val(set, val, reg)?;
                 }
+                Ok(())
             }
-            Value::String(s) => return reg.from(s),
+            Value::Array(vec) => {
+                for val in vec.iter_mut() {
+                    Self::hydrate_val(set, val, reg)?;
+                }
+                Ok(())
+            }
+            Value::String(json_string) => {
+                let matches = reg.read_match(json_string).unwrap();
+                // Check if the InstructionSet has the given variable
+                for mat in matches.into_iter() {
+                    if let Some(n) = mat.name() {
+                        if !set.contains(n) {
+                            return Err( "FrameParseError: Variable is not present in Frame Read Instructions",
+                        );
+                        }
+                    }
+                    reg.read_operation(mat, json_string);
+                }
+                Ok(())
+            }
+            _ => Ok(()),
         }
-        Ok(())
-    }
-
-    pub fn r_contains(&self, var: &str) -> bool {
-        // let val: &str = match self.cut.reads.contains(var) {
-        self.cut.reads.contains(var)
-        // {
-        //     Some(&i) => i,
-        //     None => {
-        //         return Err("FrameParseError: Variable is not present in Frame Read Instructions");
-        //     }
-        // }
     }
 }
 
@@ -70,7 +75,7 @@ enum Protocol {
 /// Encapsulates the request payload to be sent.
 ///
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Debug, PartialEq)]
 struct Request {
     body: Value,
     #[serde(flatten)]
@@ -83,14 +88,22 @@ struct Request {
 /// initialized.
 ///
 /// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set)
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
+
 struct InstructionSet<'a> {
     #[serde(rename(serialize = "from", deserialize = "from"))]
     #[serde(serialize_with = "ordered_set", borrow)]
-    reads: HashSet<&'a str>,
+    reads: Option<HashSet<&'a str>>,
     #[serde(rename(serialize = "to", deserialize = "to"))]
     #[serde(serialize_with = "ordered_map", borrow)]
-    writes: HashMap<&'a str, &'a str>,
+    writes: Option<HashMap<&'a str, &'a str>>,
+}
+
+impl<'a> InstructionSet<'a> {
+    fn contains(&self, var: &str) -> bool {
+        self.reads.map_or(false, |r| r.contains(var))
+            || self.writes.map_or(false, |w| w.contains_key(var))
+    }
 }
 
 /// Encapsulates the expected response payload.
@@ -144,7 +157,49 @@ macro_rules! from {
         set
     }}
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::register;
+    use rstest::*;
 
+    const FRAME_JSON: &str = r#"
+{
+  "protocol": "GRPC",
+  "cut": {
+    "from": [
+      "FIRST",
+      "LAST",
+      "EMAIL"
+    ]
+  },
+  "request": {
+    "body": {
+      "name": "${FIRST} ${LAST}",
+      "email": "${EMAIL}"
+    },
+    "uri": "user_api.User/CreateUser"
+  },
+  "response": {
+    "body": "created user: ${USER_ID}",
+    "status": 0
+  }
+}
+    "#;
+
+    #[test]
+    fn test_hydrate() {
+        let reg = register!({
+            "FIRST"=> "Mario",
+            "LAST"=> "Rossi",
+            "EMAIL"=> "new_user@humanmail.com"
+        });
+        let mut frame: Frame = serde_json::from_str(FRAME_JSON).unwrap();
+        frame.hydrate(&reg).unwrap();
+        // assert_eq!(
+        // );
+    }
+}
 #[cfg(test)]
 mod serde_tests {
     use super::*;

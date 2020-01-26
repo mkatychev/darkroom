@@ -1,7 +1,7 @@
 use crate::utils::ordered_map;
 
 use lazy_static::lazy_static;
-use regex::Regex;
+use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -16,7 +16,8 @@ pub struct Register<'a> {
 }
 
 /// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-type Vars<'a> = HashMap<&'a str, &'a str>;
+// type Variable<'a> = &'a str;
+type Vars<'a> = Option<HashMap<&'a str, &'a str>>;
 
 impl<'a> Register<'a> {
     /// Creates a new Register struct with default values.
@@ -27,7 +28,7 @@ impl<'a> Register<'a> {
     /// Inserts entry into the Register's Cut Variables/
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
-    pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, &str> {
+    pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, &'static str> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
@@ -41,8 +42,8 @@ impl<'a> Register<'a> {
 
     /// Gets a reference to the string slice value for the given var name
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get(&self, key: &str) -> Option<&&str> {
-        self.vars.get(key)
+    pub fn get_kv(&self, key: &str) -> Option<(&&str, &&str)> {
+        self.vars.get_key_value(key)
     }
 
     /// An iterator visiting all Cut Variables in arbitrary order.
@@ -56,66 +57,111 @@ impl<'a> Register<'a> {
         self.vars.contains_key(key)
     }
 
-    /// Replaces a Cut Variable reference with the corresonding value if a match is found
-    /// with a valid Cut delimiter.
+    /// Returns a vector of Match enums enums found in the string provided for use in cut
+    /// operations
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
-    pub fn from(&self, json_string: &mut String) -> Result<(), &str> {
+    pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, &'static str> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
                 (?P<esc_char>\\)?   # escape character
                 (?P<leading_b>\$\{) # leading brace
-                (?P<var>[A-za-z_]+) # Cut Variable
+                (?P<cut_var>[A-za-z_]+) # Cut Variable
                 (?P<trailing_b>})?  # trailing brace
                 "
             )
             .unwrap();
         }
 
-        // store valid found Cut Variable references and their character range within json_string
-        // itself
-        type Replacement<'a> = (&'a str, Range<usize>);
-
-        let mut valid_matches: Vec<Replacement> = Vec::new();
+        let mut matches: Vec<Match> = Vec::new();
 
         for mat in VAR_MATCH.captures_iter(json_string) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if mat.name("esc_char").is_some() {
-                valid_matches.push(("", mat.name("esc_char").expect("Capture missing").range()));
+                matches.push(Match::Escape(
+                    mat.name("esc_char")
+                        .expect("esc_char missing")
+                        .range()
+                        .clone(),
+                ));
                 continue;
             }
-
-            let var: &str = mat
-                .name("var")
-                .expect("MatchError: Cut Variable missing")
-                .as_str();
-
-            let val: &str = match self.get(var) {
-                Some(&i) => i,
-                None => {
-                    return Err("ReadInstructionError: Key is not present in the Cut Register");
-                }
-            };
 
             // error if no trailing brace was found
             if mat.name("trailing_b").is_none() {
                 return Err("ReadInstructionError: Missing trailing brace for Cut Variable");
             }
 
-            // push valid match onto Replacement vec
-            valid_matches.push((val, mat.get(0).expect("Match missing").range()));
-        }
-        // sort matches by start of each match range
-        valid_matches.sort_by_key(|k| k.1.start);
+            let cutvar = match self.get_kv(mat.name("cut_var").expect("cut_var missing").as_str()) {
+                Some((&k, &v)) => (k, v),
+                None => {
+                    return Err("ReadInstructionError: Key is not present in the Cut Register");
+                }
+            };
 
-        // reverse valid matches so early match index range does not change when matches found
-        // later in the string are replaced
-        for mat in valid_matches.iter().rev() {
-            json_string.replace_range(mat.1.clone(), mat.0);
+            // push valid match onto Match vec
+            matches.push(Match::CutVar {
+                name: cutvar.0,
+                value: cutvar.1,
+                range: mat.get(0).expect("capture missing").range(),
+            });
         }
 
-        Ok(())
+        // sort matches by start of each match range and reverse valid matches
+        // so an early match index range does not shift when matches found
+        // later in the string are replaced during a .iter() loop
+        matches.sort_by_key(|k| std::cmp::Reverse(k.range().start));
+
+        Ok(matches)
+    }
+
+    /// Replaces a byte range in a given string with the range given in the ::Match provided.
+    ///
+    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
+    pub fn read_operation(&self, mat: Match, json_string: &mut String) {
+        match mat {
+            Match::Escape(range) => json_string.replace_range(range, ""),
+            Match::CutVar {
+                name: _,
+                value: val,
+                range: r,
+            } => json_string.replace_range(r, val),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Match<'a> {
+    Escape(Range<usize>),
+    CutVar {
+        name: &'a str,
+        value: &'a str,
+        range: Range<usize>,
+    },
+}
+
+impl<'a> Match<'a> {
+    /// the range over the starting and ending byte offsets for the corresonding Replacement.
+    fn range(&self) -> Range<usize> {
+        match self {
+            Match::Escape(range) => range.clone(),
+            Match::CutVar {
+                name: _,
+                value: _,
+                range: r,
+            } => r.clone(),
+        }
+    }
+    pub fn name(&self) -> Option<&'a str> {
+        match self {
+            Match::Escape(range) => None,
+            Match::CutVar {
+                name: n,
+                value: _,
+                range: _,
+            } => Some(*n),
+        }
     }
 }
 
@@ -228,7 +274,10 @@ mod tests {
             "INANE_RANT"=> TRAGIC_STORY
         });
         let mut str_with_var = input.to_string();
-        reg.from(&mut str_with_var).unwrap();
+        let matches: Vec<Match> = reg.read_match(&str_with_var).unwrap();
+        for mat in matches.into_iter() {
+            reg.read_operation(mat, &mut str_with_var);
+        }
         assert_eq!(expected.to_string(), str_with_var)
     }
 
@@ -250,7 +299,7 @@ mod tests {
             "LAST_NAME"=> "Shady"
         });
         let mut str_with_var = input.to_string();
-        assert_eq!(reg.from(&mut str_with_var).unwrap_err(), expected)
+        assert_eq!(reg.read_match(&mut str_with_var).unwrap_err(), expected)
     }
 }
 
