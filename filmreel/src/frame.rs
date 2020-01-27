@@ -85,6 +85,7 @@ impl<'a> Frame<'a> {
 /// [Protocol example](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum Protocol {
+    #[serde(rename(serialize = "gRPC", deserialize = "gRPC"))]
     GRPC,
     HTTP,
 }
@@ -190,7 +191,7 @@ mod tests {
 
     const FRAME_JSON: &str = r#"
     {
-      "protocol": "GRPC",
+      "protocol": "gRPC",
       "cut": {
         "from": [
           "FIRST",
@@ -255,7 +256,7 @@ mod serde_tests {
     use crate::test_ser_de;
     use serde_json::json;
 
-    const PROTOCOL_GRPC_JSON: &str = r#""GRPC""#;
+    const PROTOCOL_GRPC_JSON: &str = r#""gRPC""#;
     test_ser_de!(
         protocol_grpc_ser,
         protocol_grpc_de,
