@@ -10,26 +10,31 @@ use std::collections::{HashMap, HashSet};
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Frame<'a> {
     protocol: Protocol,
-    #[serde(borrow)]
+    // Both the reads and writes can be optional
+    #[serde(default, borrow, skip_serializing_if = "InstructionSet::is_empty")]
     cut: InstructionSet<'a>,
     request: Request,
     response: Response,
 }
 
+#[allow(dead_code)] // FIXME
 impl<'a> Frame<'a> {
     /// Traverses Frame properties where Read Operations are permitted and
     /// performs Register.read_operation on Strings with Cut Variables
     fn hydrate(&mut self, reg: &Register) -> Result<(), &'static str> {
         let set = self.cut.clone();
         Self::hydrate_val(&set, &mut self.request.body, reg)?;
-        Self::read_operation(&set, &mut self.request.uri, reg)?;
         Self::hydrate_val(&set, &mut self.request.etc, reg)?;
         Self::hydrate_val(&set, &mut self.response.body, reg)?;
         Self::hydrate_val(&set, &mut self.response.etc, reg)?;
+
+        // URI is given an explicit read operation
+        Self::read_operation(&set, &mut self.request.uri, reg)?;
         Ok(())
     }
 
     /// Traverses a given serde::Value enum attempting to modify found Strings
+    /// for the moment this method also works as a Frame.init() check, emitting FrameParseErrors
     fn hydrate_val(
         set: &InstructionSet,
         val: &mut Value,
@@ -126,6 +131,10 @@ struct InstructionSet<'a> {
 }
 
 impl<'a> InstructionSet<'a> {
+    fn is_empty(&self) -> bool {
+        self.reads.is_empty() || self.writes.is_empty()
+    }
+
     fn contains(&self, var: &str) -> bool {
         self.reads.contains(var) || self.writes.contains_key(var)
     }
@@ -430,5 +439,38 @@ mod serde_tests {
             },
         },
         FRAME_JSON
+    );
+    const SIMPLE_FRAME_JSON: &str = r#"
+    {
+      "protocol": "HTTP",
+      "request": {
+        "body": {},
+        "uri": "POST /logout/${USER_ID}"
+      },
+      "response": {
+        "body": {},
+        "status": 200
+      }
+    }
+    "#;
+    test_ser_de!(
+        simple_frame_ser,
+        simple_frame_de,
+        Frame {
+            protocol: Protocol::HTTP,
+            cut: InstructionSet::default(),
+            request: Request {
+                body: json!({}),
+                etc: json!({}),
+                uri: String::from("POST /logout/${USER_ID}"),
+            },
+
+            response: Response {
+                body: json!({}),
+                etc: json!({}),
+                status: 200,
+            },
+        },
+        SIMPLE_FRAME_JSON
     );
 }

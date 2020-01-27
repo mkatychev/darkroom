@@ -54,10 +54,3 @@ where
     let actual = serde_json::from_str(str_json).unwrap();
     assert_eq!(de_json, actual);
 }
-
-pub trait HasLen<T> {
-    fn len(&self) -> usize;
-    fn zero_len(&self) -> bool {
-        self.len() == 0
-    }
-}

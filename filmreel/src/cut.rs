@@ -12,19 +12,15 @@ use std::ops::Range;
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 pub struct Register<'a> {
     #[serde(serialize_with = "ordered_map", borrow, flatten)]
-    vars: Vars<'a>,
+    vars: Variables<'a>,
 }
 
 /// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
 // type Variable<'a> = &'a str;
-type Vars<'a> = HashMap<&'a str, &'a str>;
+type Variables<'a> = HashMap<&'a str, &'a str>;
 
+#[allow(dead_code)] // FIXME
 impl<'a> Register<'a> {
-    /// Creates a new Register struct with default values.
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     /// Inserts entry into the Register's Cut Variables/
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
@@ -41,6 +37,7 @@ impl<'a> Register<'a> {
     }
 
     /// Gets a reference to the string slice value for the given var name
+    ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
     pub fn get_kv(&self, key: &str) -> Option<(&&str, &&str)> {
         self.vars.get_key_value(key)
@@ -51,7 +48,8 @@ impl<'a> Register<'a> {
         self.vars.iter()
     }
 
-    /// Returns a boolean idicating whether the register contais a \
+    /// Returns a boolean indicating whether Register.vars contains a given key
+    ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
     pub fn contains_key(&self, key: &str) -> bool {
         self.vars.contains_key(key)
@@ -141,6 +139,7 @@ pub enum Match<'a> {
     },
 }
 
+#[allow(dead_code)] // FIXME
 impl<'a> Match<'a> {
     /// the range over the starting and ending byte offsets for the corresonding Replacement.
     fn range(&self) -> Range<usize> {
@@ -172,7 +171,7 @@ macro_rules! register {
     ({$( $key: expr => $val: expr ),*}) => {{
         use crate::cut::Register;
 
-        let mut reg = Register::new();
+        let mut reg = Register::default();
         $(reg.insert($key, $val).expect("RegisterInsertError");)*
         reg
     }}
