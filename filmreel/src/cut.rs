@@ -1,7 +1,7 @@
 use crate::utils::ordered_map;
 
 use lazy_static::lazy_static;
-use regex::{Captures, Regex};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -17,7 +17,7 @@ pub struct Register<'a> {
 
 /// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
 // type Variable<'a> = &'a str;
-type Vars<'a> = Option<HashMap<&'a str, &'a str>>;
+type Vars<'a> = HashMap<&'a str, &'a str>;
 
 impl<'a> Register<'a> {
     /// Creates a new Register struct with default values.
@@ -155,7 +155,7 @@ impl<'a> Match<'a> {
     }
     pub fn name(&self) -> Option<&'a str> {
         match self {
-            Match::Escape(range) => None,
+            Match::Escape(_) => None,
             Match::CutVar {
                 name: n,
                 value: _,
@@ -305,7 +305,6 @@ mod tests {
 
 #[cfg(test)]
 mod serde_tests {
-    use super::*;
     use crate::test_ser_de;
 
     const REGISTER_JSON: &str = r#"

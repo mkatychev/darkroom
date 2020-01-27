@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Serialize, Serializer};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
@@ -49,8 +49,15 @@ macro_rules! test_ser_de {
 #[cfg(test)]
 pub fn test_deserialize<'a, T>(de_json: T, str_json: &'a str)
 where
-    T: Deserialize<'a> + PartialEq + std::fmt::Debug,
+    T: serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
 {
     let actual = serde_json::from_str(str_json).unwrap();
     assert_eq!(de_json, actual);
+}
+
+pub trait HasLen<T> {
+    fn len(&self) -> usize;
+    fn zero_len(&self) -> bool {
+        self.len() == 0
+    }
 }

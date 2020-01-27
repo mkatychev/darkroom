@@ -26,10 +26,10 @@ impl<'a> Frame<'a> {
         Ok(())
     }
 
-    fn hydrate_val<'b>(
+    fn hydrate_val(
         set: &InstructionSet,
         val: &'a mut Value,
-        reg: &'b Register,
+        reg: &Register,
     ) -> Result<(), &'static str> {
         match val {
             Value::Object(map) => {
@@ -89,20 +89,29 @@ struct Request {
 ///
 /// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
-
+#[serde(default)]
 struct InstructionSet<'a> {
     #[serde(rename(serialize = "from", deserialize = "from"))]
-    #[serde(serialize_with = "ordered_set", borrow)]
-    reads: Option<HashSet<&'a str>>,
+    #[serde(
+        skip_serializing_if = "HashSet::is_empty",
+        serialize_with = "ordered_set",
+        borrow
+    )]
+    reads: HashSet<&'a str>,
     #[serde(rename(serialize = "to", deserialize = "to"))]
-    #[serde(serialize_with = "ordered_map", borrow)]
-    writes: Option<HashMap<&'a str, &'a str>>,
+    #[serde(
+        skip_serializing_if = "HashMap::is_empty",
+        serialize_with = "ordered_map",
+        borrow
+    )]
+    writes: HashMap<&'a str, &'a str>,
 }
 
 impl<'a> InstructionSet<'a> {
     fn contains(&self, var: &str) -> bool {
-        self.reads.map_or(false, |r| r.contains(var))
-            || self.writes.map_or(false, |w| w.contains_key(var))
+        self.reads.contains(var) || self.writes.contains_key(var)
+        // self.reads.map_or(false, |r| r.contains(var))
+        //     || self.writes.map_or(false, |w| w.contains_key(var))
     }
 }
 
@@ -161,43 +170,67 @@ macro_rules! from {
 mod tests {
     use super::*;
     use crate::register;
-    use rstest::*;
+    // use rstest::*;
+    use serde_json::json;
 
     const FRAME_JSON: &str = r#"
-{
-  "protocol": "GRPC",
-  "cut": {
-    "from": [
-      "FIRST",
-      "LAST",
-      "EMAIL"
-    ]
-  },
-  "request": {
-    "body": {
-      "name": "${FIRST} ${LAST}",
-      "email": "${EMAIL}"
-    },
-    "uri": "user_api.User/CreateUser"
-  },
-  "response": {
-    "body": "created user: ${USER_ID}",
-    "status": 0
-  }
-}
+    {
+      "protocol": "GRPC",
+      "cut": {
+        "from": [
+          "FIRST",
+          "LAST",
+          "EMAIL"
+        ]
+      },
+      "request": {
+        "body": {
+          "name": "${FIRST} ${LAST}",
+          "email": "${EMAIL}"
+        },
+        "uri": "user_api.User/CreateUser"
+      },
+      "response": {
+        "body": "YES!",
+        "status": 0
+      }
+    }
     "#;
 
     #[test]
     fn test_hydrate() {
         let reg = register!({
+            "EMAIL"=> "new_user@humanmail.com",
             "FIRST"=> "Mario",
-            "LAST"=> "Rossi",
-            "EMAIL"=> "new_user@humanmail.com"
+            "LAST"=> "Rossi"
         });
         let mut frame: Frame = serde_json::from_str(FRAME_JSON).unwrap();
         frame.hydrate(&reg).unwrap();
-        // assert_eq!(
-        // );
+        // dbg!("DEFAULT", InstructionSet::default());
+        assert_eq!(
+            Frame {
+                protocol: Protocol::GRPC,
+                cut: InstructionSet {
+                    reads: from!["FIRST", "LAST", "EMAIL"],
+                    writes: to!({}),
+                },
+                request: Request {
+                    body: json!({
+                        "name": "Mario Rossi",
+                        "email": "new_user@humanmail.com"
+                    }),
+                    etc: json!({}),
+                    uri: String::from("user_api.User/CreateUser"),
+                },
+
+                response: Response {
+                    body: json!("YES!"),
+                    etc: json!({}),
+                    status: 0,
+                },
+            },
+            frame
+        );
     }
 }
 #[cfg(test)]
