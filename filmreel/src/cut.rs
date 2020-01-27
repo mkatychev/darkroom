@@ -17,7 +17,6 @@ pub struct Register<'a> {
 }
 
 /// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-// type Variable<'a> = &'a str;
 type Variables<'a> = HashMap<&'a str, &'a str>;
 
 #[allow(dead_code)] // FIXME
@@ -37,7 +36,7 @@ impl<'a> Register<'a> {
         Ok(self.vars.insert(key, val))
     }
 
-    /// Gets a reference to the string slice value for the given var name
+    /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
     pub fn get_kv(&self, key: &str) -> Option<(&&str, &&str)> {
@@ -49,7 +48,7 @@ impl<'a> Register<'a> {
         self.vars.iter()
     }
 
-    /// Returns a boolean indicating whether Register.vars contains a given key
+    /// Returns a boolean indicating whether Register.vars contains a given key.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
     pub fn contains_key(&self, key: &str) -> bool {
@@ -57,7 +56,7 @@ impl<'a> Register<'a> {
     }
 
     /// Returns a vector of Match enums enums found in the string provided for use in cut
-    /// operations
+    /// operations.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
     pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, Error> {
@@ -102,7 +101,7 @@ impl<'a> Register<'a> {
             };
 
             // push valid match onto Match vec
-            matches.push(Match::CutVar {
+            matches.push(Match::Variable {
                 name: cutvar.0,
                 value: cutvar.1,
                 range: mat.get(0).expect("capture missing").range(),
@@ -123,7 +122,7 @@ impl<'a> Register<'a> {
     pub fn read_operation(&self, mat: Match, json_string: &mut String) {
         match mat {
             Match::Escape(range) => json_string.replace_range(range, ""),
-            Match::CutVar {
+            Match::Variable {
                 name: _,
                 value: val,
                 range: r,
@@ -132,10 +131,11 @@ impl<'a> Register<'a> {
     }
 }
 
+/// Describes the types of matches during a read operation.
 #[derive(Debug)]
 pub enum Match<'a> {
     Escape(Range<usize>),
-    CutVar {
+    Variable {
         name: &'a str,
         value: &'a str,
         range: Range<usize>,
@@ -148,7 +148,7 @@ impl<'a> Match<'a> {
     fn range(&self) -> Range<usize> {
         match self {
             Match::Escape(range) => range.clone(),
-            Match::CutVar {
+            Match::Variable {
                 name: _,
                 value: _,
                 range: r,
@@ -158,7 +158,7 @@ impl<'a> Match<'a> {
     pub fn name(&self) -> Option<&'a str> {
         match self {
             Match::Escape(_) => None,
-            Match::CutVar {
+            Match::Variable {
                 name: n,
                 value: _,
                 range: _,
@@ -168,7 +168,7 @@ impl<'a> Match<'a> {
 }
 
 /// Constructs a [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
-/// from the provided series of key value pairs
+/// from the provided series of key value pairs.
 #[macro_export]
 macro_rules! register {
     ({$( $key: expr => $val: expr ),*}) => {{
