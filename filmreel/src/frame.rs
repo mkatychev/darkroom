@@ -30,7 +30,7 @@ impl<'a> Frame<'a> {
         Self::hydrate_val(&set, &mut self.response.etc, reg)?;
 
         // URI is given an explicit read operation
-        Self::read_operation(&set, &mut self.request.uri, reg)?;
+        Self::hydrate_str(&set, &mut self.request.uri, reg)?;
         Ok(())
     }
 
@@ -51,7 +51,7 @@ impl<'a> Frame<'a> {
                 Ok(())
             }
             Value::String(string) => {
-                Self::read_operation(set, string, reg)?;
+                Self::hydrate_str(set, string, reg)?;
                 Ok(())
             }
             _ => Ok(()),
@@ -59,11 +59,7 @@ impl<'a> Frame<'a> {
     }
 
     /// Performs a Register.read_operation on the entire String
-    fn read_operation(
-        set: &InstructionSet,
-        string: &mut String,
-        reg: &Register,
-    ) -> Result<(), Error> {
+    fn hydrate_str(set: &InstructionSet, string: &mut String, reg: &Register) -> Result<(), Error> {
         {
             let matches = reg.read_match(string).unwrap();
             // Check if the InstructionSet has the given variable
@@ -71,7 +67,7 @@ impl<'a> Frame<'a> {
                 if let Some(n) = mat.name() {
                     if !set.contains(n) {
                         return Err(Error::FrameParse(
-                            "Variable is not present in Frame Read Instructions",
+                            "Variable is not present in Frame InstructionSet",
                         ));
                     }
                 }
