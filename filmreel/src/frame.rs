@@ -17,18 +17,22 @@ pub struct Frame<'a> {
 }
 
 impl<'a> Frame<'a> {
-    fn hydrate(&'a mut self, reg: &Register) -> Result<(), &'static str> {
+    /// Traverses Frame properties where Read Operations are permitted and
+    /// performs Register.read_operation on Strings with Cut Variables
+    fn hydrate(&mut self, reg: &Register) -> Result<(), &'static str> {
         let set = self.cut.clone();
         Self::hydrate_val(&set, &mut self.request.body, reg)?;
+        Self::read_operation(&set, &mut self.request.uri, reg)?;
         Self::hydrate_val(&set, &mut self.request.etc, reg)?;
         Self::hydrate_val(&set, &mut self.response.body, reg)?;
         Self::hydrate_val(&set, &mut self.response.etc, reg)?;
         Ok(())
     }
 
+    /// Traverses a given serde::Value enum attempting to modify found Strings
     fn hydrate_val(
         set: &InstructionSet,
-        val: &'a mut Value,
+        val: &mut Value,
         reg: &Register,
     ) -> Result<(), &'static str> {
         match val {
@@ -44,21 +48,34 @@ impl<'a> Frame<'a> {
                 }
                 Ok(())
             }
-            Value::String(json_string) => {
-                let matches = reg.read_match(json_string).unwrap();
-                // Check if the InstructionSet has the given variable
-                for mat in matches.into_iter() {
-                    if let Some(n) = mat.name() {
-                        if !set.contains(n) {
-                            return Err( "FrameParseError: Variable is not present in Frame Read Instructions",
-                        );
-                        }
-                    }
-                    reg.read_operation(mat, json_string);
-                }
+            Value::String(string) => {
+                Self::read_operation(set, string, reg)?;
                 Ok(())
             }
             _ => Ok(()),
+        }
+    }
+
+    /// Performs a Register.read_operation on the entire String
+    fn read_operation(
+        set: &InstructionSet,
+        string: &mut String,
+        reg: &Register,
+    ) -> Result<(), &'static str> {
+        {
+            let matches = reg.read_match(string).unwrap();
+            // Check if the InstructionSet has the given variable
+            for mat in matches.into_iter() {
+                if let Some(n) = mat.name() {
+                    if !set.contains(n) {
+                        return Err(
+                            "FrameParseError: Variable is not present in Frame Read Instructions",
+                        );
+                    }
+                }
+                reg.read_operation(mat, string);
+            }
+            Ok(())
         }
     }
 }
@@ -110,8 +127,6 @@ struct InstructionSet<'a> {
 impl<'a> InstructionSet<'a> {
     fn contains(&self, var: &str) -> bool {
         self.reads.contains(var) || self.writes.contains_key(var)
-        // self.reads.map_or(false, |r| r.contains(var))
-        //     || self.writes.map_or(false, |w| w.contains_key(var))
     }
 }
 
@@ -180,7 +195,8 @@ mod tests {
         "from": [
           "FIRST",
           "LAST",
-          "EMAIL"
+          "EMAIL",
+          "METHOD"
         ]
       },
       "request": {
@@ -188,7 +204,7 @@ mod tests {
           "name": "${FIRST} ${LAST}",
           "email": "${EMAIL}"
         },
-        "uri": "user_api.User/CreateUser"
+        "uri":"user_api.User/${METHOD}"
       },
       "response": {
         "body": "YES!",
@@ -202,17 +218,17 @@ mod tests {
         let reg = register!({
             "EMAIL"=> "new_user@humanmail.com",
             "FIRST"=> "Mario",
-            "LAST"=> "Rossi"
+            "LAST"=> "Rossi",
+            "METHOD"=> "CreateUser"
         });
         let mut frame: Frame = serde_json::from_str(FRAME_JSON).unwrap();
         frame.hydrate(&reg).unwrap();
-        // dbg!("DEFAULT", InstructionSet::default());
         assert_eq!(
             Frame {
                 protocol: Protocol::GRPC,
                 cut: InstructionSet {
-                    reads: from!["FIRST", "LAST", "EMAIL"],
-                    writes: to!({}),
+                    reads: from!["METHOD", "FIRST", "LAST", "EMAIL"],
+                    writes: HashMap::new(),
                 },
                 request: Request {
                     body: json!({
