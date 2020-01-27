@@ -1,3 +1,4 @@
+use crate::error::Error;
 use crate::utils::ordered_map;
 
 use lazy_static::lazy_static;
@@ -24,14 +25,14 @@ impl<'a> Register<'a> {
     /// Inserts entry into the Register's Cut Variables/
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
-    pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, &'static str> {
+    pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, Error> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
-            return Err(
-                "Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names: [A-za-z_]");
+            return Err(Error::FrameParse(
+                "Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]"));
         }
         Ok(self.vars.insert(key, val))
     }
@@ -59,7 +60,7 @@ impl<'a> Register<'a> {
     /// operations
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
-    pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, &'static str> {
+    pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, Error> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
@@ -88,13 +89,15 @@ impl<'a> Register<'a> {
 
             // error if no trailing brace was found
             if mat.name("trailing_b").is_none() {
-                return Err("ReadInstructionError: Missing trailing brace for Cut Variable");
+                return Err(Error::FrameParse("Missing trailing brace for Cut Variable"));
             }
 
             let cutvar = match self.get_kv(mat.name("cut_var").expect("cut_var missing").as_str()) {
                 Some((&k, &v)) => (k, v),
                 None => {
-                    return Err("ReadInstructionError: Key is not present in the Cut Register");
+                    return Err(Error::ReadInstruction(
+                        "Key is not present in the Cut Register",
+                    ));
                 }
             };
 
@@ -207,7 +210,7 @@ mod tests {
         });
 
         assert_eq!(reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#).unwrap_err(),
-                "Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names: [A-za-z_]");
+                Error::FrameParse("Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]"));
 
         reg.insert("FIRST_NAME", "Pietre").unwrap();
         assert_eq!(
@@ -285,14 +288,14 @@ mod tests {
         expected,
         case(
             "My name is ${MIDDLE_NAME} ${LAST_NAME}",
-            "ReadInstructionError: Key is not present in the Cut Register"
+            Error::ReadInstruction("Key is not present in the Cut Register")
         ),
         case(
             "My name is ${FIRST_NAME} ${LAST_NAME",
-            "ReadInstructionError: Missing trailing brace for Cut Variable"
+            Error::FrameParse("Missing trailing brace for Cut Variable")
         )
     )]
-    fn test_read_op_err(input: &str, expected: &str) {
+    fn test_read_op_err(input: &str, expected: Error) {
         let reg = register!({
             "FIRST_NAME"=> "Slim",
             "LAST_NAME"=> "Shady"

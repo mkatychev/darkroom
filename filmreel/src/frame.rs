@@ -1,4 +1,5 @@
 use crate::cut::Register;
+use crate::error::Error;
 use crate::utils::{ordered_map, ordered_set};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,7 +22,7 @@ pub struct Frame<'a> {
 impl<'a> Frame<'a> {
     /// Traverses Frame properties where Read Operations are permitted and
     /// performs Register.read_operation on Strings with Cut Variables
-    fn hydrate(&mut self, reg: &Register) -> Result<(), &'static str> {
+    fn hydrate(&mut self, reg: &Register) -> Result<(), Error> {
         let set = self.cut.clone();
         Self::hydrate_val(&set, &mut self.request.body, reg)?;
         Self::hydrate_val(&set, &mut self.request.etc, reg)?;
@@ -35,11 +36,7 @@ impl<'a> Frame<'a> {
 
     /// Traverses a given serde::Value enum attempting to modify found Strings
     /// for the moment this method also works as a Frame.init() check, emitting FrameParseErrors
-    fn hydrate_val(
-        set: &InstructionSet,
-        val: &mut Value,
-        reg: &Register,
-    ) -> Result<(), &'static str> {
+    fn hydrate_val(set: &InstructionSet, val: &mut Value, reg: &Register) -> Result<(), Error> {
         match val {
             Value::Object(map) => {
                 for (_, val) in map.iter_mut() {
@@ -66,16 +63,16 @@ impl<'a> Frame<'a> {
         set: &InstructionSet,
         string: &mut String,
         reg: &Register,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), Error> {
         {
             let matches = reg.read_match(string).unwrap();
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {
                 if let Some(n) = mat.name() {
                     if !set.contains(n) {
-                        return Err(
-                            "FrameParseError: Variable is not present in Frame Read Instructions",
-                        );
+                        return Err(Error::FrameParse(
+                            "Variable is not present in Frame Read Instructions",
+                        ));
                     }
                 }
                 reg.read_operation(mat, string);
