@@ -76,15 +76,11 @@ impl<'a> Register<'a> {
 
         for mat in VAR_MATCH.captures_iter(json_string) {
             // continue if the leading brace is escaped but strip "\\" from the match
-            if mat.name("esc_char").is_some() {
-                matches.push(Match::Escape(
-                    mat.name("esc_char")
-                        .expect("esc_char missing")
-                        .range()
-                        .clone(),
-                ));
+            if let Some(esc_char) = mat.name("esc_char") {
+                matches.push(Match::Escape(esc_char.range().clone()));
                 continue;
             }
+
             let full_match = mat.get(0).expect("capture missing");
 
             // error if no trailing brace was found
@@ -96,7 +92,7 @@ impl<'a> Register<'a> {
             }
 
             let (name, value) =
-                match self.get_kv(mat.name("cut_var").expect("cut_var missing").as_str()) {
+                match self.get_key_value(mat.name("cut_var").expect("cut_var missing").as_str()) {
                     Some((&k, &v)) => (k, v),
                     None => {
                         return Err(Error::ReadInstructionf(
@@ -126,14 +122,7 @@ impl<'a> Register<'a> {
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
     pub fn read_operation(&self, mat: Match, json_string: &mut String) {
-        match mat {
-            Match::Escape(range) => json_string.replace_range(range, ""),
-            Match::Variable {
-                name: _,
-                value: val,
-                range: r,
-            } => json_string.replace_range(r, val),
-        }
+        mat.read_operation(json_string)
     }
 }
 
@@ -161,6 +150,7 @@ impl<'a> Match<'a> {
             } => r.clone(),
         }
     }
+
     pub fn name(&self) -> Option<&'a str> {
         match self {
             Match::Escape(_) => None,
@@ -169,6 +159,17 @@ impl<'a> Match<'a> {
                 value: _,
                 range: _,
             } => Some(*n),
+        }
+    }
+
+    fn read_operation(self, json_string: &mut String) {
+        match self {
+            Match::Escape(range) => json_string.replace_range(range, ""),
+            Match::Variable {
+                name: _,
+                value: val,
+                range: r,
+            } => json_string.replace_range(r, val),
         }
     }
 }
