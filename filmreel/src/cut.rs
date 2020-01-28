@@ -16,6 +16,7 @@ pub struct Register<'a> {
     vars: Variables<'a>,
 }
 
+const VAR_NAME_ERR: &'static str ="Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]";
 /// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
 type Variables<'a> = HashMap<&'a str, &'a str>;
 
@@ -30,8 +31,7 @@ impl<'a> Register<'a> {
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
-            return Err(Error::FrameParse(
-                "Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]"));
+            return Err(Error::FrameParsef(VAR_NAME_ERR, key.to_string()));
         }
         Ok(self.vars.insert(key, val))
     }
@@ -85,26 +85,32 @@ impl<'a> Register<'a> {
                 ));
                 continue;
             }
+            let full_match = mat.get(0).expect("capture missing");
 
             // error if no trailing brace was found
             if mat.name("trailing_b").is_none() {
-                return Err(Error::FrameParse("Missing trailing brace for Cut Variable"));
+                return Err(Error::FrameParsef(
+                    "Missing trailing brace for Cut Variable",
+                    String::from(full_match.as_str()),
+                ));
             }
 
-            let cutvar = match self.get_kv(mat.name("cut_var").expect("cut_var missing").as_str()) {
-                Some((&k, &v)) => (k, v),
-                None => {
-                    return Err(Error::ReadInstruction(
-                        "Key is not present in the Cut Register",
-                    ));
-                }
-            };
+            let (name, value) =
+                match self.get_kv(mat.name("cut_var").expect("cut_var missing").as_str()) {
+                    Some((&k, &v)) => (k, v),
+                    None => {
+                        return Err(Error::ReadInstructionf(
+                            "Key is not present in the Cut Register",
+                            String::from(mat.name("cut_var").expect("cut_var missing").as_str()),
+                        ));
+                    }
+                };
 
             // push valid match onto Match vec
             matches.push(Match::Variable {
-                name: cutvar.0,
-                value: cutvar.1,
-                range: mat.get(0).expect("capture missing").range(),
+                name,
+                value,
+                range: full_match.range(),
             });
         }
 
@@ -209,8 +215,10 @@ mod tests {
             "RESPONSE"=> "ALRIGHT"
         });
 
-        assert_eq!(reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#).unwrap_err(),
-                Error::FrameParse("Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]"));
+        assert_eq!(
+            reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#).unwrap_err(),
+            Error::FrameParsef(VAR_NAME_ERR, "INVALID%STRING".to_string())
+        );
 
         reg.insert("FIRST_NAME", "Pietre").unwrap();
         assert_eq!(
@@ -288,11 +296,11 @@ mod tests {
         expected,
         case(
             "My name is ${MIDDLE_NAME} ${LAST_NAME}",
-            Error::ReadInstruction("Key is not present in the Cut Register")
+            Error::ReadInstructionf("Key is not present in the Cut Register", "MIDDLE_NAME".to_string())
         ),
         case(
             "My name is ${FIRST_NAME} ${LAST_NAME",
-            Error::FrameParse("Missing trailing brace for Cut Variable")
+            Error::FrameParsef("Missing trailing brace for Cut Variable", "${LAST_NAME".to_string())
         )
     )]
     fn test_read_op_err(input: &str, expected: Error) {
@@ -301,7 +309,7 @@ mod tests {
             "LAST_NAME"=> "Shady"
         });
         let mut str_with_var = input.to_string();
-        assert_eq!(reg.read_match(&mut str_with_var).unwrap_err(), expected)
+        assert_eq!(expected, reg.read_match(&mut str_with_var).unwrap_err())
     }
 }
 
