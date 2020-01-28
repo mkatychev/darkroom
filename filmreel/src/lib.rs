@@ -1,4 +1,5 @@
 mod cut;
+mod error;
 mod frame;
 mod utils;
 

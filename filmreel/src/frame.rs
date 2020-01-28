@@ -1,4 +1,5 @@
 use crate::cut::Register;
+use crate::error::Error;
 use crate::utils::{ordered_map, ordered_set};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -10,24 +11,79 @@ use std::collections::{HashMap, HashSet};
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Frame<'a> {
     protocol: Protocol,
-    #[serde(borrow)]
+    // Both the reads and writes can be optional
+    #[serde(default, borrow, skip_serializing_if = "InstructionSet::is_empty")]
     cut: InstructionSet<'a>,
     request: Request,
     response: Response,
 }
 
-// impl<'a> Frame<'a> {
-//     fn hydrate(mut self, register: &Register) -> Self {
-//         let cut_vars: Vec<&str> = register.map(|k, _| k).collect();
-//         for (k, _) in register {}
-//     }
-// }
+#[allow(dead_code)] // FIXME
+impl<'a> Frame<'a> {
+    /// Traverses Frame properties where Read Operations are permitted and
+    /// performs Register.read_operation on Strings with Cut Variables
+    fn hydrate(&mut self, reg: &Register) -> Result<(), Error> {
+        let set = self.cut.clone();
+        Self::hydrate_val(&set, &mut self.request.body, reg)?;
+        Self::hydrate_val(&set, &mut self.request.etc, reg)?;
+        Self::hydrate_val(&set, &mut self.response.body, reg)?;
+        Self::hydrate_val(&set, &mut self.response.etc, reg)?;
+
+        // URI is given an explicit read operation
+        Self::hydrate_str(&set, &mut self.request.uri, reg)?;
+        Ok(())
+    }
+
+    /// Traverses a given serde::Value enum attempting to modify found Strings
+    /// for the moment this method also works as a Frame.init() check, emitting FrameParseErrors
+    fn hydrate_val(set: &InstructionSet, val: &mut Value, reg: &Register) -> Result<(), Error> {
+        match val {
+            Value::Object(map) => {
+                for (_, val) in map.iter_mut() {
+                    Self::hydrate_val(set, val, reg)?;
+                }
+                Ok(())
+            }
+            Value::Array(vec) => {
+                for val in vec.iter_mut() {
+                    Self::hydrate_val(set, val, reg)?;
+                }
+                Ok(())
+            }
+            Value::String(string) => {
+                Self::hydrate_str(set, string, reg)?;
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// Performs a Register.read_operation on the entire String
+    fn hydrate_str(set: &InstructionSet, string: &mut String, reg: &Register) -> Result<(), Error> {
+        {
+            let matches = reg.read_match(string).unwrap();
+            // Check if the InstructionSet has the given variable
+            for mat in matches.into_iter() {
+                if let Some(n) = mat.name() {
+                    if !set.contains(n) {
+                        return Err(Error::FrameParse(
+                            "Variable is not present in Frame InstructionSet",
+                        ));
+                    }
+                }
+                reg.read_operation(mat, string);
+            }
+            Ok(())
+        }
+    }
+}
 
 /// Represents the protocol used to send the frame payload.
 ///
 /// [Protocol example](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum Protocol {
+    #[serde(rename(serialize = "gRPC", deserialize = "gRPC"))]
     GRPC,
     HTTP,
 }
@@ -35,7 +91,7 @@ enum Protocol {
 /// Encapsulates the request payload to be sent.
 ///
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Debug, PartialEq)]
 struct Request {
     body: Value,
     #[serde(flatten)]
@@ -48,14 +104,33 @@ struct Request {
 /// initialized.
 ///
 /// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set)
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
+#[serde(default)]
 struct InstructionSet<'a> {
     #[serde(rename(serialize = "from", deserialize = "from"))]
-    #[serde(serialize_with = "ordered_set", borrow)]
+    #[serde(
+        skip_serializing_if = "HashSet::is_empty",
+        serialize_with = "ordered_set",
+        borrow
+    )]
     reads: HashSet<&'a str>,
     #[serde(rename(serialize = "to", deserialize = "to"))]
-    #[serde(serialize_with = "ordered_map", borrow)]
+    #[serde(
+        skip_serializing_if = "HashMap::is_empty",
+        serialize_with = "ordered_map",
+        borrow
+    )]
     writes: HashMap<&'a str, &'a str>,
+}
+
+impl<'a> InstructionSet<'a> {
+    fn is_empty(&self) -> bool {
+        self.reads.is_empty() || self.writes.is_empty()
+    }
+
+    fn contains(&self, var: &str) -> bool {
+        self.reads.contains(var) || self.writes.contains_key(var)
+    }
 }
 
 /// Encapsulates the expected response payload.
@@ -109,14 +184,81 @@ macro_rules! from {
         set
     }}
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::register;
+    // use rstest::*;
+    use serde_json::json;
 
+    const FRAME_JSON: &str = r#"
+    {
+      "protocol": "gRPC",
+      "cut": {
+        "from": [
+          "FIRST",
+          "LAST",
+          "EMAIL",
+          "METHOD"
+        ]
+      },
+      "request": {
+        "body": {
+          "name": "${FIRST} ${LAST}",
+          "email": "${EMAIL}"
+        },
+        "uri":"user_api.User/${METHOD}"
+      },
+      "response": {
+        "body": "YES!",
+        "status": 0
+      }
+    }
+    "#;
+
+    #[test]
+    fn test_hydrate() {
+        let reg = register!({
+            "EMAIL"=> "new_user@humanmail.com",
+            "FIRST"=> "Mario",
+            "LAST"=> "Rossi",
+            "METHOD"=> "CreateUser"
+        });
+        let mut frame: Frame = serde_json::from_str(FRAME_JSON).unwrap();
+        frame.hydrate(&reg).unwrap();
+        assert_eq!(
+            Frame {
+                protocol: Protocol::GRPC,
+                cut: InstructionSet {
+                    reads: from!["METHOD", "FIRST", "LAST", "EMAIL"],
+                    writes: HashMap::new(),
+                },
+                request: Request {
+                    body: json!({
+                        "name": "Mario Rossi",
+                        "email": "new_user@humanmail.com"
+                    }),
+                    etc: json!({}),
+                    uri: String::from("user_api.User/CreateUser"),
+                },
+
+                response: Response {
+                    body: json!("YES!"),
+                    etc: json!({}),
+                    status: 0,
+                },
+            },
+            frame
+        );
+    }
+}
 #[cfg(test)]
 mod serde_tests {
     use super::*;
     use crate::test_ser_de;
     use serde_json::json;
 
-    const PROTOCOL_GRPC_JSON: &str = r#""GRPC""#;
+    const PROTOCOL_GRPC_JSON: &str = r#""gRPC""#;
     test_ser_de!(
         protocol_grpc_ser,
         protocol_grpc_de,
@@ -290,5 +432,38 @@ mod serde_tests {
             },
         },
         FRAME_JSON
+    );
+    const SIMPLE_FRAME_JSON: &str = r#"
+    {
+      "protocol": "HTTP",
+      "request": {
+        "body": {},
+        "uri": "POST /logout/${USER_ID}"
+      },
+      "response": {
+        "body": {},
+        "status": 200
+      }
+    }
+    "#;
+    test_ser_de!(
+        simple_frame_ser,
+        simple_frame_de,
+        Frame {
+            protocol: Protocol::HTTP,
+            cut: InstructionSet::default(),
+            request: Request {
+                body: json!({}),
+                etc: json!({}),
+                uri: String::from("POST /logout/${USER_ID}"),
+            },
+
+            response: Response {
+                body: json!({}),
+                etc: json!({}),
+                status: 200,
+            },
+        },
+        SIMPLE_FRAME_JSON
     );
 }
