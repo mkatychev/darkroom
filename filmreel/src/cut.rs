@@ -39,7 +39,7 @@ impl<'a> Register<'a> {
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get_kv(&self, key: &str) -> Option<(&&str, &&str)> {
+    pub fn get_key_value(&self, key: &str) -> Option<(&&str, &&str)> {
         self.vars.get_key_value(key)
     }
 
