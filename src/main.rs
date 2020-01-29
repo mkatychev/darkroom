@@ -6,7 +6,19 @@ fn main() {
     let opt = Opt::from_args();
 
     match opt.cmd {
-        Command::Take { frame, cut, output } => run_take(frame, cut, output),
+        Command::Take {
+            frame,
+            cut,
+            header,
+            dest,
+            output,
+        } => run_take(Command::Take {
+            frame,
+            cut,
+            header,
+            dest,
+            output,
+        }),
         _ => println!("{:#?}", opt),
     }
 }

@@ -1,8 +1,9 @@
 use crate::cut::Register;
 use crate::error::FrError;
-use crate::utils::{ordered_map, ordered_set};
+use crate::utils::{get_jql_string, ordered_map, ordered_set};
+use jql;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 
 /// Represents the entire deserialized frame file.
@@ -31,6 +32,26 @@ impl<'a> Frame<'a> {
     pub fn to_string_pretty(&self) -> String {
         serde_json::to_string_pretty(self).expect("serialization error")
     }
+
+    /// Serializes the Frame struct to a serde_json::Value
+    pub fn to_value(&self) -> Value {
+        serde_json::to_value(self).expect("serialization error")
+    }
+
+    /// Serialized payload
+    pub fn get_request(&self) -> String {
+        serde_json::to_string_pretty(&self.request.body).expect("serialization error")
+    }
+
+    /// Serialized payload
+    pub fn get_request_uri(&self) -> String {
+        let unst = serde_json::to_string_pretty(&self.request.uri).expect("serialization error");
+
+        let interim = unst.replace("\"", "");
+        dbg!(&interim);
+        interim
+    }
+
     /// Traverses Frame properties where Read Operations are permitted and
     /// performs Register.read_operation on Strings with Cut Variables
     pub fn hydrate(&mut self, reg: &Register) -> Result<(), FrError> {
@@ -91,6 +112,37 @@ impl<'a> Frame<'a> {
             }
             Ok(())
         }
+    }
+
+    pub fn to_cut_register(
+        &self,
+        reg: &mut Register<'a>,
+        payload: &'a String,
+    ) -> Result<(), FrError> {
+        let payload_val: Value = serde_json::from_str(payload)?;
+        let frame_val: Value =
+            serde_json::to_value(self.response.clone()).expect("frame_val ::to_value");
+
+        let mut p_map = Map::new();
+        p_map.insert(String::from("response"), payload_val);
+
+        let mut f_map = Map::new();
+        f_map.insert(String::from("response"), frame_val);
+
+        for (k, jq_cmd) in self.cut.writes.iter() {
+            // Temporary holdover until write operations are implemented for request
+            let selector = jq_cmd.replace("'", "\"");
+            let frame_jq = get_jql_string(&Value::Object(f_map.clone()), Some(&selector))
+                .expect("frame_jq error");
+            let payload_jq = get_jql_string(&Value::Object(p_map.clone()), Some(&selector))
+                .expect("payload_jq error");
+
+            // println!("{}{}", frame_jq, payload_jq);
+            let to_val = Register::write_match(k, &frame_jq, &payload_jq).expect("match error");
+            reg.insert(k, to_val.to_string())?;
+        }
+
+        Ok(())
     }
 }
 
@@ -170,7 +222,7 @@ impl<'a> InstructionSet<'a> {
 /// Encapsulates the expected response payload.
 ///
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Debug, PartialEq)]
 struct Response {
     body: Value,
     #[serde(flatten)]
@@ -284,6 +336,56 @@ mod tests {
             },
             frame
         );
+    }
+    const WRITE_FRAME_JSON: &str = r#"
+{
+  "protocol": "gRPC",
+  "cut": {
+    "from": [
+      "FIRST",
+      "LAST",
+      "EMAIL",
+      "METHOD"
+    ],
+    "to": {
+      "USER_ID": "'response'.'id'"
+    }
+  },
+  "request": {
+    "body": {
+      "name": "${FIRST} ${LAST}",
+      "email": "${EMAIL}"
+    },
+    "uri": "user_api.User/${METHOD}"
+  },
+  "response": {
+    "body": "YES!",
+    "status": 0,
+    "id": "${USER_ID}"
+  }
+}
+    "#;
+
+    #[test]
+    fn test_to_cut_register() {
+        let mut reg = register!({
+            "EMAIL"=> "new_user@humanmail.com",
+            "FIRST"=> "Mario",
+            "LAST"=> "Rossi",
+            "METHOD"=> "CreateUser"
+        });
+        let mut frame: Frame =
+            serde_json::from_str(WRITE_FRAME_JSON).expect("write frame serde error");
+        frame.hydrate(&reg).expect("hydrate error");
+        let payload_response = r#"
+{
+  "body": "YES!",
+  "status": 0,
+  "id": "ID_010101"
+}
+"#
+        .to_string();
+        frame.to_cut_register(&mut reg, &payload_response);
     }
 }
 #[cfg(test)]

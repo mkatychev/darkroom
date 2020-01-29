@@ -1,5 +1,5 @@
 use crate::error::FrError;
-use crate::utils::ordered_map;
+use crate::utils::ordered_string_map;
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -10,15 +10,15 @@ use std::ops::Range;
 /// Holds Cut Variables and their corresonding values stored in a series of key/value pairs.
 ///
 /// [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 pub struct Register<'a> {
-    #[serde(serialize_with = "ordered_map", borrow, flatten)]
+    #[serde(serialize_with = "ordered_string_map", borrow, flatten)]
     vars: Variables<'a>,
 }
 
 const VAR_NAME_ERR: &'static str ="Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]";
 /// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-type Variables<'a> = HashMap<&'a str, &'a str>;
+type Variables<'a> = HashMap<&'a str, String>;
 
 #[allow(dead_code)] // FIXME
 impl<'a> Register<'a> {
@@ -28,10 +28,16 @@ impl<'a> Register<'a> {
         // reg.validate()?;
         Ok(reg)
     }
+
+    /// Pretty json formatting for Frame serialization
+    pub fn to_string_pretty(&self) -> String {
+        serde_json::to_string_pretty(self).expect("serialization error")
+    }
+
     /// Inserts entry into the Register's Cut Variables/
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
-    pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, FrError> {
+    pub fn insert(&mut self, key: &'a str, val: String) -> Result<Option<String>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
@@ -45,12 +51,12 @@ impl<'a> Register<'a> {
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get_key_value(&self, key: &str) -> Option<(&&str, &&str)> {
+    pub fn get_key_value(&self, key: &str) -> Option<(&&str, &String)> {
         self.vars.get_key_value(key)
     }
 
     /// An iterator visiting all Cut Variables in arbitrary order.
-    pub fn iter(&self) -> std::collections::hash_map::Iter<&str, &str> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<&str, String> {
         self.vars.iter()
     }
 
@@ -80,11 +86,11 @@ impl<'a> Register<'a> {
 
         let mut matches: Vec<Match> = Vec::new();
 
-        for mat in VAR_MATCH.captures_iter(json_string) {
+        'matches: for mat in VAR_MATCH.captures_iter(json_string) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(esc_char) = mat.name("esc_char") {
                 matches.push(Match::Escape(esc_char.range().clone()));
-                continue;
+                continue 'matches;
             }
 
             let full_match = mat.get(0).expect("capture missing");
@@ -99,13 +105,8 @@ impl<'a> Register<'a> {
 
             let (name, value) =
                 match self.get_key_value(mat.name("cut_var").expect("cut_var missing").as_str()) {
-                    Some((&k, &v)) => (k, v),
-                    None => {
-                        return Err(FrError::ReadInstructionf(
-                            "Key is not present in the Cut Register",
-                            String::from(mat.name("cut_var").expect("cut_var missing").as_str()),
-                        ));
-                    }
+                    Some((&k, v)) => (k, v.to_owned()),
+                    None => continue 'matches,
                 };
 
             // push valid match onto Match vec
@@ -128,7 +129,47 @@ impl<'a> Register<'a> {
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
     pub fn read_operation(&self, mat: Match, json_string: &mut String) {
+        if let Some(name) = mat.name() {
+            if let None = self.get_key_value(name) {
+                panic!("Key not present in Cut Register");
+            }
+        }
         mat.read_operation(json_string)
+    }
+
+    /// Takes a return payload and writes to the Cut Register
+    pub fn write_match(var_name: &str, frame_str: &str, payload_str: &'a str) -> Option<&'a str> {
+        let re = Regex::new(&format!(
+            r"(?x)
+                (?P<head_val>.*)?  # value preceding cut var
+                (?P<esc_char>\\)?  # escape character
+                (?P<cut_decl>\$\{{
+                {}                 # format! curly braces
+                \}})               # Cut Variable Declaration
+                (?P<tail_val>.*)?  # value following cut var
+                ",
+            var_name
+        ))
+        .expect("write-match regex error");
+        for mat in re.captures_iter(frame_str) {
+            // continue if the leading brace is escaped but strip "\\" from the match
+            if let Some(esc_char) = mat.name("esc_char") {
+                continue;
+            }
+            let full_match = mat.get(0).expect("capture missing");
+            let head_val = mat.name("head_val").expect("head_val missing").as_str();
+            let tail_val = mat.name("tail_val").expect("tail_val missing").as_str();
+            if !(payload_str.starts_with(head_val) && payload_str.ends_with(tail_val)) {
+                panic!("head tail mismatch");
+            }
+            // TODO for now terminate early but capture second iteration
+            let write_val = payload_str
+                .trim_start_matches(head_val)
+                .trim_end_matches(tail_val);
+
+            return Some(write_val);
+        }
+        None
     }
 }
 
@@ -138,7 +179,7 @@ pub enum Match<'a> {
     Escape(Range<usize>),
     Variable {
         name: &'a str,
-        value: &'a str,
+        value: String,
         range: Range<usize>,
     },
 }
@@ -175,7 +216,7 @@ impl<'a> Match<'a> {
                 name: _,
                 value: val,
                 range: r,
-            } => json_string.replace_range(r, val),
+            } => json_string.replace_range(r, &val),
         }
     }
 }
@@ -188,7 +229,7 @@ macro_rules! register {
         use crate::cut::Register;
 
         let mut reg = Register::default();
-        $(reg.insert($key, $val).expect("RegisterInsertError");)*
+        $(reg.insert($key, $val.to_string()).expect("RegisterInsertError");)*
         reg
     }}
 }
@@ -204,7 +245,7 @@ mod tests {
             "FIRST_NAME"=> "Primus",
             "RESPONSE"=> "ALRIGHT"
         });
-        reg.insert("LAST_NAME", "Secundus").unwrap();
+        reg.insert("LAST_NAME", "Secundus".to_string()).unwrap();
         assert_eq!(
             register!({
                 "FIRST_NAME"=> "Primus",
@@ -223,11 +264,12 @@ mod tests {
         });
 
         assert_eq!(
-            reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#).unwrap_err(),
+            reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#.to_string())
+                .unwrap_err(),
             FrError::FrameParsef(VAR_NAME_ERR, "INVALID%STRING".to_string())
         );
 
-        reg.insert("FIRST_NAME", "Pietre").unwrap();
+        reg.insert("FIRST_NAME", "Pietre".to_string()).unwrap();
         assert_eq!(
             register!({
                 "FIRST_NAME"=> "Pietre",
@@ -246,11 +288,10 @@ mod tests {
         let mut kv_vec = vec![];
 
         for (k, v) in reg.iter() {
-            kv_vec.push(k);
-            kv_vec.push(v);
+            kv_vec.push((k, v));
         }
         assert_eq!(
-            vec![&"FIRST_NAME", &"Primus", &"RESPONSE", &"ALRIGHT"].sort(),
+            vec![(&"FIRST_NAME", "Primus"), (&"RESPONSE", "ALRIGHT")].sort(),
             kv_vec.sort()
         );
     }
@@ -301,10 +342,10 @@ mod tests {
     #[rstest(
         input,
         expected,
-        case(
-            "My name is ${MIDDLE_NAME} ${LAST_NAME}",
-            FrError::ReadInstructionf("Key is not present in the Cut Register", "MIDDLE_NAME".to_string())
-        ),
+        // case( TODO move this to read_operation test
+        //     "My name is ${MIDDLE_NAME} ${LAST_NAME}",
+        //     FrError::ReadInstructionf("Key is not present in the Cut Register", "MIDDLE_NAME".to_string())
+        // ),
         case(
             "My name is ${FIRST_NAME} ${LAST_NAME",
             FrError::FrameParsef("Missing trailing brace for Cut Variable", "${LAST_NAME".to_string())
@@ -317,6 +358,20 @@ mod tests {
         });
         let mut str_with_var = input.to_string();
         assert_eq!(expected, reg.read_match(&mut str_with_var).unwrap_err())
+    }
+
+    #[rstest(
+        var,
+        frame,
+        payload,
+        expected,
+        case("NAME", "My name is ${NAME}.", "My name is Slim Shady.", "Slim Shady"),
+        case("SINGLE", "${SINGLE}", "my big hit", "my big hit")
+    )]
+    fn test_write_op(var: &str, frame: &str, payload: &str, expected: &str) {
+        let reg = register!({});
+        let actual = Register::write_match(var, frame, payload).unwrap();
+        assert_eq!(expected, actual);
     }
 }
 
@@ -346,7 +401,7 @@ mod serde_tests {
             "FIRST_NAME"=> "Primus",
             "RESPONSE"=> "ALRIGHT"
         });
-        reg.insert("LAST_NAME", "Secundus").unwrap();
+        reg.insert("LAST_NAME", "Secundus".to_string()).unwrap();
         assert_eq!(
             register!({
                 "FIRST_NAME"=> "Primus",

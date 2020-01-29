@@ -14,6 +14,15 @@ pub enum Command {
         /// Filepath of cut file
         #[structopt(short = "c", long)]
         cut: PathBuf,
+
+        /// Args passed to grpcurl
+        #[structopt(short = "H", long)]
+        header: String,
+
+        /// Args passed to grpcurl
+        #[structopt(short = "D", long)]
+        dest: String,
+
         /// Output file
         #[structopt(short, long, parse(from_os_str))]
         output: Option<PathBuf>,
