@@ -1,9 +1,17 @@
-mod cut;
+pub mod cut;
 mod error;
-mod frame;
+pub mod frame;
 mod utils;
 
-// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-pub fn get_it() -> &'static str {
-    "filmreel"
+use std::fs;
+use std::io::Result;
+use std::path::Path;
+
+// Convenience in converting a Path to a String
+pub fn file_to_string<P: AsRef<Path>>(path: P) -> Result<String> {
+    // https://github.com/serde-rs/json/issues/160
+    let json_string: String = fs::read_to_string(path)?;
+
+    // Return the `User`.
+    Ok(json_string)
 }

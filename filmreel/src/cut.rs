@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::FrError;
 use crate::utils::ordered_map;
 
 use lazy_static::lazy_static;
@@ -22,16 +22,22 @@ type Variables<'a> = HashMap<&'a str, &'a str>;
 
 #[allow(dead_code)] // FIXME
 impl<'a> Register<'a> {
+    /// Creates a new Register object running post deserialization validations
+    pub fn new(json_string: &str) -> Result<Register, FrError> {
+        let reg: Register = serde_json::from_str(json_string)?;
+        // reg.validate()?;
+        Ok(reg)
+    }
     /// Inserts entry into the Register's Cut Variables/
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
-    pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, Error> {
+    pub fn insert(&mut self, key: &'a str, val: &'a str) -> Result<Option<&'a str>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
-            return Err(Error::FrameParsef(VAR_NAME_ERR, key.to_string()));
+            return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()));
         }
         Ok(self.vars.insert(key, val))
     }
@@ -59,7 +65,7 @@ impl<'a> Register<'a> {
     /// operations.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
-    pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, Error> {
+    pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
@@ -85,7 +91,7 @@ impl<'a> Register<'a> {
 
             // error if no trailing brace was found
             if mat.name("trailing_b").is_none() {
-                return Err(Error::FrameParsef(
+                return Err(FrError::FrameParsef(
                     "Missing trailing brace for Cut Variable",
                     String::from(full_match.as_str()),
                 ));
@@ -95,7 +101,7 @@ impl<'a> Register<'a> {
                 match self.get_key_value(mat.name("cut_var").expect("cut_var missing").as_str()) {
                     Some((&k, &v)) => (k, v),
                     None => {
-                        return Err(Error::ReadInstructionf(
+                        return Err(FrError::ReadInstructionf(
                             "Key is not present in the Cut Register",
                             String::from(mat.name("cut_var").expect("cut_var missing").as_str()),
                         ));
@@ -218,7 +224,7 @@ mod tests {
 
         assert_eq!(
             reg.insert("INVALID%STRING", r#"¯\_(ツ)_/¯"#).unwrap_err(),
-            Error::FrameParsef(VAR_NAME_ERR, "INVALID%STRING".to_string())
+            FrError::FrameParsef(VAR_NAME_ERR, "INVALID%STRING".to_string())
         );
 
         reg.insert("FIRST_NAME", "Pietre").unwrap();
@@ -297,14 +303,14 @@ mod tests {
         expected,
         case(
             "My name is ${MIDDLE_NAME} ${LAST_NAME}",
-            Error::ReadInstructionf("Key is not present in the Cut Register", "MIDDLE_NAME".to_string())
+            FrError::ReadInstructionf("Key is not present in the Cut Register", "MIDDLE_NAME".to_string())
         ),
         case(
             "My name is ${FIRST_NAME} ${LAST_NAME",
-            Error::FrameParsef("Missing trailing brace for Cut Variable", "${LAST_NAME".to_string())
+            FrError::FrameParsef("Missing trailing brace for Cut Variable", "${LAST_NAME".to_string())
         )
     )]
-    fn test_read_op_err(input: &str, expected: Error) {
+    fn test_read_op_err(input: &str, expected: FrError) {
         let reg = register!({
             "FIRST_NAME"=> "Slim",
             "LAST_NAME"=> "Shady"

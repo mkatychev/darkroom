@@ -1,5 +1,5 @@
 use crate::cut::Register;
-use crate::error::Error;
+use crate::error::FrError;
 use crate::utils::{ordered_map, ordered_set};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,9 +20,20 @@ pub struct Frame<'a> {
 
 #[allow(dead_code)] // FIXME
 impl<'a> Frame<'a> {
+    /// Creates a new Frame object running post deserialization validations
+    pub fn new(json_string: &str) -> Result<Frame, FrError> {
+        let frame: Frame = serde_json::from_str(json_string)?;
+        frame.cut.validate()?;
+        Ok(frame)
+    }
+
+    /// Pretty json formatting for Frame serialization
+    pub fn to_string_pretty(&self) -> String {
+        serde_json::to_string_pretty(self).expect("serialization error")
+    }
     /// Traverses Frame properties where Read Operations are permitted and
     /// performs Register.read_operation on Strings with Cut Variables
-    fn hydrate(&mut self, reg: &Register) -> Result<(), Error> {
+    pub fn hydrate(&mut self, reg: &Register) -> Result<(), FrError> {
         let set = self.cut.clone();
         Self::hydrate_val(&set, &mut self.request.body, reg)?;
         Self::hydrate_val(&set, &mut self.request.etc, reg)?;
@@ -36,7 +47,7 @@ impl<'a> Frame<'a> {
 
     /// Traverses a given serde::Value enum attempting to modify found Strings
     /// for the moment this method also works as a Frame.init() check, emitting FrameParseErrors
-    fn hydrate_val(set: &InstructionSet, val: &mut Value, reg: &Register) -> Result<(), Error> {
+    fn hydrate_val(set: &InstructionSet, val: &mut Value, reg: &Register) -> Result<(), FrError> {
         match val {
             Value::Object(map) => {
                 for (_, val) in map.iter_mut() {
@@ -59,15 +70,20 @@ impl<'a> Frame<'a> {
     }
 
     /// Performs a Register.read_operation on the entire String
-    fn hydrate_str(set: &InstructionSet, string: &mut String, reg: &Register) -> Result<(), Error> {
+    fn hydrate_str(
+        set: &InstructionSet,
+        string: &mut String,
+        reg: &Register,
+    ) -> Result<(), FrError> {
         {
-            let matches = reg.read_match(string).unwrap();
+            let matches = reg.read_match(string)?;
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {
                 if let Some(n) = mat.name() {
                     if !set.contains(n) {
-                        return Err(Error::FrameParse(
+                        return Err(FrError::FrameParsef(
                             "Variable is not present in Frame InstructionSet",
+                            n.to_string(),
                         ));
                     }
                 }
@@ -125,11 +141,29 @@ struct InstructionSet<'a> {
 
 impl<'a> InstructionSet<'a> {
     fn is_empty(&self) -> bool {
-        self.reads.is_empty() || self.writes.is_empty()
+        self.reads.is_empty() && self.writes.is_empty()
     }
 
     fn contains(&self, var: &str) -> bool {
         self.reads.contains(var) || self.writes.contains_key(var)
+    }
+
+    /// Ensures no Cut Variables are present in both read and write instructions
+    fn validate(&self) -> Result<(), FrError> {
+        let writes_set: HashSet<&str> = self.writes.keys().cloned().collect();
+        let intersection = self
+            .reads
+            .intersection(&writes_set)
+            .map(|val| val.to_string())
+            .collect::<Vec<String>>();
+
+        if intersection.len() > 0 {
+            return Err(FrError::FrameParsef(
+                "Cut Variables cannot be referenced by both read and write instructions",
+                format!("{:?}", intersection),
+            ));
+        }
+        Ok(())
     }
 }
 
