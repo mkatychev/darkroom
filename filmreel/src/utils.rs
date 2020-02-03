@@ -52,6 +52,7 @@ macro_rules! test_ser_de {
         }
         #[test]
         fn $de() {
+            dbg!(&$str_json);
             crate::utils::test_deserialize($struct, $str_json)
         }
     };
@@ -66,13 +67,15 @@ where
     assert_eq!(de_json, actual);
 }
 
-pub fn get_jql_string(val: &Value, selectors: Option<&str>) -> Result<String, String> {
-    match jql::walker(val, selectors) {
+pub fn get_jql_string(val: &Value, query: &str) -> Result<String, String> {
+    dbg!(val);
+    let selectors = query.replace("'", "\"");
+    match jql::walker(val, Some(&selectors)) {
         Ok(v) => match v {
             Value::String(string) => Ok(string),
             v => {
                 dbg!(v);
-                panic!("invalid match");
+                panic!("get_jql_string: invalid match");
             }
         },
         Err(e) => return Err(e),

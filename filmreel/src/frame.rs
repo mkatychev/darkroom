@@ -1,9 +1,9 @@
 use crate::cut::Register;
 use crate::error::FrError;
 use crate::utils::{get_jql_string, ordered_map, ordered_set};
-use jql;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use serde_json::error::Error as SerdeError;
+use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
 /// Represents the entire deserialized frame file.
@@ -44,12 +44,16 @@ impl<'a> Frame<'a> {
     }
 
     /// Serialized payload
-    pub fn get_request_uri(&self) -> String {
-        let unst = serde_json::to_string_pretty(&self.request.uri).expect("serialization error");
+    pub fn get_request_uri(&self) -> Result<String, FrError> {
+        let unst = serde_json::to_string(&self.request.uri)?;
 
-        let interim = unst.replace("\"", "");
-        dbg!(&interim);
-        interim
+        Ok(unst.replace("\"", ""))
+    }
+
+    /// Returns a Value object from the response body, used for response comparisons and writing to
+    /// the cut register
+    pub fn get_response_value(&self) -> Result<Value, SerdeError> {
+        serde_json::to_value(&self.response.body)
     }
 
     /// Traverses Frame properties where Read Operations are permitted and
@@ -108,38 +112,39 @@ impl<'a> Frame<'a> {
                         ));
                     }
                 }
-                reg.read_operation(mat, string);
+                reg.read_operation(mat, string)?;
             }
             Ok(())
         }
     }
 
-    pub fn to_cut_register(
+    pub fn match_response(
         &self,
         reg: &mut Register<'a>,
         payload: &'a String,
     ) -> Result<(), FrError> {
-        let payload_val: Value = serde_json::from_str(payload)?;
+        dbg!(&payload);
         let frame_val: Value =
-            serde_json::to_value(self.response.clone()).expect("frame_val ::to_value");
+            serde_json::to_value(self.response.clone()).expect("frame_val error");
+        dbg!(frame_val);
+        let payload_val: Value = serde_json::from_str(payload)?;
 
-        let mut p_map = Map::new();
-        p_map.insert(String::from("response"), payload_val);
+        let mut p_map = json!({"response":{"body":{}}});
+        let mut f_map = p_map.clone();
 
-        let mut f_map = Map::new();
-        f_map.insert(String::from("response"), frame_val);
+        p_map["response"]["body"] = payload_val;
+        dbg!(&f_map);
+        f_map["response"]["body"] = self.get_response_value()?;
+        dbg!(&f_map);
 
-        for (k, jq_cmd) in self.cut.writes.iter() {
+        for (k, query) in self.cut.writes.iter() {
             // Temporary holdover until write operations are implemented for request
-            let selector = jq_cmd.replace("'", "\"");
-            let frame_jq = get_jql_string(&Value::Object(f_map.clone()), Some(&selector))
-                .expect("frame_jq error");
-            let payload_jq = get_jql_string(&Value::Object(p_map.clone()), Some(&selector))
-                .expect("payload_jq error");
+            let frame_jq = get_jql_string(&f_map, query).expect("frame_jq error");
+            let payload_jq = get_jql_string(&p_map, query).expect("payload_jq error");
 
             // println!("{}{}", frame_jq, payload_jq);
             let to_val = Register::write_match(k, &frame_jq, &payload_jq).expect("match error");
-            reg.insert(k, to_val.to_string())?;
+            reg.write_operation(k, to_val.to_string())?;
         }
 
         Ok(())
@@ -234,6 +239,8 @@ struct Response {
 /// variables present in the `Cut Register`
 ///
 /// ```edition2018
+/// use filmreel::to;
+///
 /// let write_instructions = to!({
 ///     "SESSION_ID" => ".response.body.session_id",
 ///     "DATETIME" => ".response.body.timestamp"});
@@ -255,11 +262,13 @@ macro_rules! to {
 /// variables present in the `Cut Register`
 ///
 /// ```edition2018
+/// use filmreel::from;
+///
 /// let read_instructions = from!["USER_ID", "USER_TOKEN"];
 /// ```
 ///
 /// [`"to"` key](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#from-to)
-/// TODO check Cut Register during macro call
+// TODO check Cut Register during macro call
 #[macro_export]
 macro_rules! from {
     ($( $cut_var: expr ),*) => {{
@@ -348,7 +357,7 @@ mod tests {
       "METHOD"
     ],
     "to": {
-      "USER_ID": "'response'.'id'"
+      "USER_ID": "'response'.'body'.'id'"
     }
   },
   "request": {
@@ -359,15 +368,16 @@ mod tests {
     "uri": "user_api.User/${METHOD}"
   },
   "response": {
-    "body": "YES!",
-    "status": 0,
-    "id": "${USER_ID}"
+    "body": {
+      "id": "${USER_ID}"
+    },
+    "status": 0
   }
 }
     "#;
 
     #[test]
-    fn test_to_cut_register() {
+    fn test_match_response() {
         let mut reg = register!({
             "EMAIL"=> "new_user@humanmail.com",
             "FIRST"=> "Mario",
@@ -379,13 +389,11 @@ mod tests {
         frame.hydrate(&reg).expect("hydrate error");
         let payload_response = r#"
 {
-  "body": "YES!",
-  "status": 0,
   "id": "ID_010101"
 }
 "#
         .to_string();
-        frame.to_cut_register(&mut reg, &payload_response);
+        frame.match_response(&mut reg, &payload_response);
     }
 }
 #[cfg(test)]
@@ -451,6 +459,7 @@ mod serde_tests {
         REQUEST_ETC_JSON
     );
 
+    // FIXME
     const RESPONSE_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",
@@ -468,6 +477,7 @@ mod serde_tests {
         RESPONSE_JSON
     );
 
+    // FIXME
     const RESPONSE_ETC_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",
