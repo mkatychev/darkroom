@@ -1,39 +1,45 @@
+use argh::FromArgs;
 use std::path::PathBuf;
-use structopt::StructOpt;
 use take::run_take;
 
 pub mod take;
 
-#[derive(StructOpt, Debug)]
-pub enum Command {
-    /// Performs a single operation on a single frame file
-    Take {
-        /// Frame to process
-        #[structopt(name = "FRAME", parse(from_os_str))]
-        frame: PathBuf,
-        /// Filepath of cut file
-        #[structopt(short = "c", long)]
-        cut: PathBuf,
+/// Top-level command.
+#[derive(FromArgs, PartialEq, Debug)]
+pub struct Command {
+    #[argh(subcommand)]
+    pub nested: SubCommand,
+}
 
-        /// Args passed to grpcurl
-        #[structopt(short = "H", long)]
-        header: String,
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand)]
+pub enum SubCommand {
+    Take(Take),
+}
 
-        /// Args passed to grpcurl
-        #[structopt(short = "D", long)]
-        dest: String,
+/// Dark Take
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "take")]
+pub struct Take {
+    /// frame to process
+    #[argh(positional)]
+    frame: String,
 
-        /// Output file
-        #[structopt(short, long, parse(from_os_str))]
-        output: Option<PathBuf>,
-    },
-    Record,
+    /// address passed to grpcurl
+    #[argh(positional)]
+    addr: String,
+
+    /// filepath of cut file
+    #[argh(option, short = 'c')]
+    cut: PathBuf,
+
+    /// args passed to grpcurl
+    #[argh(option, short = 'H')]
+    header: String,
+
+    /// output file
+    #[argh(option, short = 'o')]
+    output: Option<PathBuf>,
 }
 
 // A basic example
-#[derive(StructOpt, Debug)]
-#[structopt(name = "Darkroom")]
-pub struct Opt {
-    #[structopt(subcommand)]
-    pub cmd: Command,
-}

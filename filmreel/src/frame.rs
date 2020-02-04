@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeError;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
 
 /// Represents the entire deserialized frame file.
 ///
@@ -118,36 +119,30 @@ impl<'a> Frame<'a> {
         }
     }
 
-    pub fn match_response(
+    /// Using the write instructions found in the frame InstructionSet, look for matches to be
+    /// passed to write operations
+    pub fn match_response_payload(
         &self,
-        reg: &mut Register<'a>,
-        payload: &'a String,
-    ) -> Result<(), FrError> {
-        dbg!(&payload);
-        let frame_val: Value =
-            serde_json::to_value(self.response.clone()).expect("frame_val error");
-        dbg!(frame_val);
-        let payload_val: Value = serde_json::from_str(payload)?;
+        payload_response: &'a Response,
+    ) -> Result<HashMap<&str, String>, Box<dyn Error>> {
+        let frame_response: Value = self.response.to_frame_value()?;
+        let payload_response: Value = payload_response.to_frame_value()?;
 
-        let mut p_map = json!({"response":{"body":{}}});
-        let mut f_map = p_map.clone();
-
-        p_map["response"]["body"] = payload_val;
-        dbg!(&f_map);
-        f_map["response"]["body"] = self.get_response_value()?;
-        dbg!(&f_map);
-
+        let mut write_matches: HashMap<&str, String> = HashMap::new();
         for (k, query) in self.cut.writes.iter() {
             // Temporary holdover until write operations are implemented for request
-            let frame_jq = get_jql_string(&f_map, query).expect("frame_jq error");
-            let payload_jq = get_jql_string(&p_map, query).expect("payload_jq error");
+            let frame_str = get_jql_string(&frame_response, query)?;
+            let payload_str = get_jql_string(&payload_response, query)?;
 
             // println!("{}{}", frame_jq, payload_jq);
-            let to_val = Register::write_match(k, &frame_jq, &payload_jq).expect("match error");
-            reg.write_operation(k, to_val.to_string())?;
+            let write_match = Register::write_match(k, &frame_str, &payload_str)?;
+            if let Some(mat) = write_match {
+                write_matches.insert(k, mat);
+            }
+            // TODO reg.write_operation(k, to_val.to_string())?;
         }
 
-        Ok(())
+        Ok(write_matches)
     }
 }
 
@@ -164,7 +159,7 @@ enum Protocol {
 /// Encapsulates the request payload to be sent.
 ///
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
-#[derive(Serialize, Clone, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 struct Request {
     body: Value,
     #[serde(flatten)]
@@ -227,12 +222,22 @@ impl<'a> InstructionSet<'a> {
 /// Encapsulates the expected response payload.
 ///
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
-#[derive(Serialize, Clone, Deserialize, Debug, PartialEq)]
-struct Response {
+#[derive(Serialize, Clone, Deserialize, Debug, Default, PartialEq)]
+pub struct Response {
     body: Value,
     #[serde(flatten)]
     etc: Value,
     status: u32,
+}
+
+impl Response {
+    /// Cast to a serialized Frame as serde_json::Value object for consistency in jql object
+    /// traversal: `"response"."body"` should always traverse a serialized Frame struct
+    fn to_frame_value(&self) -> Result<Value, FrError> {
+        let mut frame_value = json!({"response":{}});
+        frame_value["response"] = serde_json::to_value(self)?;
+        Ok(frame_value)
+    }
 }
 
 /// Constructs a set of read instructions from strings meant associated with
@@ -378,22 +383,37 @@ mod tests {
 
     #[test]
     fn test_match_response() {
-        let mut reg = register!({
+        let reg = register!({
             "EMAIL"=> "new_user@humanmail.com",
             "FIRST"=> "Mario",
             "LAST"=> "Rossi",
             "METHOD"=> "CreateUser"
         });
-        let mut frame: Frame =
-            serde_json::from_str(WRITE_FRAME_JSON).expect("write frame serde error");
-        frame.hydrate(&reg).expect("hydrate error");
-        let payload_response = r#"
-{
-  "id": "ID_010101"
-}
-"#
-        .to_string();
-        frame.match_response(&mut reg, &payload_response);
+        let frame = Frame {
+            protocol: Protocol::GRPC,
+            cut: InstructionSet {
+                reads: from![],
+                writes: to! ({"USER_ID"=> "'response'.'body'.'id'"}),
+            },
+            request: Request {
+                ..Default::default()
+            },
+            response: Response {
+                body: json!({"id": "${USER_ID}"}),
+                etc: json!({}),
+                status: 0,
+            },
+        };
+
+        let payload_response = Response {
+            body: json!({ "id": "ID_010101" }),
+            etc: json!({}),
+            status: 0,
+        };
+        let mat = frame.match_response_payload(&payload_response).unwrap();
+        let mut expected_match = HashMap::new();
+        expected_match.insert("USER_ID", "ID_010101".to_string());
+        assert_eq!(expected_match, mat);
     }
 }
 #[cfg(test)]

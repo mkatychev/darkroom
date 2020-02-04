@@ -1,11 +1,12 @@
-use crate::error::FrError;
-use crate::utils::ordered_string_map;
-
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::error::Error;
 use std::ops::Range;
+
+use crate::error::FrError;
+use crate::utils::ordered_string_map;
 
 /// Holds Cut Variables and their corresonding values stored in a series of key/value pairs.
 ///
@@ -139,38 +140,56 @@ impl<'a> Register<'a> {
     }
 
     /// Takes a response payload value writes to the Cut Register
-    pub fn write_match(var_name: &str, frame_str: &str, payload_str: &'a str) -> Option<&'a str> {
-        dbg!(frame_str, payload_str);
+    pub fn write_match(
+        var_name: &str,
+        frame_str: &str,
+        payload_str: &String,
+    ) -> Result<Option<String>, FrError> {
         let re = Regex::new(&format!(
             r"(?x)
                 (?P<head_val>.*)   # value preceding cut var
                 (?P<esc_char>\\)?  # escape character
                 (?P<cut_decl>\$\{{
-                {}                 # format! curly braces
+                {}
                 \}})               # Cut Variable Declaration
                 (?P<tail_val>.*)   # value following cut var
                 ",
             var_name
         ))
         .expect("write-match regex error");
+
+        let mut matches: Vec<&str> = Vec::new();
         for mat in re.captures_iter(frame_str) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(_) = mat.name("esc_char") {
                 continue;
             }
-            let head_val = mat.name("head_val")?.as_str();
-            let tail_val = mat.name("tail_val")?.as_str();
-            if !(payload_str.starts_with(head_val) && payload_str.ends_with(tail_val)) {
-                panic!("head tail mismatch");
-            }
-            // TODO for now terminate early but capture second iteration
-            let write_val = payload_str
-                .trim_start_matches(head_val)
-                .trim_end_matches(tail_val);
 
-            return Some(write_val);
+            let head_val = mat.name("head_val").expect("head_val error").as_str();
+            let tail_val = mat.name("tail_val").expect("tail_val error").as_str();
+            if !(payload_str.starts_with(head_val) && payload_str.ends_with(tail_val)) {
+                return Err(FrError::WriteInstruction(
+                    "Frame String templating mismatch",
+                ));
+            }
+
+            matches.push(
+                payload_str
+                    .trim_start_matches(head_val)
+                    .trim_end_matches(tail_val),
+            );
         }
-        None
+
+        // `_ =>` is not possible for now, but guard with panic
+        match matches.len() {
+            0 => Ok(None),
+            1 => Ok(Some(
+                matches.pop().expect("missing match value").to_string(),
+            )),
+            _ => unreachable!(
+                "Multiple variable matches in string not permitted for write instruction"
+            ),
+        }
     }
 
     pub fn write_operation(
@@ -344,11 +363,25 @@ mod tests {
         payload,
         expected,
         case("NAME", "My name is ${NAME}.", "My name is Slim Shady.", "Slim Shady"),
-        case("SINGLE", "${SINGLE}", "my big hit", "my big hit")
+        case("SINGLE", "${SINGLE}", "my big hit", "my big hit"),
+        case(
+            "SINGLE",
+            "${SINGLE}|${SINGLE}",
+            "1|2",
+            "WriteInstructionError: Frame String templating mismatch"
+        ),
+        case(
+            "SINGLE",
+            "${SINGLE}|",
+            "|2",
+            "WriteInstructionError: Frame String templating mismatch"
+        )
     )]
     fn test_write_match(var: &str, frame: &str, payload: &str, expected: &str) {
-        let actual = Register::write_match(var, frame, payload).unwrap();
-        assert_eq!(expected, actual);
+        match Register::write_match(var, frame, &payload.to_string()) {
+            Ok(mat) => assert_eq!(expected, mat.unwrap()),
+            Err(err) => assert_eq!(expected, err.to_string()),
+        }
     }
 
     #[test]
