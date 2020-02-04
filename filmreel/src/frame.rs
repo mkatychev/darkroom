@@ -121,7 +121,7 @@ impl<'a> Frame<'a> {
 
     /// Using the write instructions found in the frame InstructionSet, look for matches to be
     /// passed to write operations
-    pub fn match_response_payload(
+    pub fn match_payload_response(
         &self,
         payload_response: &'a Response,
     ) -> Result<HashMap<&str, String>, Box<dyn Error>> {
@@ -224,10 +224,10 @@ impl<'a> InstructionSet<'a> {
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Debug, Default, PartialEq)]
 pub struct Response {
-    body: Value,
+    pub body: Value,
     #[serde(flatten)]
-    etc: Value,
-    status: u32,
+    pub etc: Value,
+    pub status: u32,
 }
 
 impl Response {
@@ -382,7 +382,7 @@ mod tests {
     "#;
 
     #[test]
-    fn test_match_response() {
+    fn test_match_payload_response() {
         let reg = register!({
             "EMAIL"=> "new_user@humanmail.com",
             "FIRST"=> "Mario",
@@ -410,7 +410,7 @@ mod tests {
             etc: json!({}),
             status: 0,
         };
-        let mat = frame.match_response_payload(&payload_response).unwrap();
+        let mat = frame.match_payload_response(&payload_response).unwrap();
         let mut expected_match = HashMap::new();
         expected_match.insert("USER_ID", "ID_010101".to_string());
         assert_eq!(expected_match, mat);

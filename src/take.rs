@@ -4,8 +4,8 @@ use filmreel as fr;
 use filmreel::cut::Register;
 use filmreel::frame::{Frame, Response};
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::json;
 use serde_yaml;
-use serde_json{json};
 use std::error::Error;
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -40,14 +40,13 @@ pub fn run_take(cmd: Take) -> Result<(), Box<dyn Error>> {
         exit(1);
     });
 
-    println!("{}", "Unhydrated frame JSON:".red());
-    println!("{}", frame.to_string_pretty());
-    println!("{}", "Request URI:".yellow());
-    dbg!(frame.get_request_uri());
+    // println!("{}", "Unhydrated frame JSON:".red());
+    // println!("{}", frame.to_string_pretty());
+    // println!("{}", "Request URI:".yellow());
 
-    println!("{}", "=======================".magenta());
-    println!("HYDRATING");
-    println!("{}", "=======================".magenta());
+    // println!("{}", "=======================".magenta());
+    // println!("HYDRATING");
+    // println!("{}", "=======================".magenta());
     frame.hydrate(&cut_register).unwrap_or_else(|err| {
         eprintln!("Frame {}", err);
         exit(1);
@@ -73,27 +72,27 @@ pub fn run_take(cmd: Take) -> Result<(), Box<dyn Error>> {
 
     let mut out_register = cut_register.clone();
 
-    let response:Response = match grpc_response.status.code().unwrap() {
-        0 => Response{ body:serde_json::from_slice(&grpc_response.stdout).expect("invalid UTF-8"), status: 0, etc:json!({})},
+    let response: Response = match grpc_response.status.code().unwrap() {
+        0 => Response {
+            body: serde_json::from_slice(&grpc_response.stdout).expect("invalid UTF-8"),
+            status: 0,
+            etc: json!({}),
+        },
         _ => {
-        let g_err: GrpcurlError =
-            serde_yaml::from_slice(&grpc_response.stderr).expect("invalid UTF-8")?;
-        // create frame response from deserialized grpcurl error
-        Response{ body: g_err.Message, status: g_err.Code, etc:json!({})}
+            let g_err: GrpcurlError = serde_yaml::from_slice(&grpc_response.stderr)?;
+            // create frame response from deserialized grpcurl error
+            Response {
+                body: serde_json::Value::String(g_err.message),
+                status: g_err.code,
+                etc: json!({}),
+            }
         }
-    }; 
+    };
 
     dbg!(&response);
     return Ok(());
-    println!();
-    println!("{}", "Response:".red());
-    println!("{}", "=======================".magenta());
-    println!("EXIT_CODE");
-    println!("{}", "=======================".magenta());
-    dbg!(response_payload.status);
-    frame
-        .match_response(&mut out_register, &response)
-        .expect("to_cut_register error");
+
+    let matches = frame.match_payload_response(&response)?;
     std::fs::write(&cmd.cut.clone(), &out_register.to_string_pretty())
         .expect("Unable to write file");
     if let Some(frame_out) = cmd.output {
@@ -106,11 +105,12 @@ pub fn run_take(cmd: Take) -> Result<(), Box<dyn Error>> {
 
 #[derive(Debug, Serialize, PartialEq)]
 struct GrpcurlError {
-    Code: u32,
-    Message: String,
+    code: u32,
+    message: String,
 }
 
 impl<'de> Deserialize<'de> for GrpcurlError {
+    #[allow(non_snake_case)]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::de::Deserializer<'de>,
@@ -148,8 +148,8 @@ impl<'de> Deserialize<'de> for GrpcurlError {
             _ => return Err(D::Error::custom("unexpected gRPC error code"))?,
         };
         Ok(GrpcurlError {
-            Code: code,
-            Message: outer.ERROR.Message,
+            code,
+            message: outer.ERROR.Message,
         })
     }
 }
@@ -162,15 +162,15 @@ mod serde_tests {
     const YAML_ERROR: &str = r#"
         ERROR:
             Code: Internal
-            Message: invalid"#;
+            Message: input cannot be empty"#;
 
     #[test]
     fn test_yaml() {
         let yaml_struct: GrpcurlError = serde_yaml::from_str(YAML_ERROR).unwrap();
         assert_eq!(
             GrpcurlError {
-                Code: 13,
-                Message: "ssn cannot be empty".to_owned()
+                code: 13,
+                message: "input cannot be empty".to_owned()
             },
             yaml_struct
         );
