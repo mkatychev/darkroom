@@ -15,30 +15,20 @@ use std::process::Command;
 /// Performs a single frame hydration using a given json file and outputs a Take to either stdout
 /// or a designated file
 pub fn run_take(cmd: Take) -> Result<(), Box<dyn Error>> {
-    match Command::new("grpcurl").spawn() {
-        Ok(_) => println!("Was spawned :)"),
-        Err(e) => {
-            if let ErrorKind::NotFound = e.kind() {
-                return Err("`grpcurl` was not found! Check your PATH!".into());
-            } else {
-                return Err(e.into());
-            }
+    if let Err(e) = Command::new("grpcurl").spawn() {
+        if let ErrorKind::NotFound = e.kind() {
+            return Err("`grpcurl` was not found! Check your PATH!".into());
+        } else {
+            return Err(e.into());
         }
     }
 
     let frame_str = fr::file_to_string(cmd.frame).expect("frame error");
     let cut_str = fr::file_to_string(&cmd.cut).expect("cut error");
 
-    let mut frame = Frame::new(&frame_str).unwrap_or_else(|err| {
-        // eprintln!("Frame {}", &frame.to_str().unwrap());
-        eprintln!("{}", err);
-        exit(1);
-    });
+    let mut frame = Frame::new(&frame_str)?;
 
-    let cut_register = Register::new(&cut_str).unwrap_or_else(|err| {
-        eprintln!("Cut Register {}", err);
-        exit(1);
-    });
+    let cut_register = Register::new(&cut_str)?;
 
     // println!("{}", "Unhydrated frame JSON:".red());
     // println!("{}", frame.to_string_pretty());
@@ -117,6 +107,7 @@ impl<'de> Deserialize<'de> for GrpcurlError {
     {
         use serde::de::Error;
 
+        // deserialize a nested yaml object by casing it to an inner struct first
         #[derive(Deserialize)]
         struct Outer {
             ERROR: Inner,

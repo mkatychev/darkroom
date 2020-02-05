@@ -1,6 +1,7 @@
 pub mod cut;
 mod error;
 pub mod frame;
+pub mod reel;
 mod utils;
 
 use std::fs;
@@ -12,6 +13,5 @@ pub fn file_to_string<P: AsRef<Path>>(path: P) -> Result<String> {
     // https://github.com/serde-rs/json/issues/160
     let json_string: String = fs::read_to_string(path)?;
 
-    // Return the `User`.
     Ok(json_string)
 }

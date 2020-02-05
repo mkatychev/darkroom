@@ -203,13 +203,9 @@ impl<'a> InstructionSet<'a> {
     /// Ensures no Cut Variables are present in both read and write instructions
     fn validate(&self) -> Result<(), FrError> {
         let writes_set: HashSet<&str> = self.writes.keys().cloned().collect();
-        let intersection = self
-            .reads
-            .intersection(&writes_set)
-            .map(|val| val.to_string())
-            .collect::<Vec<String>>();
+        let intersection = self.reads.intersection(&writes_set).next();
 
-        if intersection.len() > 0 {
+        if intersection.is_some() {
             return Err(FrError::FrameParsef(
                 "Cut Variables cannot be referenced by both read and write instructions",
                 format!("{:?}", intersection),
@@ -414,6 +410,15 @@ mod tests {
         let mut expected_match = HashMap::new();
         expected_match.insert("USER_ID", "ID_010101".to_string());
         assert_eq!(expected_match, mat);
+    }
+
+    #[test]
+    fn test_instruction_set_validate() {
+        let set = InstructionSet {
+            reads: from!["USER_ID"],
+            writes: to! ({"USER_ID"=> "'response'.'body'.'id'"}),
+        };
+        assert!(set.validate().is_err());
     }
 }
 #[cfg(test)]
