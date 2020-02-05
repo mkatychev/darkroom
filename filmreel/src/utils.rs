@@ -1,4 +1,6 @@
+use jql;
 use serde::{Serialize, Serializer};
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
@@ -16,6 +18,15 @@ where
     S: Serializer,
 {
     let ordered: BTreeSet<_> = set.iter().collect();
+    ordered.serialize(serializer)
+}
+///
+/// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
+pub fn ordered_string_map<S>(map: &HashMap<&str, String>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let ordered: BTreeMap<_, _> = map.iter().collect();
     ordered.serialize(serializer)
 }
 
@@ -41,6 +52,7 @@ macro_rules! test_ser_de {
         }
         #[test]
         fn $de() {
+            dbg!(&$str_json);
             crate::utils::test_deserialize($struct, $str_json)
         }
     };
@@ -53,4 +65,19 @@ where
 {
     let actual = serde_json::from_str(str_json).unwrap();
     assert_eq!(de_json, actual);
+}
+
+pub fn get_jql_string(val: &Value, query: &str) -> Result<String, String> {
+    dbg!(val);
+    let selectors = query.replace("'", "\"");
+    match jql::walker(val, Some(&selectors)) {
+        Ok(v) => match v {
+            Value::String(string) => Ok(string),
+            v => {
+                dbg!(v);
+                panic!("get_jql_string: invalid match");
+            }
+        },
+        Err(e) => return Err(e),
+    }
 }
