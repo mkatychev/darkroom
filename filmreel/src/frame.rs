@@ -1,6 +1,6 @@
 use crate::cut::Register;
 use crate::error::FrError;
-use crate::utils::{get_jql_string, ordered_map, ordered_set};
+use crate::utils::{get_jql_string, ordered_str_map, ordered_set};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeError;
 use serde_json::{json, Value};
@@ -185,7 +185,7 @@ struct InstructionSet<'a> {
     #[serde(rename(serialize = "to", deserialize = "to"))]
     #[serde(
         skip_serializing_if = "HashMap::is_empty",
-        serialize_with = "ordered_map",
+        serialize_with = "ordered_str_map",
         borrow
     )]
     writes: HashMap<&'a str, &'a str>,

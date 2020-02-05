@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
-pub fn ordered_map<S>(map: &HashMap<&str, &str>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn ordered_str_map<S>(map: &HashMap<&str, &str>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {

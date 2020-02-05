@@ -1,4 +1,5 @@
 use colored::*;
+use serde_json::error::Category;
 use serde_json::error::Error as SerdeError;
 use std::error::Error;
 use std::fmt;
@@ -31,7 +32,6 @@ macro_rules! errorf {
 
 impl From<SerdeError> for FrError {
     fn from(err: SerdeError) -> FrError {
-        use serde_json::error::Category;
         match err.classify() {
             Category::Io => unreachable!(),
             Category::Syntax | Category::Data | Category::Eof => FrError::Serde(err.to_string()),
