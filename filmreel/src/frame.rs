@@ -275,6 +275,7 @@ macro_rules! from {
     ($( $cut_var: expr ),*) => {{
         use ::std::collections::HashSet;
 
+        #[allow(unused_mut)]
         let mut set:HashSet<&str> = HashSet::new();
         $( set.insert($cut_var); )*
         set
