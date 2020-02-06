@@ -1,3 +1,4 @@
+use crate::error::FrError;
 use glob::glob;
 use std::convert::TryFrom;
 use std::error::Error;
@@ -107,8 +108,13 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), Box<dyn Error>> {
     }
 
     let seq_f32 = String::from_iter(seq_chars).parse::<f32>()?;
+    let frame_type = FrameType::from(type_str);
 
-    Ok((seq_f32, FrameType::from(type_str)))
+    if let FrameType::Invalid = frame_type {
+        return Err(FrError::ReelParse("Unrecognized frame type in frame sequence").into());
+    }
+
+    Ok((seq_f32, frame_type))
 }
 
 /// [Frame Types](https://github.com/Bestowinc/filmReel/blob/supra_dump/Reel.md#frame-type)

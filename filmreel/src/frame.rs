@@ -1,6 +1,6 @@
 use crate::cut::Register;
 use crate::error::FrError;
-use crate::utils::{get_jql_string, ordered_str_map, ordered_set};
+use crate::utils::{get_jql_string, ordered_set, ordered_str_map};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeError;
 use serde_json::{json, Value};
@@ -275,6 +275,7 @@ macro_rules! from {
     ($( $cut_var: expr ),*) => {{
         use ::std::collections::HashSet;
 
+        #[allow(unused_mut)]
         let mut set:HashSet<&str> = HashSet::new();
         $( set.insert($cut_var); )*
         set
