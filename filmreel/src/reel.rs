@@ -31,8 +31,7 @@ impl Reel {
 }
 
 // TODO add subsequence number
-/// MetaFrame holds the metadata needed that allows a Reel to generate Frames and Takes in a particular
-/// sequence.
+/// MetaFrame holds the metadata needed for sequential Frame execution and Take generation.
 ///
 /// Frame filename anatomy:
 ///
@@ -60,13 +59,15 @@ impl TryFrom<PathBuf> for MetaFrame {
     type Error = Box<dyn Error>;
 
     fn try_from(p: PathBuf) -> Result<Self, Self::Error> {
-        let mut reel_parts: Vec<&str> = p
+        let mut reel_parts: Vec<&str> = match p
             .file_name()
-            .map(|s| s.to_str())
-            .expect("file_name.to_str() error")
+            .and_then(|s| s.to_str())
             .map(|s| s.trim_end_matches(".fr.json"))
             .map(|s| s.split('.').collect())
-            .expect("str split error");
+        {
+            Some(s) => s,
+            None => return Err(FrError::ReelParse("failed parsing PathBuf").into()),
+        };
 
         let (seq, fr_type) = parse_sequence(reel_parts.remove(0))?;
         let reel_name = String::from(reel_parts.remove(0));
@@ -103,6 +104,7 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), Box<dyn Error>> {
             }
             _ => {
                 unimplemented!("{} is an invalid sequence char!", ch);
+                FrError::ReelParsef("{} is an invalid sequence char!", ch.to_string());
             }
         }
     }

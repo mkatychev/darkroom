@@ -9,6 +9,7 @@ use std::fmt;
 pub enum FrError {
     FrameParse(&'static str),
     FrameParsef(&'static str, String),
+    ReelParsef(&'static str, String),
     ReadInstruction(&'static str),
     WriteInstruction(&'static str),
     ReadInstructionf(&'static str, String),
@@ -49,6 +50,10 @@ impl fmt::Display for FrError {
             FrError::ReadInstruction(msg) => write!(f, "ReadInstructionError: {}", msg),
             FrError::FrameParsef(msg, item) => {
                 errorf!(f, "FrameParseError", msg, item);
+                Ok(())
+            }
+            FrError::ReelParsef(msg, item) => {
+                errorf!(f, "ReelParseError", msg, item);
                 Ok(())
             }
             FrError::ReadInstructionf(msg, item) => {
