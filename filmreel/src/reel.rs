@@ -1,5 +1,7 @@
 use crate::error::FrError;
+use crate::frame::Frame;
 use glob::glob;
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::iter::FromIterator;
@@ -26,8 +28,10 @@ impl Reel {
         {
             frames.push(MetaFrame::try_from(entry)?);
         }
-        Ok(Self { frames })
+        frames.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(Self { frames: frames })
     }
+    // pub fn spawn_frame(m_frame: MetaFrame) -> Frame {}
 }
 
 // TODO add subsequence number
@@ -103,7 +107,6 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), Box<dyn Error>> {
                 seq_chars.push('.');
             }
             _ => {
-                unimplemented!("{} is an invalid sequence char!", ch);
                 FrError::ReelParsef("{} is an invalid sequence char!", ch.to_string());
             }
         }
