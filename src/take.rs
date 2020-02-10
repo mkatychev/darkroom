@@ -1,4 +1,4 @@
-use crate::{grpc::*, BoxError, Take};
+use crate::{grpc, BoxError, Take};
 use colored::*;
 use filmreel as fr;
 use filmreel::cut::Register;
@@ -28,7 +28,12 @@ pub fn run_take(cmd: Take) -> Result<(), BoxError> {
     info!("{} frame JSON:", "Hydrated".green());
     info!("{}", frame.to_string_pretty());
     info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
-    let payload_response = grpcurl(&Params::from(&cmd), frame.get_request())?;
+
+    // TODO do this only once per runtime
+    grpc::validate_grpcurl()?;
+
+    // Send out the payload here
+    let payload_response = grpc::grpcurl(&grpc::Params::from(&cmd), frame.get_request())?;
 
     // If there are valid matches for write operations
     if let Some(matches) = frame.match_payload_response(&payload_response)? {

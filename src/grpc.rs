@@ -9,11 +9,11 @@ use std::process::Command;
 
 /// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), BoxError> {
-    if let Err(e) = Command::new("grpcurl").spawn() {
+    if let Err(e) = Command::new("grpcurl").output() {
         if let ErrorKind::NotFound = e.kind() {
             return Err("`grpcurl` was not found! Check your PATH!".into());
         } else {
-            return Err(e.into());
+            return Ok(());
         }
     }
     Ok(())

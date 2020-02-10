@@ -26,10 +26,12 @@ impl Reel {
         {
             frames.push(MetaFrame::try_from(entry)?);
         }
+
+        // sort by string value since sorting by f32 is not idiomatic
         frames.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok(Self { frames: frames })
+
+        Ok(Self { frames })
     }
-    // pub fn spawn_frame(m_frame: MetaFrame) -> Frame {}
 }
 
 // TODO add subsequence number
