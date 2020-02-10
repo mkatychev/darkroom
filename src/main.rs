@@ -1,23 +1,18 @@
 use crate::take::run_take;
-use colored::*;
 use darkroom::*;
-// use structopt::StructOpt;
 
-fn main() {
+fn main() -> Result<(), BoxError> {
     let args: Command = argh::from_env();
-    // println!("{:#?}", args);
-
-    // let opt = Opt::from_args();
+    let opts: Opts = Opts::new(&args);
 
     match args.nested {
         SubCommand::Take(cmd) => {
-            if let Err(e) = run_take(cmd) {
-                eprintln!("{}: {}", "error".red(), e)
-            }
+            run_take(cmd, opts)?;
+            Ok(())
         }
         _ => {
             println!("{:#?}", args);
-            ()
+            Ok(())
         }
     }
 }

@@ -1,15 +1,48 @@
 use argh::FromArgs;
+use std::error::Error;
 use std::path::PathBuf;
-use take::run_take;
 
 pub mod grpc;
 pub mod take;
 
+pub type BoxError = Box<dyn Error>;
+
+/// If verbose is turned on then println! the token tree
+#[macro_export]
+macro_rules! vprintln {
+    ($verbose:expr) => {
+        if $verbose == true {
+            println!();
+        }
+    };
+    ($verbose:expr, $($arg:tt)*) => {
+        if $verbose == true {
+            println!($($arg)*);
+        }
+    }
+}
+
 /// Top-level command.
 #[derive(FromArgs, PartialEq, Debug)]
 pub struct Command {
+    /// enable verbose output
+    #[argh(switch, short = 'v')]
+    verbose: bool,
+
     #[argh(subcommand)]
     pub nested: SubCommand,
+}
+
+pub struct Opts {
+    verbose: bool,
+}
+
+impl Opts {
+    pub fn new(cmd: &Command) -> Self {
+        Self {
+            verbose: cmd.verbose,
+        }
+    }
 }
 
 #[derive(FromArgs, PartialEq, Debug)]

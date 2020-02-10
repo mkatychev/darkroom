@@ -1,8 +1,14 @@
-use filmreel::frame::{Frame, Response};
-use std::error::Error;
+use crate::{BoxError, Take};
+use filmreel::frame::{Request, Response};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use serde_yaml;
+use serde_yaml::Error;
+use std::convert::TryFrom;
+use std::io::ErrorKind;
 use std::process::Command;
 
-pub fn validate_grpcurl() -> Result<(), Box<dyn Error>> {
+pub fn validate_grpcurl() -> Result<(), BoxError> {
     if let Err(e) = Command::new("grpcurl").spawn() {
         if let ErrorKind::NotFound = e.kind() {
             return Err("`grpcurl` was not found! Check your PATH!".into());
@@ -10,46 +16,81 @@ pub fn validate_grpcurl() -> Result<(), Box<dyn Error>> {
             return Err(e.into());
         }
     }
+    Ok(())
 }
 
-pub fn grpcurl() -> Result<Response, Box<dyn Error>> {
-    let grpc_response = Command::new("grpcurl")
+pub struct Params<'a> {
+    tls: bool,
+    header: &'a String,
+    address: &'a String,
+}
+
+impl<'a> From<&'a Take> for Params<'a> {
+    fn from(take: &'a Take) -> Self {
+        Self {
+            // TODO handle tls
+            tls: false,
+            header: &take.header,
+            address: &take.addr,
+        }
+    }
+}
+
+pub fn grpcurl(prm: &Params, req: &Request) -> Result<Response, BoxError> {
+    let tls = match prm.tls {
+        true => "",
+        false => "-plaintext",
+    };
+
+    let req_cmd = Command::new("grpcurl")
         .arg("-H")
-        .arg(cmd.header)
+        .arg(prm.header)
+        .arg(tls)
         .arg("-plaintext")
         .arg("-d")
-        .arg(frame.get_request())
-        .arg(cmd.addr)
-        .arg(grpc_uri)
-        .output()
-        .expect("No grpcurl");
+        .arg(req.to_payload()?)
+        .arg(prm.address)
+        .arg(req.uri())
+        .output()?;
 
-    let response: Response = match grpc_response.status.code().unwrap() {
-        0 => Response {
-            body: serde_json::from_slice(&grpc_response.stdout).expect("invalid UTF-8"),
+    let response: Response = match req_cmd.status.code() {
+        Some(0) => Response {
+            body: serde_json::from_slice(&req_cmd.stdout)?,
             status: 0,
             etc: json!({}),
         },
-        _ => {
-            let g_err: GrpcurlError = serde_yaml::from_slice(&grpc_response.stderr)?;
+        Some(_) => {
+            let err: ResponseError = ResponseError::try_from(&req_cmd.stderr)?;
             // create frame response from deserialized grpcurl error
             Response {
-                body: serde_json::Value::String(g_err.message),
-                status: g_err.code,
+                body: serde_json::Value::String(err.message),
+                status: err.code,
                 etc: json!({}),
             }
         }
+        None => return Err("None Response code".into()),
     };
-    Ok(Response)
+    Ok(response)
 }
 
 #[derive(Debug, Serialize, PartialEq)]
-struct GrpcurlError {
+struct ResponseError {
     code: u32,
     message: String,
 }
 
-impl<'de> Deserialize<'de> for GrpcurlError {
+impl TryFrom<&Vec<u8>> for ResponseError {
+    type Error = BoxError;
+
+    fn try_from(stderr: &Vec<u8>) -> Result<ResponseError, Self::Error> {
+        match serde_yaml::from_slice::<ResponseError>(stderr) {
+            Err(_) => return Err(String::from_utf8(stderr.clone())?.into()),
+            Ok(err) => Ok(err),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ResponseError {
     #[allow(non_snake_case)]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -88,7 +129,7 @@ impl<'de> Deserialize<'de> for GrpcurlError {
             "Unauthenticated" => 16,
             _ => return Err(D::Error::custom("unexpected gRPC error code"))?,
         };
-        Ok(GrpcurlError {
+        Ok(ResponseError {
             code,
             message: outer.ERROR.Message,
         })
@@ -107,9 +148,9 @@ mod serde_tests {
 
     #[test]
     fn test_yaml() {
-        let yaml_struct: GrpcurlError = serde_yaml::from_str(YAML_ERROR).unwrap();
+        let yaml_struct: ResponseError = serde_yaml::from_str(YAML_ERROR).unwrap();
         assert_eq!(
-            GrpcurlError {
+            ResponseError {
                 code: 13,
                 message: "input cannot be empty".to_owned()
             },
