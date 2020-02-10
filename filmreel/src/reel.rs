@@ -1,7 +1,5 @@
 use crate::error::FrError;
-use crate::frame::Frame;
 use glob::glob;
-use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::iter::FromIterator;

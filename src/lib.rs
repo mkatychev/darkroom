@@ -1,4 +1,5 @@
 use argh::FromArgs;
+use log;
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -7,19 +8,20 @@ pub mod take;
 
 pub type BoxError = Box<dyn Error>;
 
-/// If verbose is turned on then println! the token tree
-#[macro_export]
-macro_rules! vprintln {
-    ($verbose:expr) => {
-        if $verbose == true {
-            println!();
-        }
-    };
-    ($verbose:expr, $($arg:tt)*) => {
-        if $verbose == true {
-            println!($($arg)*);
+pub struct Logger;
+
+impl log::Log for Logger {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::Level::Info
+    }
+
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            println!("{}", record.args());
         }
     }
+
+    fn flush(&self) {}
 }
 
 /// Top-level command.
@@ -35,7 +37,7 @@ pub struct Command {
 
 /// Additional options such as verbosity
 pub struct Opts {
-    verbose: bool,
+    pub verbose: bool,
 }
 
 impl Opts {

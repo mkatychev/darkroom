@@ -3,7 +3,6 @@ use filmreel::frame::{Request, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_yaml;
-use serde_yaml::Error;
 use std::convert::TryFrom;
 use std::io::ErrorKind;
 use std::process::Command;

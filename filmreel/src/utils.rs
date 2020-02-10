@@ -20,7 +20,7 @@ where
     let ordered: BTreeSet<_> = set.iter().collect();
     ordered.serialize(serializer)
 }
-///
+
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
 pub fn ordered_string_map<S>(map: &HashMap<&str, String>, serializer: S) -> Result<S::Ok, S::Error>
 where

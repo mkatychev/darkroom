@@ -2,7 +2,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::error::Error;
 use std::ops::Range;
 
 use crate::error::FrError;
