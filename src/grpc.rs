@@ -1,23 +1,27 @@
 use crate::{BoxError, Take};
 use filmreel::frame::{Request, Response};
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_yaml;
 use std::convert::TryFrom;
 use std::io::ErrorKind;
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Once;
+use which;
 
-static VALIDATE: Once = Once::new();
+// lazy_static! {
+//     static ref WHICH_GRPCURL: Result<PathBuf, which::Error> = { which::which("grpcurl") };
+// }
 
 /// Checks to see if grpcurl is in the system path
-pub fn validate_grpcurl() -> Result<(), BoxError> {
-    if let Err(e) = Command::new("grpcurl").output() {
-        if let ErrorKind::NotFound = e.kind() {
-            return Err("`grpcurl` was not found! Check your PATH!".into());
-        } else {
-            return Ok(());
-        }
+pub fn validate_grpcurl() -> Result<(), &'static str> {
+    lazy_static! {
+        static ref GRPCURL: which::Result<PathBuf> = which::which("grpcurl");
+    }
+    if !GRPCURL.is_ok() {
+        return Err("`grpcurl` was not found! Check your PATH!");
     }
     Ok(())
 }
@@ -42,9 +46,7 @@ impl<'a> From<&'a Take> for Params<'a> {
 
 /// Parses a Frame Request and a Params object to send a gRPC payload using grpcurl
 pub fn grpcurl(prm: &Params, req: &Request) -> Result<Response, BoxError> {
-    let mut has_grpcurl = Ok(());
-    VALIDATE.call_once(|| has_grpcurl = validate_grpcurl());
-    has_grpcurl?;
+    validate_grpcurl()?;
 
     let tls = match prm.tls {
         true => "",
