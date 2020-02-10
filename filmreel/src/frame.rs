@@ -42,7 +42,6 @@ impl<'a> Frame<'a> {
     /// Serialized payload
     pub fn get_request(&self) -> &Request {
         &self.request
-        // serde_json::to_string_pretty(&self.request.body).expect("serialization error")
     }
 
     /// Serialized payload

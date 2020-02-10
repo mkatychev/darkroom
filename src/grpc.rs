@@ -6,6 +6,9 @@ use serde_yaml;
 use std::convert::TryFrom;
 use std::io::ErrorKind;
 use std::process::Command;
+use std::sync::Once;
+
+static VALIDATE: Once = Once::new();
 
 /// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), BoxError> {
@@ -39,6 +42,10 @@ impl<'a> From<&'a Take> for Params<'a> {
 
 /// Parses a Frame Request and a Params object to send a gRPC payload using grpcurl
 pub fn grpcurl(prm: &Params, req: &Request) -> Result<Response, BoxError> {
+    let mut has_grpcurl = Ok(());
+    VALIDATE.call_once(|| has_grpcurl = validate_grpcurl());
+    has_grpcurl?;
+
     let tls = match prm.tls {
         true => "",
         false => "-plaintext",
