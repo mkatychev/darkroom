@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="308px" height="308px" version="1.1" viewBox="0 0 308 308" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <title>darkroomlogo</title>
+ <defs>
+  <rect id="path-1" x="4" y="2" width="300" height="300" rx="8"/>
+  <filter id="filter-2" x="-2.3%" y="-1.7%" width="104.7%" height="104.7%">
+   <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"/>
+   <feGaussianBlur in="shadowOffsetOuter1" result="shadowBlurOuter1" stdDeviation="2"/>
+   <feColorMatrix in="shadowBlurOuter1" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.5 0"/>
+  </filter>
+  <path id="path-3" d="m304 29.58c-83.595 86.799-183.6 141.96-300 165.49v-185.07c0-4.4183 3.5817-8 8-8h284c4.4183 0 8 3.5817 8 8v19.58zm-33.009 272.42h-258.99c-4.4183 0-8-3.5817-8-8v-63.003l266.99 71.003z"/>
+  <filter id="filter-4" x="-2.3%" y="-1.7%" width="104.7%" height="104.7%">
+   <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"/>
+   <feGaussianBlur in="shadowOffsetOuter1" result="shadowBlurOuter1" stdDeviation="2"/>
+   <feColorMatrix in="shadowBlurOuter1" values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.5 0"/>
+  </filter>
+ </defs>
+ <g id="Page-1" fill="none" fill-rule="evenodd">
+  <g id="Rectangle">
+   <use fill="black" filter="url(#filter-2)" xlink:href="#path-1"/>
+   <use fill="#241D1D" fill-rule="evenodd" xlink:href="#path-1"/>
+  </g>
+  <g id="Combined-Shape">
+   <use fill="black" filter="url(#filter-4)" xlink:href="#path-3"/>
+   <use fill="#AB131F" fill-rule="evenodd" xlink:href="#path-3"/>
+  </g>
+  <g id="Polaroid" transform="translate(110 135)" fill="#D8D8D8">
+   <path id="Combined-Shape" d="m25.701 10.613-16.1-4.1739v44.218l40.82 10.582v-44.218l-15.944-4.1333v-3.9579l25.545 6.6162v64.959l-60.022-15.546v-64.959l25.701 6.6568v3.9558z"/>
+  </g>
+  <g id="Polaroid" transform="translate(169 107)" fill="#D8D8D8">
+   <path id="Combined-Shape" d="m21.819 9.1489-13.668-3.5982v38.12l34.654 9.1228v-38.12l-13.535-3.5632v-3.412l21.686 5.7037v56l-50.956-13.402v-56l21.819 5.7387v3.4102z"/>
+  </g>
+  <g id="Polaroid" transform="translate(219 76)" fill="#D8D8D8">
+   <path id="Combined-Shape" d="m18.403 7.5085-11.528-2.9531v31.285l29.228 7.4871v-31.285l-11.416-2.9243v-2.8002l18.291 4.6811v45.96l-42.978-10.999v-45.96l18.403 4.7098v2.7988z"/>
+  </g>
+  <g id="Polaroid" transform="translate(261 51)" fill="#D8D8D8">
+   <path id="Combined-Shape" d="m14.559 6.0448-9.1202-2.3774v25.186l23.123 6.0275v-25.186l-9.0314-2.3543v-2.2544l14.47 3.7685v37l-34-8.8548v-37l14.559 3.7916v2.2532z"/>
+  </g>
+  <g id="Polaroid" transform="translate(43 160)" fill="#D8D8D8">
+   <path id="Combined-Shape" d="m29.117 12.09-18.24-4.7548v50.372l46.246 12.055v-50.372l-18.063-4.7085v-4.5087l28.94 7.537v74l-68-17.71v-74l29.117 7.5833v4.5063z"/>
+  </g>
+ </g>
+</svg>
