@@ -8,6 +8,7 @@ use std::convert::TryFrom;
 use std::io::ErrorKind;
 use std::process::Command;
 
+/// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), BoxError> {
     if let Err(e) = Command::new("grpcurl").spawn() {
         if let ErrorKind::NotFound = e.kind() {
@@ -19,6 +20,7 @@ pub fn validate_grpcurl() -> Result<(), BoxError> {
     Ok(())
 }
 
+/// Parameters needed for a uri method to be sent.
 pub struct Params<'a> {
     tls: bool,
     header: &'a String,
@@ -36,6 +38,7 @@ impl<'a> From<&'a Take> for Params<'a> {
     }
 }
 
+/// Parses a Frame Request and a Params object to send a gRPC payload using grpcurl
 pub fn grpcurl(prm: &Params, req: &Request) -> Result<Response, BoxError> {
     let tls = match prm.tls {
         true => "",
@@ -91,6 +94,8 @@ impl TryFrom<&Vec<u8>> for ResponseError {
 }
 
 impl<'de> Deserialize<'de> for ResponseError {
+    /// Handles string version error codes returned by grpcurl
+    /// [gRPC Status codes](https://github.com/grpc/grpc/blob/master/doc/statuscodes.md)
     #[allow(non_snake_case)]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

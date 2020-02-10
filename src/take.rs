@@ -33,10 +33,7 @@ pub fn run_take(cmd: Take, opts: Opts) -> Result<(), BoxError> {
         "Request URI:".yellow(),
         frame.get_request_uri()?
     );
-    dbg!("payload_response");
     let payload_response = grpcurl(&Params::from(&cmd), frame.get_request())?;
-
-    dbg!(&payload_response);
 
     // If there are valid matches for write operations
     if let Some(matches) = frame.match_payload_response(&payload_response)? {

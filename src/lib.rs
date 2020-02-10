@@ -33,6 +33,7 @@ pub struct Command {
     pub nested: SubCommand,
 }
 
+/// Additional options such as verbosity
 pub struct Opts {
     verbose: bool,
 }
@@ -51,7 +52,7 @@ pub enum SubCommand {
     Take(Take),
 }
 
-/// Dark Take
+/// Generate and send a single Request and Response
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "take")]
 pub struct Take {
