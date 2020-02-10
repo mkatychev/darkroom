@@ -5,15 +5,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_yaml;
 use std::convert::TryFrom;
-use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Once;
 use which;
-
-// lazy_static! {
-//     static ref WHICH_GRPCURL: Result<PathBuf, which::Error> = { which::which("grpcurl") };
-// }
 
 /// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), &'static str> {
