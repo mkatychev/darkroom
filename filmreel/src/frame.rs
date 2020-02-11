@@ -1,6 +1,6 @@
 use crate::cut::Register;
 use crate::error::FrError;
-use crate::utils::{get_jql_string, ordered_map, ordered_set};
+use crate::utils::{get_jql_string, ordered_set, ordered_str_map};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeError;
 use serde_json::{json, Value};
@@ -40,8 +40,8 @@ impl<'a> Frame<'a> {
     }
 
     /// Serialized payload
-    pub fn get_request(&self) -> String {
-        serde_json::to_string_pretty(&self.request.body).expect("serialization error")
+    pub fn get_request(&self) -> &Request {
+        &self.request
     }
 
     /// Serialized payload
@@ -124,7 +124,7 @@ impl<'a> Frame<'a> {
     pub fn match_payload_response(
         &self,
         payload_response: &'a Response,
-    ) -> Result<HashMap<&str, String>, Box<dyn Error>> {
+    ) -> Result<Option<HashMap<&str, String>>, Box<dyn Error>> {
         let frame_response: Value = self.response.to_frame_value()?;
         let payload_response: Value = payload_response.to_frame_value()?;
 
@@ -142,7 +142,11 @@ impl<'a> Frame<'a> {
             // TODO reg.write_operation(k, to_val.to_string())?;
         }
 
-        Ok(write_matches)
+        if write_matches.iter().next().is_some() {
+            return Ok(Some(write_matches));
+        }
+
+        Ok(None)
     }
 }
 
@@ -160,11 +164,21 @@ enum Protocol {
 ///
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
-struct Request {
+pub struct Request {
     body: Value,
     #[serde(flatten)]
     etc: Value,
     uri: String,
+}
+
+impl Request {
+    pub fn to_payload(&self) -> Result<String, SerdeError> {
+        serde_json::to_string_pretty(&self.body)
+    }
+
+    pub fn uri(&self) -> String {
+        self.uri.clone()
+    }
 }
 
 /// Contains read and write instructions for the [Cut
@@ -185,7 +199,7 @@ struct InstructionSet<'a> {
     #[serde(rename(serialize = "to", deserialize = "to"))]
     #[serde(
         skip_serializing_if = "HashMap::is_empty",
-        serialize_with = "ordered_map",
+        serialize_with = "ordered_str_map",
         borrow
     )]
     writes: HashMap<&'a str, &'a str>,
@@ -410,7 +424,7 @@ mod tests {
         let mat = frame.match_payload_response(&payload_response).unwrap();
         let mut expected_match = HashMap::new();
         expected_match.insert("USER_ID", "ID_010101".to_string());
-        assert_eq!(expected_match, mat);
+        assert_eq!(expected_match, mat.unwrap());
     }
 
     #[test]
@@ -485,6 +499,7 @@ mod serde_tests {
         REQUEST_ETC_JSON
     );
 
+    // FIXME
     const RESPONSE_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",
@@ -502,6 +517,7 @@ mod serde_tests {
         RESPONSE_JSON
     );
 
+    // FIXME
     const RESPONSE_ETC_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",

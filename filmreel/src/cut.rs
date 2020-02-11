@@ -2,7 +2,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::error::Error;
 use std::ops::Range;
 
 use crate::error::FrError;
@@ -17,8 +16,11 @@ pub struct Register<'a> {
     vars: Variables<'a>,
 }
 
-const VAR_NAME_ERR: &'static str ="Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]";
-/// The Register's map of [Cut Variables](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
+const VAR_NAME_ERR: &'static str =
+"Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]";
+
+/// The Register's map of [Cut Variables]
+/// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
 type Variables<'a> = HashMap<&'a str, String>;
 
 #[allow(dead_code)] // FIXME

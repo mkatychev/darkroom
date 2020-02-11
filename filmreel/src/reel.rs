@@ -26,6 +26,10 @@ impl Reel {
         {
             frames.push(MetaFrame::try_from(entry)?);
         }
+
+        // sort by string value since sorting by f32 is not idiomatic
+        frames.sort_by(|a, b| a.name.cmp(&b.name));
+
         Ok(Self { frames })
     }
 }
