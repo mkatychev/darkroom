@@ -39,7 +39,7 @@ impl<'a> From<&'a Take> for Params<'a> {
 }
 
 /// Parses a Frame Request and a Params object to send a gRPC payload using grpcurl
-pub fn grpcurl(prm: &Params, req: &Request) -> Result<Response, BoxError> {
+pub fn grpcurl(prm: &Params, req: Request) -> Result<Response, BoxError> {
     validate_grpcurl()?;
 
     let tls = match prm.tls {
@@ -105,7 +105,7 @@ impl<'de> Deserialize<'de> for ResponseError {
     {
         use serde::de::Error;
 
-        // deserialize a nested yaml object by casing it to an inner struct first
+        // deserialize a nested yaml object by casting it to an inner struct first
         #[derive(Deserialize)]
         struct Outer {
             ERROR: Inner,
