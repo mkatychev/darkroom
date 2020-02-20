@@ -53,11 +53,11 @@ pub fn run_request<'a>(
             "{}",
             format!("Press {} to continue...", "ENTER".yellow())
         )
-        .unwrap();
-        stdout.flush().unwrap();
+        .expect("write to stdout panic");
+        stdout.flush().expect("stoud flush panic");
 
         // Read a single byte and discard
-        let _ = stdin.read(&mut [0u8]).unwrap();
+        let _ = stdin.read(&mut [0u8]).expect("read stdin panic");
     } else {
         info!("[{}] frame:", "Hydrated".green());
         info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
