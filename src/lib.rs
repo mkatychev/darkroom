@@ -56,7 +56,7 @@ pub enum SubCommand {
     Record(Record),
 }
 
-/// Generate and send a single Request and Response
+/// Takes a single frame, sends the request and compares the returned response
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "take")]
 pub struct Take {
@@ -81,7 +81,7 @@ pub struct Take {
     output: Option<PathBuf>,
 }
 
-/// Dark Record
+/// Attemps to play through an entire Reel sequence
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "record")]
 pub struct Record {
@@ -145,12 +145,12 @@ impl Record {
         Ok(())
     }
 
-    // returns expected cut filename in the given directory with the provided reel name
+    /// Returns expected cut filename in the given directory with the provided reel name
     pub fn get_cut_file(&self) -> PathBuf {
         self.path.join(format!("{}.cut.json", self.name))
     }
 
-    // checks for the existence of a copy cut file in the given directory with the provided reel name
+    /// Checks for the existence of a copy cut file in the given directory with the provided reel name
     pub fn get_cut_copy(&self) -> PathBuf {
         self.path.join(format!(".{}.cut.json", self.name))
     }

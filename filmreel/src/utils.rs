@@ -22,7 +22,10 @@ where
 }
 
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
-pub fn ordered_string_map<S>(map: &HashMap<&str, String>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn ordered_string_map<S>(
+    map: &HashMap<String, String>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -68,14 +71,17 @@ where
 }
 
 pub fn get_jql_string(val: &Value, query: &str) -> Result<String, String> {
-    dbg!(val);
     let selectors = query.replace("'", "\"");
     match jql::walker(val, Some(&selectors)) {
         Ok(v) => match v {
             Value::String(string) => Ok(string),
             v => {
+                dbg!(query);
                 dbg!(v);
-                panic!("get_jql_string: invalid match");
+                return Err(format!(
+                    "{} did not map to a serde_json::Value::String enum",
+                    query.to_string()
+                ));
             }
         },
         Err(e) => return Err(e),

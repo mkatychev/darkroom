@@ -106,7 +106,6 @@ impl<'a> Frame<'a> {
         reg: &Register,
     ) -> Result<(), FrError> {
         {
-            dbg!(&string);
             let matches = reg.read_match(string)?;
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {

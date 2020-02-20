@@ -11,9 +11,9 @@ use crate::utils::ordered_string_map;
 ///
 /// [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
-pub struct Register<'a> {
-    #[serde(serialize_with = "ordered_string_map", borrow, flatten)]
-    vars: Variables<'a>,
+pub struct Register {
+    #[serde(serialize_with = "ordered_string_map", flatten)]
+    vars: Variables,
 }
 
 const VAR_NAME_ERR: &'static str =
@@ -21,10 +21,10 @@ const VAR_NAME_ERR: &'static str =
 
 /// The Register's map of [Cut Variables]
 /// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-type Variables<'a> = HashMap<&'a str, String>;
+type Variables = HashMap<String, String>;
 
 #[allow(dead_code)] // FIXME
-impl<'a> Register<'a> {
+impl Register {
     /// Creates a new Register object running post deserialization validations
     pub fn new(json_string: &str) -> Result<Register, FrError> {
         let reg: Register = serde_json::from_str(json_string)?;
@@ -37,17 +37,20 @@ impl<'a> Register<'a> {
         serde_json::to_string_pretty(self).expect("serialization error")
     }
 
-    /// Inserts entry into the Register's Cut Variables/
+    /// Inserts entry into the Register's Cut Variables
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
-    fn insert(&mut self, key: &'a str, val: String) -> Option<String> {
-        self.vars.insert(key, val)
+    fn insert<T>(&mut self, key: T, val: String) -> Option<String>
+    where
+        T: ToString,
+    {
+        self.vars.insert(key.to_string(), val)
     }
 
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get_key_value(&self, key: &str) -> Option<(&&str, &String)> {
+    pub fn get_key_value(&self, key: &str) -> Option<(&String, &String)> {
         self.vars.get_key_value(key)
     }
 
@@ -59,7 +62,7 @@ impl<'a> Register<'a> {
     }
 
     /// An iterator visiting all Cut Variables in arbitrary order.
-    pub fn iter(&self) -> std::collections::hash_map::Iter<&str, String> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<String, String> {
         self.vars.iter()
     }
 
@@ -106,18 +109,17 @@ impl<'a> Register<'a> {
                 ));
             }
 
-            let (name, value) =
-                match self.get_key_value(mat.name("cut_var").expect("cut_var error").as_str()) {
-                    Some((&k, v)) => (k, v.to_owned()),
-                    None => continue,
-                };
-
-            // push valid match onto Match vec
-            matches.push(Match::Variable {
-                name,
-                value,
-                range: full_match.range(),
-            });
+            match self.get_key_value(mat.name("cut_var").expect("cut_var error").as_str()) {
+                Some((k, v)) => {
+                    // push valid match onto Match vec
+                    matches.push(Match::Variable {
+                        name: k,
+                        value: v.into(),
+                        range: full_match.range(),
+                    });
+                }
+                None => continue,
+            };
         }
 
         // sort matches by start of each match range and reverse valid matches
@@ -194,11 +196,7 @@ impl<'a> Register<'a> {
         }
     }
 
-    pub fn write_operation(
-        &mut self,
-        key: &'a str,
-        val: String,
-    ) -> Result<Option<String>, FrError> {
+    pub fn write_operation(&mut self, key: &str, val: String) -> Result<Option<String>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
@@ -263,7 +261,7 @@ impl<'a> Match<'a> {
 #[macro_export]
 macro_rules! register {
     ({$( $key: expr => $val: expr ),*}) => {{
-        use crate::cut::Register;
+        use $crate::cut::Register;
 
         let mut reg = Register::default();
         $(reg.write_operation($key, $val.to_string()).expect("RegisterInsertError");)*

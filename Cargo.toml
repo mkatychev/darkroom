@@ -20,6 +20,7 @@ members = [
 ]
 
 [dependencies]
+colored_json = "2"
 argh = "0.1"
 lazy_static = "1.4"
 which = "3.1"
