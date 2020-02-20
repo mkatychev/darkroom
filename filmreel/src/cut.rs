@@ -21,6 +21,10 @@ const VAR_NAME_ERR: &'static str =
 
 /// The Register's map of [Cut Variables]
 /// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
+type Variables<'a> = HashMap<&'a str, String>;
+
+/// The Register's map of [Cut Variables]
+/// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
 type Variables = HashMap<String, String>;
 
 impl Register {
@@ -315,7 +319,7 @@ mod tests {
             "My name is \\${FIRST_NAME} \\${LAST_NAME}",
             "My name is ${FIRST_NAME} ${LAST_NAME}"
         ),
-        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}", 
+        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}",
             &["Did you ever hear the tragedy of Darth Plagueis the Wise? ", TRAGIC_STORY].concat()),
     )]
     fn test_read_op(input: &str, expected: &str) {

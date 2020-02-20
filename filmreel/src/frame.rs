@@ -475,6 +475,7 @@ mod serde_tests {
         REQUEST_ETC_JSON
     );
 
+    // FIXME
     const RESPONSE_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",
@@ -492,6 +493,7 @@ mod serde_tests {
         RESPONSE_JSON
     );
 
+    // FIXME
     const RESPONSE_ETC_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",
