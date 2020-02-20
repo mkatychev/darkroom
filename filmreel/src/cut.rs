@@ -37,10 +37,11 @@ impl Register {
 
     /// Inserts entry into the Register's Cut Variables
     ///
-    /// Returns an Err if the key value is does not consist solely of
-    /// characters, dashes, and underscores.
+    /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
     fn insert<T>(&mut self, key: T, val: String) -> Option<String>
-    where T: ToString {
+    where
+        T: ToString,
+    {
         self.vars.insert(key.to_string(), val)
     }
 
@@ -303,7 +304,7 @@ mod tests {
             "My name is \\${FIRST_NAME} \\${LAST_NAME}",
             "My name is ${FIRST_NAME} ${LAST_NAME}"
         ),
-        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}", 
+        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}",
             &["Did you ever hear the tragedy of Darth Plagueis the Wise? ", TRAGIC_STORY].concat()),
     )]
     fn test_read_op(input: &str, expected: &str) {
