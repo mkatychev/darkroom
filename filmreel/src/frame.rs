@@ -20,7 +20,6 @@ pub struct Frame<'a> {
     pub response: Response,
 }
 
-#[allow(dead_code)] // FIXME
 impl<'a> Frame<'a> {
     /// Creates a new Frame object running post deserialization validations
     pub fn new(json_string: &str) -> Result<Frame, FrError> {
@@ -371,44 +370,9 @@ mod tests {
             frame
         );
     }
-    const WRITE_FRAME_JSON: &str = r#"
-{
-  "protocol": "gRPC",
-  "cut": {
-    "from": [
-      "FIRST",
-      "LAST",
-      "EMAIL",
-      "METHOD"
-    ],
-    "to": {
-      "USER_ID": "'response'.'body'.'id'"
-    }
-  },
-  "request": {
-    "body": {
-      "name": "${FIRST} ${LAST}",
-      "email": "${EMAIL}"
-    },
-    "uri": "user_api.User/${METHOD}"
-  },
-  "response": {
-    "body": {
-      "id": "${USER_ID}"
-    },
-    "status": 0
-  }
-}
-    "#;
 
     #[test]
     fn test_match_payload_response() {
-        let reg = register!({
-            "EMAIL"=> "new_user@humanmail.com",
-            "FIRST"=> "Mario",
-            "LAST"=> "Rossi",
-            "METHOD"=> "CreateUser"
-        });
         let frame = Frame {
             protocol: Protocol::GRPC,
             cut: InstructionSet {
@@ -511,7 +475,6 @@ mod serde_tests {
         REQUEST_ETC_JSON
     );
 
-    // FIXME
     const RESPONSE_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",
@@ -529,7 +492,6 @@ mod serde_tests {
         RESPONSE_JSON
     );
 
-    // FIXME
     const RESPONSE_ETC_JSON: &str = r#"
     {
       "body": "created user: ${USER_ID}",

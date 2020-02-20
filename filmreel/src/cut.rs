@@ -23,7 +23,6 @@ const VAR_NAME_ERR: &'static str =
 /// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
 type Variables = HashMap<String, String>;
 
-#[allow(dead_code)] // FIXME
 impl Register {
     /// Creates a new Register object running post deserialization validations
     pub fn new(json_string: &str) -> Result<Register, FrError> {
@@ -219,7 +218,6 @@ pub enum Match<'a> {
     },
 }
 
-#[allow(dead_code)] // FIXME
 impl<'a> Match<'a> {
     /// the range over the starting and ending byte offsets for the corresonding Replacement.
     fn range(&self) -> Range<usize> {

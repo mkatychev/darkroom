@@ -10,7 +10,7 @@ use log::{debug, error, info};
 use prettytable::*;
 use std::fs;
 use std::io::{self, prelude::*};
-use std::{fmt::Display, path::PathBuf};
+use std::path::PathBuf;
 
 /// Performs a single frame hydration using a given json file and outputs a Take to either stdout
 /// or a designated file
@@ -77,7 +77,6 @@ pub fn process_response<'a>(
     payload_response: Response,
     cut_out: Option<&PathBuf>,
     output: Option<PathBuf>,
-    interactive: bool,
 ) -> Result<&'a Register, BoxError> {
     let payload_matches = match frame
         .response
@@ -150,7 +149,6 @@ pub fn single_take(cmd: Take) -> Result<(), BoxError> {
         response,
         Some(&cmd.cut),
         cmd.output.clone(),
-        false,
     )?;
     Ok(())
 }
@@ -209,15 +207,8 @@ mod tests {
             status: 200,
         };
         let mut register = Register::default();
-        let processed_register = process_response(
-            &mut frame,
-            &mut register,
-            payload_response,
-            None,
-            None,
-            false,
-        )
-        .unwrap();
+        let processed_register =
+            process_response(&mut frame, &mut register, payload_response, None, None).unwrap();
         assert_eq!(*processed_register, register!({"USER_ID"=>"BIG_BEN"}));
     }
 }

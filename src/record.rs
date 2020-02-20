@@ -1,12 +1,12 @@
 use crate::grpc::*;
 use crate::take::*;
-use crate::{BoxError, Record, Take};
+use crate::{BoxError, Record};
 use colored::*;
 use filmreel as fr;
 use filmreel::cut::Register;
-use filmreel::frame::{Frame, Response};
+use filmreel::frame::Frame;
 use filmreel::reel::*;
-use log::{debug, error, info, warn};
+use log::{debug, warn};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -44,7 +44,6 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
             payload_response,
             None,
             output,
-            cmd.interactive,
         )?;
     }
 
