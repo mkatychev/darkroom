@@ -28,17 +28,9 @@ impl Reel {
         }
 
         // sort by string value since sorting by f32 is not idiomatic
-        frames.sort_by(|a, b| a.path.cmp(&b.path));
+        frames.sort_by(|a, b| a.name.cmp(&b.name));
 
         Ok(Self { frames })
-    }
-}
-
-impl IntoIterator for Reel {
-    type Item = MetaFrame;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.frames.into_iter()
     }
 }
 
@@ -60,11 +52,11 @@ impl IntoIterator for Reel {
 ///
 #[derive(PartialEq, Debug)]
 pub struct MetaFrame {
-    pub path: PathBuf,
-    pub name: String,
-    pub reel_name: String,
-    pub step: f32,
-    pub frame_type: FrameType,
+    path: PathBuf,
+    name: String,
+    reel_name: String,
+    step: f32,
+    frame_type: FrameType,
 }
 
 impl TryFrom<PathBuf> for MetaFrame {

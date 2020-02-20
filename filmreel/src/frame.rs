@@ -15,11 +15,12 @@ pub struct Frame<'a> {
     protocol: Protocol,
     // Both the reads and writes can be optional
     #[serde(default, borrow, skip_serializing_if = "InstructionSet::is_empty")]
-    pub cut: InstructionSet<'a>,
+    cut: InstructionSet<'a>,
     request: Request,
-    pub response: Response,
+    response: Response,
 }
 
+#[allow(dead_code)] // FIXME
 impl<'a> Frame<'a> {
     /// Creates a new Frame object running post deserialization validations
     pub fn new(json_string: &str) -> Result<Frame, FrError> {
@@ -39,8 +40,8 @@ impl<'a> Frame<'a> {
     }
 
     /// Serialized payload
-    pub fn get_request(&self) -> Request {
-        self.request.clone()
+    pub fn get_request(&self) -> &Request {
+        &self.request
     }
 
     /// Serialized payload
@@ -72,11 +73,7 @@ impl<'a> Frame<'a> {
 
     /// Traverses a given serde::Value enum attempting to modify found Strings
     /// for the moment this method also works as a Frame.init() check, emitting FrameParseErrors
-    pub fn hydrate_val(
-        set: &InstructionSet,
-        val: &mut Value,
-        reg: &Register,
-    ) -> Result<(), FrError> {
+    fn hydrate_val(set: &InstructionSet, val: &mut Value, reg: &Register) -> Result<(), FrError> {
         match val {
             Value::Object(map) => {
                 for (_, val) in map.iter_mut() {
@@ -115,13 +112,41 @@ impl<'a> Frame<'a> {
                             n.to_string(),
                         ));
                     }
-                    // Now that the cut var is confirmed to exist in the entire instuction set
-                    // perform read operation ony if cut var is present in read instructions
-                    reg.read_operation(mat, string)?;
                 }
+                reg.read_operation(mat, string)?;
             }
             Ok(())
         }
+    }
+
+    /// Using the write instructions found in the frame InstructionSet, look for matches to be
+    /// passed to write operations
+    pub fn match_payload_response(
+        &self,
+        payload_response: &'a Response,
+    ) -> Result<Option<HashMap<&str, String>>, Box<dyn Error>> {
+        let frame_response: Value = self.response.to_frame_value()?;
+        let payload_response: Value = payload_response.to_frame_value()?;
+
+        let mut write_matches: HashMap<&str, String> = HashMap::new();
+        for (k, query) in self.cut.writes.iter() {
+            // Temporary holdover until write operations are implemented for request
+            let frame_str = get_jql_string(&frame_response, query)?;
+            let payload_str = get_jql_string(&payload_response, query)?;
+
+            // println!("{}{}", frame_jq, payload_jq);
+            let write_match = Register::write_match(k, &frame_str, &payload_str)?;
+            if let Some(mat) = write_match {
+                write_matches.insert(k, mat);
+            }
+            // TODO reg.write_operation(k, to_val.to_string())?;
+        }
+
+        if write_matches.iter().next().is_some() {
+            return Ok(Some(write_matches));
+        }
+
+        Ok(None)
     }
 }
 
@@ -163,7 +188,7 @@ impl Request {
 /// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 #[serde(default)]
-pub struct InstructionSet<'a> {
+struct InstructionSet<'a> {
     #[serde(rename(serialize = "from", deserialize = "from"))]
     #[serde(
         skip_serializing_if = "HashSet::is_empty",
@@ -222,39 +247,6 @@ impl Response {
         let mut frame_value = json!({"response":{}});
         frame_value["response"] = serde_json::to_value(self)?;
         Ok(frame_value)
-    }
-    ///
-    /// Pretty json formatting for Response serialization
-    pub fn to_string_pretty(&self) -> String {
-        serde_json::to_string_pretty(self).expect("serialization error")
-    }
-
-    /// Using the write instructions found in the frame InstructionSet, look for matches to be
-    /// passed to write operations
-    pub fn match_payload_response<'a>(
-        &self,
-        set: &'a InstructionSet,
-        payload_response: &Response,
-    ) -> Result<Option<HashMap<&'a str, String>>, Box<dyn Error>> {
-        let frame_response: Value = self.to_frame_value()?;
-        let payload_response: Value = payload_response.to_frame_value()?;
-
-        let mut write_matches: HashMap<&str, String> = HashMap::new();
-        for (k, query) in set.writes.iter() {
-            let frame_str = get_jql_string(&frame_response, query)?;
-            let payload_str = get_jql_string(&payload_response, query)?;
-
-            let write_match = Register::write_match(k, &frame_str, &payload_str)?;
-            if let Some(mat) = write_match {
-                write_matches.insert(k, mat);
-            }
-        }
-
-        if write_matches.iter().next().is_some() {
-            return Ok(Some(write_matches));
-        }
-
-        Ok(None)
     }
 }
 
@@ -329,7 +321,7 @@ mod tests {
         "uri":"user_api.User/${METHOD}"
       },
       "response": {
-        "body": "${RESPONSE}",
+        "body": "YES!",
         "status": 0
       }
     }
@@ -343,7 +335,7 @@ mod tests {
             "LAST"=> "Rossi",
             "METHOD"=> "CreateUser"
         });
-        let mut frame: Frame = Frame::new(FRAME_JSON).unwrap();
+        let mut frame: Frame = serde_json::from_str(FRAME_JSON).unwrap();
         frame.hydrate(&reg).unwrap();
         assert_eq!(
             Frame {
@@ -362,7 +354,7 @@ mod tests {
                 },
 
                 response: Response {
-                    body: json!("${RESPONSE}"),
+                    body: json!("YES!"),
                     etc: json!({}),
                     status: 0,
                 },
@@ -370,9 +362,44 @@ mod tests {
             frame
         );
     }
+    const WRITE_FRAME_JSON: &str = r#"
+{
+  "protocol": "gRPC",
+  "cut": {
+    "from": [
+      "FIRST",
+      "LAST",
+      "EMAIL",
+      "METHOD"
+    ],
+    "to": {
+      "USER_ID": "'response'.'body'.'id'"
+    }
+  },
+  "request": {
+    "body": {
+      "name": "${FIRST} ${LAST}",
+      "email": "${EMAIL}"
+    },
+    "uri": "user_api.User/${METHOD}"
+  },
+  "response": {
+    "body": {
+      "id": "${USER_ID}"
+    },
+    "status": 0
+  }
+}
+    "#;
 
     #[test]
     fn test_match_payload_response() {
+        let reg = register!({
+            "EMAIL"=> "new_user@humanmail.com",
+            "FIRST"=> "Mario",
+            "LAST"=> "Rossi",
+            "METHOD"=> "CreateUser"
+        });
         let frame = Frame {
             protocol: Protocol::GRPC,
             cut: InstructionSet {
@@ -394,10 +421,7 @@ mod tests {
             etc: json!({}),
             status: 0,
         };
-        let mat = frame
-            .response
-            .match_payload_response(&frame.cut, &payload_response)
-            .unwrap();
+        let mat = frame.match_payload_response(&payload_response).unwrap();
         let mut expected_match = HashMap::new();
         expected_match.insert("USER_ID", "ID_010101".to_string());
         assert_eq!(expected_match, mat.unwrap());
