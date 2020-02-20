@@ -6,14 +6,12 @@ use filmreel as fr;
 use filmreel::cut::Register;
 use filmreel::frame::{Frame, Response};
 use filmreel::reel::*;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn run_record(cmd: Record) -> Result<(), BoxError> {
     dbg!(cmd.get_cut_file());
-    dbg!(cmd.get_cut_copy());
-    dbg!(&cmd.header);
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register = Register::new(&cut_str)?;
     let reel = Reel::new(&cmd.path, &cmd.name)?;
@@ -22,15 +20,15 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
             .output
             .as_ref()
             .and_then(|dir| Some(take_output(&dir, &&meta_frame.path)));
-        info!(
+        warn!(
             "{} {:?}",
-            "File:".green(),
+            "File:".yellow(),
             meta_frame
                 .path
                 .file_stem()
                 .expect("unable to unwrap MetaFrame.path")
         );
-        info!("{}", "=======================".green());
+        warn!("{}", "=======================".green());
 
         let frame_str = fr::file_to_string(&meta_frame.path)?;
         let mut frame = Frame::new(&frame_str)?;

@@ -157,9 +157,19 @@ pub fn single_take(cmd: Take) -> Result<(), BoxError> {
 
 fn log_mismatch(frame_str: String, response_str: String) {
     error!("{}\n", "Expected:".magenta());
-    error!("{}\n", frame_str);
+    error!(
+        "{}\n",
+        frame_str
+            .to_colored_json_auto()
+            .expect("log_mismatch expected panic")
+    );
     error!("{}\n", "Actual:".magenta());
-    error!("{}\n", response_str);
+    error!(
+        "{}\n",
+        response_str
+            .to_colored_json_auto()
+            .expect("log_mismatch actual panic")
+    );
 }
 
 #[cfg(test)]
