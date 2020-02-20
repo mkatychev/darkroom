@@ -108,6 +108,10 @@ pub struct Record {
     /// output directory for successful takes
     #[argh(option, short = 'o')]
     output: Option<PathBuf>,
+
+    /// interactive frame sequence transitions
+    #[argh(switch, short = 'i')]
+    interactive: bool,
 }
 
 impl Take {

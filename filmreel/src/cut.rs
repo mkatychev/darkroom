@@ -83,7 +83,7 @@ impl Register {
                 r"(?x)
                 (?P<esc_char>\\)?   # escape character
                 (?P<leading_b>\$\{) # leading brace
-                (?P<cut_var>[A-za-z_]+) # Cut Variable
+                (?P<cut_var>[A-za-z_0-9]+) # Cut Variable
                 (?P<trailing_b>})?  # trailing brace
                 "
             )

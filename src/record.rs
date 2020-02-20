@@ -34,13 +34,19 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
 
         let frame_str = fr::file_to_string(&meta_frame.path)?;
         let mut frame = Frame::new(&frame_str)?;
-        let payload_response = run_request(&mut frame, &cut_register, &Params::from(&cmd))?;
+        let payload_response = run_request(
+            &mut frame,
+            &cut_register,
+            &Params::from(&cmd),
+            cmd.interactive,
+        )?;
         process_response(
             &mut frame,
             &mut cut_register,
             payload_response,
             None,
             output,
+            cmd.interactive,
         )?;
     }
 
