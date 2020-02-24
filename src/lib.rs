@@ -4,6 +4,7 @@ use std::error::Error;
 use std::path::PathBuf;
 
 pub mod grpc;
+pub mod record;
 pub mod take;
 
 pub type BoxError = Box<dyn Error>;
@@ -52,15 +53,16 @@ impl Opts {
 #[argh(subcommand)]
 pub enum SubCommand {
     Take(Take),
+    Record(Record),
 }
 
-/// Generate and send a single Request and Response
+/// Takes a single frame, sends the request and compares the returned response
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "take")]
 pub struct Take {
     /// frame to process
     #[argh(positional)]
-    frame: String,
+    frame: PathBuf,
 
     /// address passed to grpcurl
     #[argh(positional)]
@@ -74,35 +76,86 @@ pub struct Take {
     #[argh(option, short = 'H')]
     header: String,
 
-    /// output file
+    /// output of take file
     #[argh(option, short = 'o')]
     output: Option<PathBuf>,
 }
 
-/// Dark Record
+/// Attemps to play through an entire Reel sequence
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "record")]
 pub struct Record {
-    /// frame to process
+    /// directory where frames and cut register is located
     #[argh(positional)]
-    frame: PathBuf,
+    path: PathBuf,
 
-    /// address passed to grpcurl
+    /// name of the reel
     #[argh(positional)]
-    addr: String,
+    name: String,
 
-    /// filepath of cut file, assumed to be in the same directory as the
-    /// frame argument
-    #[argh(option, short = 'c')]
-    cut: Option<PathBuf>,
-
-    /// args passed to grpcurl
+    /// header string passed to grpcurl
     #[argh(option, short = 'H')]
     header: String,
 
-    /// output file
+    /// address passed to grpcurl
+    #[argh(option, short = 'a')]
+    addr: String,
+
+    /// filepath of output cut file
+    #[argh(option, short = 'c')]
+    cut: Option<PathBuf>,
+
+    /// output directory for successful takes
     #[argh(option, short = 'o')]
     output: Option<PathBuf>,
+
+    /// interactive frame sequence transitions
+    #[argh(switch, short = 'i')]
+    interactive: bool,
 }
 
-// A basic example
+impl Take {
+    pub fn validate(&self) -> Result<(), &str> {
+        if !self.frame.is_file() {
+            return Err("<frame> must be a valid file");
+        }
+        if !self.cut.is_file() {
+            return Err("<cut> must be a valid file");
+        }
+        Ok(())
+    }
+}
+impl Record {
+    pub fn validate(&self) -> Result<(), &str> {
+        if !self.path.is_dir() {
+            return Err("<path> must be a valid directory");
+        }
+        if let Some(cut) = &self.cut {
+            if !cut.is_file() {
+                return Err("<cut> must be a valid file");
+            }
+        } else {
+            // check existence of implicit cut file in the same directory
+            if !self.get_cut_file().is_file() {
+                return Err("unable to find a matching cut file in the given directory");
+            }
+        }
+
+        if let Some(output) = &self.output {
+            if !output.is_dir() {
+                return Err("<output> must be a valid directory");
+            }
+        }
+        Ok(())
+    }
+
+    /// Returns expected cut filename in the given directory with the provided reel name
+    pub fn get_cut_file(&self) -> PathBuf {
+        self.path.join(format!("{}.cut.json", self.name))
+    }
+
+    /// Checks for the existence of a copy cut file in the given directory with the provided reel name
+    pub fn get_cut_copy(&self) -> PathBuf {
+        self.path.join(format!(".{}.cut.json", self.name))
+    }
+}
