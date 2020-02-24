@@ -115,7 +115,7 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), Box<dyn Error>> {
                 seq_chars.push('.');
             }
             _ => {
-                FrError::ReelParsef("{} is an invalid sequence char!", ch.to_string());
+                FrError::ReelParsef("{} is an invalidsequence char!", ch.to_string());
             }
         }
     }

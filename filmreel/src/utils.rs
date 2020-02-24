@@ -78,12 +78,12 @@ pub fn get_jql_string(val: &Value, query: &str) -> Result<String, String> {
             v => {
                 dbg!(query);
                 dbg!(v);
-                return Err(format!(
+                Err(format!(
                     "{} did not map to a serde_json::Value::String enum",
                     query.to_string()
-                ));
+                ))
             }
         },
-        Err(e) => return Err(e),
+        Err(e) => Err(e),
     }
 }

@@ -54,10 +54,7 @@ impl<'a> From<&'a Take> for Params<'a> {
 pub fn grpcurl(prm: &Params, req: Request) -> Result<Response, BoxError> {
     validate_grpcurl()?;
 
-    let tls = match prm.tls {
-        true => "",
-        false => "-plaintext",
-    };
+    let tls = if prm.tls { "" } else { "-plaintext" };
 
     let req_cmd = Command::new("grpcurl")
         .arg("-H")
@@ -101,9 +98,7 @@ impl TryFrom<&Vec<u8>> for ResponseError {
     fn try_from(stderr: &Vec<u8>) -> Result<ResponseError, Self::Error> {
         let stripped = cram_yaml(stderr);
         match serde_yaml::from_slice::<ResponseError>(&stripped) {
-            Err(_) => {
-                return Err(String::from_utf8(stderr.clone())?.into());
-            }
+            Err(_) => Err(String::from_utf8(stderr.clone())?.into()),
             Ok(err) => Ok(err),
         }
     }
@@ -148,7 +143,7 @@ impl<'de> Deserialize<'de> for ResponseError {
             "Unavailable" => 14,
             "DataLoss" => 15,
             "Unauthenticated" => 16,
-            _ => return Err(D::Error::custom("unexpected gRPC error code"))?,
+            _ => return Err(D::Error::custom("unexpected gRPC error code")),
         };
         Ok(ResponseError {
             code,
@@ -158,9 +153,9 @@ impl<'de> Deserialize<'de> for ResponseError {
 }
 
 /// Horrible hack to make grpcurl output look like yaml
-fn cram_yaml(stderr: &Vec<u8>) -> Vec<u8> {
+fn cram_yaml(stderr: &[u8]) -> Vec<u8> {
     let mut clean_vec: Vec<String> = Vec::new();
-    for line in std::str::from_utf8(stderr.as_slice())
+    for line in std::str::from_utf8(stderr)
         .expect("failed string cast")
         .lines()
     {

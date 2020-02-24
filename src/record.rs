@@ -19,7 +19,7 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
         let output = cmd
             .output
             .as_ref()
-            .and_then(|dir| Some(take_output(&dir, &&meta_frame.path)));
+            .map(|dir| take_output(&dir, &&meta_frame.path));
         warn!(
             "{} {:?}",
             "File:".yellow(),

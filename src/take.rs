@@ -20,16 +20,16 @@ pub fn run_request<'a>(
     params: &Params,
     interactive: bool,
 ) -> Result<Response, BoxError> {
-    let mut unhydrated_frame: Option<String> = None;
-    if interactive {
-        unhydrated_frame = Some(frame.to_string_pretty());
+    let unhydrated_frame: Option<String> = if interactive {
+        Some(frame.to_string_pretty())
     } else {
         info!("[{}] frame:", "Unhydrated".red());
         info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
         info!("{}", "=======================".magenta());
         info!("HYDRATING...");
         info!("{}", "=======================".magenta());
-    }
+        None
+    };
 
     frame.hydrate(&register)?;
 

@@ -16,7 +16,7 @@ pub struct Register {
     vars: Variables,
 }
 
-const VAR_NAME_ERR: &'static str =
+const VAR_NAME_ERR: &str =
 "Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]";
 
 /// The Register's map of [Cut Variables]
@@ -76,7 +76,7 @@ impl Register {
     /// operations.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
-    pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, FrError> {
+    pub fn read_match(&self, json_string: &str) -> Result<Vec<Match>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
@@ -134,7 +134,7 @@ impl Register {
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
     pub fn read_operation(&self, mat: Match, json_string: &mut String) -> Result<(), FrError> {
         if let Some(name) = mat.name() {
-            if let None = self.get_key_value(name) {
+            if self.get_key_value(name).is_none() {
                 FrError::ReadInstructionf("Key not present in Cut Register", name.to_string());
             }
         }
@@ -223,22 +223,14 @@ impl<'a> Match<'a> {
     fn range(&self) -> Range<usize> {
         match self {
             Match::Escape(range) => range.clone(),
-            Match::Variable {
-                name: _,
-                value: _,
-                range: r,
-            } => r.clone(),
+            Match::Variable { range: r, .. } => r.clone(),
         }
     }
 
     pub fn name(&self) -> Option<&'a str> {
         match self {
             Match::Escape(_) => None,
-            Match::Variable {
-                name: n,
-                value: _,
-                range: _,
-            } => Some(*n),
+            Match::Variable { name: n, .. } => Some(*n),
         }
     }
 
@@ -246,9 +238,9 @@ impl<'a> Match<'a> {
         match self {
             Match::Escape(range) => json_string.replace_range(range, ""),
             Match::Variable {
-                name: _,
                 value: val,
                 range: r,
+                ..
             } => json_string.replace_range(r, &val),
         }
     }
