@@ -64,17 +64,21 @@ pub struct Take {
     #[argh(positional)]
     frame: PathBuf,
 
+    /// args passed to grpcurl
+    #[argh(option, short = 'H')]
+    header: String,
+
+    /// pass proto files used for payload forming
+    #[argh(option)]
+    proto: Vec<PathBuf>,
+
     /// address passed to grpcurl
-    #[argh(positional)]
+    #[argh(option, short = 'a')]
     addr: String,
 
     /// filepath of cut file
     #[argh(option, short = 'c')]
     cut: PathBuf,
-
-    /// args passed to grpcurl
-    #[argh(option, short = 'H')]
-    header: String,
 
     /// output of take file
     #[argh(option, short = 'o')]
@@ -96,6 +100,10 @@ pub struct Record {
     /// header string passed to grpcurl
     #[argh(option, short = 'H')]
     header: String,
+
+    /// pass proto files used for payload forming
+    #[argh(option)]
+    proto: Vec<PathBuf>,
 
     /// address passed to grpcurl
     #[argh(option, short = 'a')]
@@ -151,7 +159,11 @@ impl Record {
 
     /// Returns expected cut filename in the given directory with the provided reel name
     pub fn get_cut_file(&self) -> PathBuf {
-        self.path.join(format!("{}.cut.json", self.name))
+        if let Some(cut) = &self.cut {
+            cut.clone()
+        } else {
+            self.path.join(format!("{}.cut.json", self.name))
+        }
     }
 
     /// Checks for the existence of a copy cut file in the given directory with the provided reel name

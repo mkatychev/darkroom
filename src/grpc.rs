@@ -26,6 +26,7 @@ pub struct Params<'a> {
     tls: bool,
     header: &'a String,
     address: &'a String,
+    proto: Vec<&'a str>,
 }
 
 impl<'a> From<&'a Record> for Params<'a> {
@@ -35,6 +36,7 @@ impl<'a> From<&'a Record> for Params<'a> {
             tls: false,
             header: &record.header,
             address: &record.addr,
+            proto: proto_args(&record.proto),
         }
     }
 }
@@ -46,8 +48,19 @@ impl<'a> From<&'a Take> for Params<'a> {
             tls: false,
             header: &take.header,
             address: &take.addr,
+            proto: proto_args(&take.proto),
         }
     }
+}
+
+/// format proto filepaths into grpcurl arguments
+fn proto_args(protos: &Vec<PathBuf>) -> Vec<&str> {
+    protos
+        .iter()
+        .map(|x| vec!["-proto", x.to_str().unwrap()])
+        .flatten()
+        // .map(|x| format!("-proto {}", x.unwrap()))
+        .collect()
 }
 
 /// Parses a Frame Request and a Params object to send a gRPC payload using grpcurl
@@ -59,6 +72,7 @@ pub fn grpcurl(prm: &Params, req: Request) -> Result<Response, BoxError> {
     let req_cmd = Command::new("grpcurl")
         .arg("-H")
         .arg(prm.header)
+        .args(&prm.proto)
         .arg(tls)
         .arg("-d")
         .arg(req.to_payload()?)
@@ -98,7 +112,10 @@ impl TryFrom<&Vec<u8>> for ResponseError {
     fn try_from(stderr: &Vec<u8>) -> Result<ResponseError, Self::Error> {
         let stripped = cram_yaml(stderr);
         match serde_yaml::from_slice::<ResponseError>(&stripped) {
-            Err(_) => Err(String::from_utf8(stderr.clone())?.into()),
+            Err(_) => {
+                println!("{}", &String::from_utf8(stderr.clone())?);
+                Err("grpcurl error".into())
+            }
             Ok(err) => Ok(err),
         }
     }
