@@ -8,7 +8,7 @@ use std::result::Result;
 
 /// Represents the sequence of Frames to execute.
 ///
-/// [Reel spec](https://github.com/Bestowinc/filmReel/blob/supra_dump/Reel.md#reel)
+/// [Reel spec](https://github.com/Bestowinc/filmReel/blob/master/Reel.md#reel)
 pub struct Reel {
     frames: Vec<MetaFrame>,
 }
@@ -130,7 +130,7 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), Box<dyn Error>> {
     Ok((seq_f32, frame_type))
 }
 
-/// [Frame Types](https://github.com/Bestowinc/filmReel/blob/supra_dump/Reel.md#frame-type)
+/// [Frame Types](https://github.com/Bestowinc/filmReel/blob/master/Reel.md#frame-type)
 #[derive(PartialEq, Debug)]
 pub enum FrameType {
     Error,

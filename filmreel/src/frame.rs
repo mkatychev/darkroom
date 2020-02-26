@@ -9,7 +9,7 @@ use std::error::Error;
 
 /// Represents the entire deserialized frame file.
 ///
-/// [Frame spec](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame)
+/// [Frame spec](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Frame<'a> {
     protocol: Protocol,
@@ -127,7 +127,7 @@ impl<'a> Frame<'a> {
 
 /// Represents the protocol used to send the frame payload.
 ///
-/// [Protocol example](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature)
+/// [Protocol example](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame-nomenclature)
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum Protocol {
     #[serde(rename(serialize = "gRPC", deserialize = "gRPC"))]
@@ -137,7 +137,7 @@ enum Protocol {
 
 /// Encapsulates the request payload to be sent.
 ///
-/// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
+/// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 pub struct Request {
     body: Value,
@@ -160,7 +160,7 @@ impl Request {
 /// Register](::Cut::Register), `InstructionSet` should be immutable once
 /// initialized.
 ///
-/// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set)
+/// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/master/frame.md#cut-instruction-set)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 #[serde(default)]
 pub struct InstructionSet<'a> {
@@ -206,7 +206,7 @@ impl<'a> InstructionSet<'a> {
 
 /// Encapsulates the expected response payload.
 ///
-/// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
+/// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Debug, Default, PartialEq)]
 pub struct Response {
     pub body: Value,
@@ -269,7 +269,7 @@ impl Response {
 ///     "DATETIME" => ".response.body.timestamp"});
 /// ```
 ///
-/// [`"from"` key](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#from-to)
+/// [`"from"` key](https://github.com/Bestowinc/filmReel/blob/master/cut.md#from-to)
 #[macro_export]
 macro_rules! to {
     ({$( $key: expr => $val: expr ),*}) => {{
@@ -290,7 +290,7 @@ macro_rules! to {
 /// let read_instructions = from!["USER_ID", "USER_TOKEN"];
 /// ```
 ///
-/// [`"to"` key](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#from-to)
+/// [`"to"` key](https://github.com/Bestowinc/filmReel/blob/master/cut.md#from-to)
 // TODO check Cut Register during macro call
 #[macro_export]
 macro_rules! from {
