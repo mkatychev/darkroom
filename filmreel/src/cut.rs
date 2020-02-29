@@ -1,33 +1,31 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::ops::Range;
+use std::{collections::HashMap, ops::Range};
 
-use crate::error::FrError;
-use crate::utils::ordered_string_map;
+use crate::{error::FrError, utils::ordered_string_map};
 
-/// Holds Cut Variables and their corresonding values stored in a series of key/value pairs.
+/// Holds Cut Variables and their corresonding values stored in a series of
+/// key/value pairs.
 ///
 /// [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
-pub struct Register<'a> {
-    #[serde(serialize_with = "ordered_string_map", borrow, flatten)]
-    vars: Variables<'a>,
+pub struct Register {
+    #[serde(serialize_with = "ordered_string_map", flatten)]
+    vars: Variables,
 }
 
-const VAR_NAME_ERR: &'static str =
-"Only alphanumeric characters, dashes, and underscores are permitted in Cut Variable names => [A-za-z_]";
+const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscores are permitted \
+                            in Cut Variable names => [A-za-z_]";
 
 /// The Register's map of [Cut Variables]
 /// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-type Variables<'a> = HashMap<&'a str, String>;
+type Variables = HashMap<String, String>;
 
-#[allow(dead_code)] // FIXME
-impl<'a> Register<'a> {
+impl Register {
     /// Creates a new Register object running post deserialization validations
-    pub fn new(json_string: &str) -> Result<Register, FrError> {
-        let reg: Register = serde_json::from_str(json_string)?;
+    pub fn new<T: AsRef<str>>(json_string: T) -> Result<Register, FrError> {
+        let reg: Register = serde_json::from_str(json_string.as_ref())?;
         // reg.validate()?;
         Ok(reg)
     }
@@ -37,50 +35,46 @@ impl<'a> Register<'a> {
         serde_json::to_string_pretty(self).expect("serialization error")
     }
 
-    /// Inserts entry into the Register's Cut Variables/
+    /// Inserts entry into the Register's Cut Variables
     ///
-    /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
-    fn insert(&mut self, key: &'a str, val: String) -> Option<String> {
-        self.vars.insert(key, val)
+    /// Returns an Err if the key value is does not consist solely of
+    /// characters, dashes, and underscores.
+    fn insert<T>(&mut self, key: T, val: String) -> Option<String>
+    where T: ToString {
+        self.vars.insert(key.to_string(), val)
     }
 
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get_key_value(&self, key: &str) -> Option<(&&str, &String)> {
-        self.vars.get_key_value(key)
+    pub fn get_key_value<K: AsRef<str>>(&self, key: K) -> Option<(&String, &String)> {
+        self.vars.get_key_value(key.as_ref())
     }
 
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get(&self, key: &str) -> Option<&String> {
-        self.vars.get(key)
-    }
+    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&String> { self.vars.get(key.as_ref()) }
 
     /// An iterator visiting all Cut Variables in arbitrary order.
-    pub fn iter(&self) -> std::collections::hash_map::Iter<&str, String> {
-        self.vars.iter()
-    }
+    pub fn iter(&self) -> std::collections::hash_map::Iter<String, String> { self.vars.iter() }
 
     /// Returns a boolean indicating whether Register.vars contains a given key.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn contains_key(&self, key: &str) -> bool {
-        self.vars.contains_key(key)
-    }
+    pub fn contains_key(&self, key: &str) -> bool { self.vars.contains_key(key) }
 
-    /// Returns a vector of Match enums enums found in the string provided for use in cut
-    /// operations.
+    /// Returns a vector of Match enums enums found in the string provided for
+    /// use in cut operations.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
-    pub fn read_match(&self, json_string: &String) -> Result<Vec<Match>, FrError> {
+    pub fn read_match(&self, json_string: &str) -> Result<Vec<Match>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
                 (?P<esc_char>\\)?   # escape character
                 (?P<leading_b>\$\{) # leading brace
-                (?P<cut_var>[A-za-z_]+) # Cut Variable
+                (?P<cut_var>[A-za-z_0-9]+) # Cut Variable
                 (?P<trailing_b>})?  # trailing brace
                 "
             )
@@ -93,7 +87,7 @@ impl<'a> Register<'a> {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(esc_char) = mat.name("esc_char") {
                 matches.push(Match::Escape(esc_char.range().clone()));
-                continue;
+                continue
             }
 
             let full_match = mat.get(0).expect("capture missing");
@@ -103,21 +97,20 @@ impl<'a> Register<'a> {
                 return Err(FrError::FrameParsef(
                     "Missing trailing brace for Cut Variable",
                     full_match.as_str().to_string(),
-                ));
+                ))
             }
 
-            let (name, value) =
-                match self.get_key_value(mat.name("cut_var").expect("cut_var error").as_str()) {
-                    Some((&k, v)) => (k, v.to_owned()),
-                    None => continue,
-                };
-
-            // push valid match onto Match vec
-            matches.push(Match::Variable {
-                name,
-                value,
-                range: full_match.range(),
-            });
+            match self.get_key_value(mat.name("cut_var").expect("cut_var error").as_str()) {
+                Some((k, v)) => {
+                    // push valid match onto Match vec
+                    matches.push(Match::Variable {
+                        name:  k,
+                        value: v.into(),
+                        range: full_match.range(),
+                    });
+                },
+                None => continue,
+            };
         }
 
         // sort matches by start of each match range and reverse valid matches
@@ -128,12 +121,13 @@ impl<'a> Register<'a> {
         Ok(matches)
     }
 
-    /// Replaces a byte range in a given string with the range given in the ::Match provided.
+    /// Replaces a byte range in a given string with the range given in the
+    /// ::Match provided.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
     pub fn read_operation(&self, mat: Match, json_string: &mut String) -> Result<(), FrError> {
         if let Some(name) = mat.name() {
-            if let None = self.get_key_value(name) {
+            if self.get_key_value(name).is_none() {
                 FrError::ReadInstructionf("Key not present in Cut Register", name.to_string());
             }
         }
@@ -146,7 +140,8 @@ impl<'a> Register<'a> {
         var_name: &str,
         frame_str: &str,
         payload_str: &String,
-    ) -> Result<Option<String>, FrError> {
+    ) -> Result<Option<String>, FrError>
+    {
         let re = Regex::new(&format!(
             r"(?x)
                 (?P<head_val>.*)   # value preceding cut var
@@ -164,7 +159,7 @@ impl<'a> Register<'a> {
         for mat in re.captures_iter(frame_str) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(_) = mat.name("esc_char") {
-                continue;
+                continue
             }
 
             let head_val = mat.name("head_val").expect("head_val error").as_str();
@@ -172,7 +167,7 @@ impl<'a> Register<'a> {
             if !(payload_str.starts_with(head_val) && payload_str.ends_with(tail_val)) {
                 return Err(FrError::WriteInstruction(
                     "Frame String templating mismatch",
-                ));
+                ))
             }
 
             matches.push(
@@ -194,17 +189,13 @@ impl<'a> Register<'a> {
         }
     }
 
-    pub fn write_operation(
-        &mut self,
-        key: &'a str,
-        val: String,
-    ) -> Result<Option<String>, FrError> {
+    pub fn write_operation(&mut self, key: &str, val: String) -> Result<Option<String>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
-            return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()));
+            return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()))
         }
         Ok(self.insert(key, val))
     }
@@ -215,34 +206,26 @@ impl<'a> Register<'a> {
 pub enum Match<'a> {
     Escape(Range<usize>),
     Variable {
-        name: &'a str,
+        name:  &'a str,
         value: String,
         range: Range<usize>,
     },
 }
 
-#[allow(dead_code)] // FIXME
 impl<'a> Match<'a> {
-    /// the range over the starting and ending byte offsets for the corresonding Replacement.
+    /// the range over the starting and ending byte offsets for the corresonding
+    /// Replacement.
     fn range(&self) -> Range<usize> {
         match self {
             Match::Escape(range) => range.clone(),
-            Match::Variable {
-                name: _,
-                value: _,
-                range: r,
-            } => r.clone(),
+            Match::Variable { range: r, .. } => r.clone(),
         }
     }
 
     pub fn name(&self) -> Option<&'a str> {
         match self {
             Match::Escape(_) => None,
-            Match::Variable {
-                name: n,
-                value: _,
-                range: _,
-            } => Some(*n),
+            Match::Variable { name: n, .. } => Some(*n),
         }
     }
 
@@ -250,9 +233,9 @@ impl<'a> Match<'a> {
         match self {
             Match::Escape(range) => json_string.replace_range(range, ""),
             Match::Variable {
-                name: _,
                 value: val,
                 range: r,
+                ..
             } => json_string.replace_range(r, &val),
         }
     }
@@ -263,7 +246,7 @@ impl<'a> Match<'a> {
 #[macro_export]
 macro_rules! register {
     ({$( $key: expr => $val: expr ),*}) => {{
-        use crate::cut::Register;
+        use $crate::cut::Register;
 
         let mut reg = Register::default();
         $(reg.write_operation($key, $val.to_string()).expect("RegisterInsertError");)*
@@ -293,15 +276,16 @@ mod tests {
         );
     }
 
-    const TRAGIC_STORY: &str = "I thought not. It's not a story the Jedi would tell you.
-        It's a Sith legend. Darth Plagueis was a Dark Lord of the Sith, \
-        so powerful and so wise he could use the Force to influence the midichlorians to create life... \
-        He had such a knowledge of the dark side that he could even keep the ones he cared about from dying. \
-        The dark side of the Force is a pathway to many abilities some consider to be unnatural. \
-        He became so powerful... the only thing he was afraid of was losing his power, which eventually, of course, \
-        he did. Unfortunately, he taught his apprentice everything he knew, \
-        then his apprentice killed him in his sleep. \
-        It's ironic he could save others from death, but not himself.";
+    const TRAGIC_STORY: &str =
+        "I thought not. It's not a story the Jedi would tell you.
+        It's a Sith legend. Darth Plagueis was a Dark Lord of the Sith, so powerful and so wise he \
+         could use the Force to influence the midichlorians to create life... He had such a \
+         knowledge of the dark side that he could even keep the ones he cared about from dying. \
+         The dark side of the Force is a pathway to many abilities some consider to be unnatural. \
+         He became so powerful... the only thing he was afraid of was losing his power, which \
+         eventually, of course, he did. Unfortunately, he taught his apprentice everything he \
+         knew, then his apprentice killed him in his sleep. It's ironic he could save others from \
+         death, but not himself.";
 
     #[rstest(
         input,
