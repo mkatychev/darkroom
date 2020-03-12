@@ -55,15 +55,21 @@ impl Register {
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&String> { self.vars.get(key.as_ref()) }
+    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&String> {
+        self.vars.get(key.as_ref())
+    }
 
     /// An iterator visiting all Cut Variables in arbitrary order.
-    pub fn iter(&self) -> std::collections::hash_map::Iter<String, String> { self.vars.iter() }
+    pub fn iter(&self) -> std::collections::hash_map::Iter<String, String> {
+        self.vars.iter()
+    }
 
     /// Returns a boolean indicating whether Register.vars contains a given key.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn contains_key(&self, key: &str) -> bool { self.vars.contains_key(key) }
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.vars.contains_key(key)
+    }
 
     /// Returns a vector of Match enums enums found in the string provided for
     /// use in cut operations.
@@ -88,7 +94,7 @@ impl Register {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(esc_char) = mat.name("esc_char") {
                 matches.push(Match::Escape(esc_char.range().clone()));
-                continue
+                continue;
             }
 
             let full_match = mat.get(0).expect("capture missing");
@@ -98,18 +104,18 @@ impl Register {
                 return Err(FrError::FrameParsef(
                     "Missing trailing brace for Cut Variable",
                     full_match.as_str().to_string(),
-                ))
+                ));
             }
 
             match self.get_key_value(mat.name("cut_var").expect("cut_var error").as_str()) {
                 Some((k, v)) => {
                     // push valid match onto Match vec
                     matches.push(Match::Variable {
-                        name:  k,
+                        name: k,
                         value: v.into(),
                         range: full_match.range(),
                     });
-                },
+                }
                 None => continue,
             };
         }
@@ -141,8 +147,7 @@ impl Register {
         var_name: &str,
         frame_str: &str,
         payload_str: &String,
-    ) -> Result<Option<String>, FrError>
-    {
+    ) -> Result<Option<String>, FrError> {
         let re = Regex::new(&format!(
             r"(?x)
                 (?P<head_val>.*)   # value preceding cut var
@@ -160,7 +165,7 @@ impl Register {
         for mat in re.captures_iter(frame_str) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(_) = mat.name("esc_char") {
-                continue
+                continue;
             }
 
             let head_val = mat.name("head_val").expect("head_val error").as_str();
@@ -168,7 +173,7 @@ impl Register {
             if !(payload_str.starts_with(head_val) && payload_str.ends_with(tail_val)) {
                 return Err(FrError::WriteInstruction(
                     "Frame String templating mismatch",
-                ))
+                ));
             }
 
             matches.push(
@@ -196,7 +201,7 @@ impl Register {
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
-            return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()))
+            return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()));
         }
         Ok(self.insert(key, val))
     }
@@ -207,7 +212,7 @@ impl Register {
 pub enum Match<'a> {
     Escape(Range<usize>),
     Variable {
-        name:  &'a str,
+        name: &'a str,
         value: String,
         range: Range<usize>,
     },
@@ -277,8 +282,7 @@ mod tests {
         );
     }
 
-    const TRAGIC_STORY: &str =
-        "I thought not. It's not a story the Jedi would tell you.
+    const TRAGIC_STORY: &str = "I thought not. It's not a story the Jedi would tell you.
         It's a Sith legend. Darth Plagueis was a Dark Lord of the Sith, so powerful and so wise he \
          could use the Force to influence the midichlorians to create life... He had such a \
          knowledge of the dark side that he could even keep the ones he cared about from dying. \
