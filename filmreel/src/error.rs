@@ -4,6 +4,8 @@ use serde_json::error::Error as SerdeError;
 use std::error::Error;
 use std::fmt;
 
+pub type BoxError = Box<dyn Error>;
+
 /// An error that occurred during parsing or hydrating a filmReel file
 #[derive(Debug, PartialEq)]
 pub enum FrError {

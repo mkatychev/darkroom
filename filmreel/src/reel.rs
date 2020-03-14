@@ -1,7 +1,6 @@
-use crate::error::FrError;
+use crate::error::{BoxError, FrError};
 use glob::glob;
 use std::convert::TryFrom;
-use std::error::Error;
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::result::Result;
@@ -15,7 +14,7 @@ pub struct Reel {
 
 impl Reel {
     /// A new reel is created from a provided Path or PathBuf
-    pub fn new<P: AsRef<Path>>(dir: P, reel_name: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn new<P: AsRef<Path>>(dir: P, reel_name: &str) -> Result<Self, BoxError> {
         let mut frames = Vec::new();
         let dir_glob = dir.as_ref().join(format!("*.{}.*.fr.json", reel_name));
 
@@ -68,7 +67,7 @@ pub struct MetaFrame {
 }
 
 impl TryFrom<PathBuf> for MetaFrame {
-    type Error = Box<dyn Error>;
+    type Error = BoxError;
 
     fn try_from(p: PathBuf) -> Result<Self, Self::Error> {
         let mut reel_parts: Vec<&str> = match p
@@ -98,7 +97,7 @@ impl TryFrom<PathBuf> for MetaFrame {
     }
 }
 
-fn parse_sequence(seq: &str) -> Result<(f32, FrameType), Box<dyn Error>> {
+fn parse_sequence(seq: &str) -> Result<(f32, FrameType), BoxError> {
     let mut seq_chars: Vec<char> = Vec::new();
     let mut type_str: String = String::new();
     for ch in seq.chars() {
@@ -115,7 +114,9 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), Box<dyn Error>> {
                 seq_chars.push('.');
             }
             _ => {
-                FrError::ReelParsef("{} is an invalidsequence char!", ch.to_string());
+                return Err(
+                    FrError::ReelParsef("{} is an invalidsequence char!", ch.to_string()).into(),
+                )
             }
         }
     }

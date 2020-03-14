@@ -1,9 +1,8 @@
+use crate::{error::FrError, utils::ordered_string_map};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, ops::Range};
-
-use crate::{error::FrError, utils::ordered_string_map};
 
 /// Holds Cut Variables and their corresonding values stored in a series of
 /// key/value pairs.
@@ -135,7 +134,10 @@ impl Register {
     pub fn read_operation(&self, mat: Match, json_string: &mut String) -> Result<(), FrError> {
         if let Some(name) = mat.name() {
             if self.get_key_value(name).is_none() {
-                FrError::ReadInstructionf("Key not present in Cut Register", name.to_string());
+                return Err(FrError::ReadInstructionf(
+                    "Key not present in Cut Register",
+                    name.to_string(),
+                ));
             }
         }
         mat.read_operation(json_string);
@@ -146,7 +148,7 @@ impl Register {
     pub fn write_match(
         var_name: &str,
         frame_str: &str,
-        payload_str: &String,
+        payload_str: &str,
     ) -> Result<Option<String>, FrError> {
         let re = Regex::new(&format!(
             r"(?x)
@@ -164,7 +166,7 @@ impl Register {
         let mut matches: Vec<&str> = Vec::new();
         for mat in re.captures_iter(frame_str) {
             // continue if the leading brace is escaped but strip "\\" from the match
-            if let Some(_) = mat.name("esc_char") {
+            if mat.name("esc_char").is_some() {
                 continue;
             }
 

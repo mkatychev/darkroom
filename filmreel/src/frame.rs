@@ -1,11 +1,10 @@
 use crate::cut::Register;
-use crate::error::FrError;
+use crate::error::{BoxError, FrError};
 use crate::utils::{get_jql_string, ordered_set, ordered_str_map};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeError;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 
 /// Represents the entire deserialized frame file.
 ///
@@ -245,7 +244,7 @@ impl Response {
         &self,
         set: &'a InstructionSet,
         payload_response: &Response,
-    ) -> Result<Option<HashMap<&'a str, String>>, Box<dyn Error>> {
+    ) -> Result<Option<HashMap<&'a str, String>>, BoxError> {
         let frame_response: Value = self.to_frame_value()?;
         let payload_response: Value = payload_response.to_frame_value()?;
 
