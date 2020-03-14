@@ -309,7 +309,7 @@ mod tests {
             "My name is \\${FIRST_NAME} \\${LAST_NAME}",
             "My name is ${FIRST_NAME} ${LAST_NAME}"
         ),
-        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}", 
+        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}",
             &["Did you ever hear the tragedy of Darth Plagueis the Wise? ", TRAGIC_STORY].concat()),
     )]
     fn test_read_op(input: &str, expected: &str) {

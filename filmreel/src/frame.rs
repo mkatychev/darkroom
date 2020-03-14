@@ -64,9 +64,15 @@ impl<'a> Frame<'a> {
         Self::hydrate_val(&set, &mut self.request.etc, reg)?;
         Self::hydrate_val(&set, &mut self.response.body, reg)?;
         Self::hydrate_val(&set, &mut self.response.etc, reg)?;
+        if let Some(header) = &mut self.request.header {
+            Self::hydrate_val(&set, header, reg)?;
+        }
 
-        // URI is given an explicit read operation
+        // URI and endpoint is given an explicit read operation
         Self::hydrate_str(&set, &mut self.request.uri, reg)?;
+        if let Some(endpoint) = &mut self.request.endpoint {
+            Self::hydrate_str(&set, endpoint, reg)?;
+        }
         Ok(())
     }
 
@@ -141,6 +147,10 @@ enum Protocol {
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 pub struct Request {
     body: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    header: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    endpoint: Option<String>,
     #[serde(flatten)]
     etc: Value,
     uri: String,
@@ -311,28 +321,35 @@ mod tests {
     use serde_json::json;
 
     const FRAME_JSON: &str = r#"
-    {
-      "protocol": "gRPC",
-      "cut": {
-        "from": [
-          "FIRST",
-          "LAST",
-          "EMAIL",
-          "METHOD"
-        ]
-      },
-      "request": {
-        "body": {
-          "name": "${FIRST} ${LAST}",
-          "email": "${EMAIL}"
-        },
-        "uri":"user_api.User/${METHOD}"
-      },
-      "response": {
-        "body": "${RESPONSE}",
-        "status": 0
-      }
-    }
+{
+  "protocol": "gRPC",
+  "cut": {
+    "from": [
+      "EMAIL",
+      "FIRST",
+      "HOST",
+      "LAST",
+      "METHOD",
+      "PORT",
+      "USER_TOKEN"
+    ]
+  },
+  "request": {
+    "header": {
+      "Authorization": "${USER_TOKEN}"
+    },
+    "endpoint": "${HOST}:${PORT}",
+    "body": {
+      "name": "${FIRST} ${LAST}",
+      "email": "${EMAIL}"
+    },
+    "uri": "user_api.User/${METHOD}"
+  },
+  "response": {
+    "body": "${RESPONSE}",
+    "status": 0
+  }
+}
     "#;
 
     #[test]
@@ -340,8 +357,11 @@ mod tests {
         let reg = register!({
             "EMAIL"=> "new_user@humanmail.com",
             "FIRST"=> "Mario",
+            "HOST"=> "localhost",
             "LAST"=> "Rossi",
-            "METHOD"=> "CreateUser"
+            "METHOD"=> "CreateUser",
+            "PORT"=> "8080",
+            "USER_TOKEN"=> "Bearer jWt"
         });
         let mut frame: Frame = Frame::new(FRAME_JSON).unwrap();
         frame.hydrate(&reg).unwrap();
@@ -349,7 +369,15 @@ mod tests {
             Frame {
                 protocol: Protocol::GRPC,
                 cut: InstructionSet {
-                    reads: from!["METHOD", "FIRST", "LAST", "EMAIL"],
+                    reads: from![
+                        "EMAIL",
+                        "FIRST",
+                        "HOST",
+                        "LAST",
+                        "METHOD",
+                        "PORT",
+                        "USER_TOKEN"
+                    ],
                     writes: HashMap::new(),
                 },
                 request: Request {
@@ -357,8 +385,10 @@ mod tests {
                         "name": "Mario Rossi",
                         "email": "new_user@humanmail.com"
                     }),
+                    header: Some(json!({"Authorization": "Bearer jWt"})),
+                    endpoint: Some("localhost:8080".to_string()),
                     etc: json!({}),
-                    uri: String::from("user_api.User/CreateUser"),
+                    uri: "user_api.User/CreateUser".to_string(),
                 },
 
                 response: Response {
@@ -435,33 +465,35 @@ mod serde_tests {
     );
 
     const REQUEST_JSON: &str = r#"
-    {
-      "body": {
-        "email": "new_user@humanmail.com"
-      },
-      "uri": "user_api.User/CreateUser"
-    }
+{
+  "body": {
+    "email": "new_user@humanmail.com"
+  },
+  "uri": "user_api.User/CreateUser"
+}
     "#;
     test_ser_de!(
         request_ser,
         request_de,
         Request {
             body: json!({"email": "new_user@humanmail.com"}),
+            header: None,
+            endpoint: None,
             etc: json!({}),
-            uri: String::from("user_api.User/CreateUser"),
+            uri: "user_api.User/CreateUser".to_string(),
         },
         REQUEST_JSON
     );
 
     const REQUEST_ETC_JSON: &str = r#"
-    {
-      "header": {
-        "Authorization": "${USER_TOKEN}"
-      },
-      "id" : "007",
-      "body": {},
-      "uri": "POST /logout/${USER_ID}"
-    }
+{
+  "header": {
+    "Authorization": "${USER_TOKEN}"
+  },
+  "id": "007",
+  "body": {},
+  "uri": "POST /logout/${USER_ID}"
+}
     "#;
 
     test_ser_de!(
@@ -469,17 +501,19 @@ mod serde_tests {
         request_etc_de,
         Request {
             body: json!({}),
-            etc: json!({"header": { "Authorization": "${USER_TOKEN}" }, "id": "007"}),
-            uri: String::from("POST /logout/${USER_ID}"),
+            header: Some(json!({"Authorization": "${USER_TOKEN}"})),
+            endpoint: None,
+            etc: json!({"id": "007"}),
+            uri: "POST /logout/${USER_ID}".to_string(),
         },
         REQUEST_ETC_JSON
     );
 
     const RESPONSE_JSON: &str = r#"
-    {
-      "body": "created user: ${USER_ID}",
-      "status": 0
-    }
+{
+  "body": "created user: ${USER_ID}",
+  "status": 0
+}
     "#;
     test_ser_de!(
         response_ser,
@@ -493,11 +527,11 @@ mod serde_tests {
     );
 
     const RESPONSE_ETC_JSON: &str = r#"
-    {
-      "body": "created user: ${USER_ID}",
-      "user_level": "admin",
-      "status": 0
-    }
+{
+  "body": "created user: ${USER_ID}",
+  "user_level": "admin",
+  "status": 0
+}
     "#;
     test_ser_de!(
         response_etc_ser,
@@ -511,16 +545,16 @@ mod serde_tests {
     );
 
     const INSTRUCTION_SET_JSON: &str = r#"
-    {
-      "from": [
-        "USER_ID",
-        "USER_TOKEN"
-      ],
-      "to": {
-        "SESSION_ID": ".response.body.session_id",
-        "DATETIME": ".response.body.timestamp"
-      }
-    }
+{
+  "from": [
+    "USER_ID",
+    "USER_TOKEN"
+  ],
+  "to": {
+    "SESSION_ID": ".response.body.session_id",
+    "DATETIME": ".response.body.timestamp"
+  }
+}
     "#;
     test_ser_de!(
         instruction_set_ser,
@@ -536,34 +570,34 @@ mod serde_tests {
     );
 
     const FRAME_JSON: &str = r#"
-    {
-      "protocol": "HTTP",
-      "cut": {
-        "from": [
-          "USER_ID",
-          "USER_TOKEN"
-        ],
-        "to": {
-          "SESSION_ID": ".response.body.session_id",
-          "DATETIME": ".response.body.timestamp"
-        }
-      },
-      "request": {
-        "header": {
-          "Authorization": "${USER_TOKEN}"
-        },
-        "body": {},
-        "uri": "POST /logout/${USER_ID}"
-      },
-      "response": {
-        "body": {
-          "message": "User ${USER_ID} logged out",
-          "session_id": "${SESSION_ID}",
-          "timestamp": "${DATETIME}"
-        },
-        "status": 200
-      }
+{
+  "protocol": "HTTP",
+  "cut": {
+    "from": [
+      "USER_ID",
+      "USER_TOKEN"
+    ],
+    "to": {
+      "SESSION_ID": ".response.body.session_id",
+      "DATETIME": ".response.body.timestamp"
     }
+  },
+  "request": {
+    "header": {
+      "Authorization": "${USER_TOKEN}"
+    },
+    "body": {},
+    "uri": "POST /logout/${USER_ID}"
+  },
+  "response": {
+    "body": {
+      "message": "User ${USER_ID} logged out",
+      "session_id": "${SESSION_ID}",
+      "timestamp": "${DATETIME}"
+    },
+    "status": 200
+  }
+}
     "#;
     test_ser_de!(
         frame_ser,
@@ -577,8 +611,10 @@ mod serde_tests {
             },
             request: Request {
                 body: json!({}),
-                etc: json!({"header": { "Authorization": "${USER_TOKEN}"}}),
-                uri: String::from("POST /logout/${USER_ID}"),
+                header: Some(json!({ "Authorization": "${USER_TOKEN}" })),
+                uri: "POST /logout/${USER_ID}".to_string(),
+                etc: json!({}),
+                ..Default::default()
             },
 
             response: Response {
@@ -594,17 +630,17 @@ mod serde_tests {
         FRAME_JSON
     );
     const SIMPLE_FRAME_JSON: &str = r#"
-    {
-      "protocol": "HTTP",
-      "request": {
-        "body": {},
-        "uri": "POST /logout/${USER_ID}"
-      },
-      "response": {
-        "body": {},
-        "status": 200
-      }
-    }
+{
+  "protocol": "HTTP",
+  "request": {
+    "body": {},
+    "uri": "POST /logout/${USER_ID}"
+  },
+  "response": {
+    "body": {},
+    "status": 200
+  }
+}
     "#;
     test_ser_de!(
         simple_frame_ser,
@@ -615,7 +651,8 @@ mod serde_tests {
             request: Request {
                 body: json!({}),
                 etc: json!({}),
-                uri: String::from("POST /logout/${USER_ID}"),
+                uri: "POST /logout/${USER_ID}".to_string(),
+                ..Default::default()
             },
 
             response: Response {

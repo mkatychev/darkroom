@@ -1,14 +1,12 @@
-use crate::grpc::*;
-use crate::take::*;
-use crate::{BoxError, Record};
+use crate::{grpc::*, take::*, BoxError, Record};
 use colored::*;
 use filmreel as fr;
-use filmreel::cut::Register;
-use filmreel::frame::Frame;
-use filmreel::reel::*;
+use filmreel::{cut::Register, frame::Frame, reel::*};
 use log::{debug, warn};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 pub fn run_record(cmd: Record) -> Result<(), BoxError> {
     dbg!(cmd.get_cut_file());
