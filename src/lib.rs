@@ -1,9 +1,9 @@
 use argh::FromArgs;
-use log;
 use std::error::Error;
 use std::path::PathBuf;
 
 pub mod grpc;
+pub mod params;
 pub mod record;
 pub mod take;
 
@@ -66,7 +66,7 @@ pub struct Take {
 
     /// address passed to grpcurl
     #[argh(positional)]
-    addr: String,
+    addr: Option<String>,
 
     /// filepath of cut file
     #[argh(option, short = 'c')]
@@ -74,7 +74,7 @@ pub struct Take {
 
     /// args passed to grpcurl
     #[argh(option, short = 'H')]
-    header: String,
+    header: Option<String>,
 
     /// output of take file
     #[argh(option, short = 'o')]
@@ -95,11 +95,11 @@ pub struct Record {
 
     /// header string passed to grpcurl
     #[argh(option, short = 'H')]
-    header: String,
+    header: Option<String>,
 
     /// address passed to grpcurl
     #[argh(option, short = 'a')]
-    addr: String,
+    addr: Option<String>,
 
     /// filepath of output cut file
     #[argh(option, short = 'c')]

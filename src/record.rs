@@ -1,4 +1,5 @@
 use crate::grpc::*;
+use crate::params::BaseParams;
 use crate::take::*;
 use crate::{BoxError, Record};
 use colored::*;
@@ -15,6 +16,7 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register = Register::new(&cut_str)?;
     let reel = Reel::new(&cmd.path, &cmd.name)?;
+    let base_params = BaseParams::from(&cmd);
     for meta_frame in reel {
         let output = cmd
             .output
@@ -31,15 +33,18 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
         warn!("{}", "=======================".green());
 
         let frame_str = fr::file_to_string(&meta_frame.path)?;
-        let mut frame = Frame::new(&frame_str)?;
+        let frame = Frame::new(&frame_str)?;
+        // Frame to be mutably borrowed
+        let mut payload_frame = frame.clone();
+
         let payload_response = run_request(
-            &mut frame,
+            &mut payload_frame,
             &cut_register,
-            &Params::from(&cmd),
+            base_params.init(frame.get_request())?,
             cmd.interactive,
         )?;
         process_response(
-            &mut frame,
+            &mut payload_frame,
             &mut cut_register,
             payload_response,
             None,

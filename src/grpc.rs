@@ -1,13 +1,12 @@
+use crate::params::Params;
 use crate::{BoxError, Record, Take};
 use filmreel::frame::{Request, Response};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serde_yaml;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::process::Command;
-use which;
 
 /// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), &'static str> {
@@ -20,38 +19,8 @@ pub fn validate_grpcurl() -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Parameters needed for a uri method to be sent.
-#[derive(Debug)]
-pub struct Params<'a> {
-    tls: bool,
-    header: &'a String,
-    address: &'a String,
-}
-
-impl<'a> From<&'a Record> for Params<'a> {
-    fn from(record: &'a Record) -> Self {
-        Self {
-            // TODO handle tls
-            tls: false,
-            header: &record.header,
-            address: &record.addr,
-        }
-    }
-}
-
-impl<'a> From<&'a Take> for Params<'a> {
-    fn from(take: &'a Take) -> Self {
-        Self {
-            // TODO handle tls
-            tls: false,
-            header: &take.header,
-            address: &take.addr,
-        }
-    }
-}
-
 /// Parses a Frame Request and a Params object to send a gRPC payload using grpcurl
-pub fn grpcurl(prm: &Params, req: Request) -> Result<Response, BoxError> {
+pub fn grpcurl(prm: Params, req: Request) -> Result<Response, BoxError> {
     validate_grpcurl()?;
 
     let tls = if prm.tls { "" } else { "-plaintext" };
@@ -63,7 +32,7 @@ pub fn grpcurl(prm: &Params, req: Request) -> Result<Response, BoxError> {
         .arg("-d")
         .arg(req.to_payload()?)
         .arg(prm.address)
-        .arg(req.uri())
+        .arg(req.get_uri())
         .output()?;
 
     let response: Response = match req_cmd.status.code() {

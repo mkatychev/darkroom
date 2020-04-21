@@ -1,7 +1,6 @@
 use darkroom::record::run_record;
 use darkroom::take::single_take;
 use darkroom::*;
-use log;
 
 fn main() -> Result<(), BoxError> {
     let args: Command = argh::from_env();

@@ -1,4 +1,5 @@
-use crate::grpc::{grpcurl, Params};
+use crate::grpc::grpcurl;
+use crate::params::{BaseParams, Params};
 use crate::{BoxError, Take};
 use colored::*;
 use colored_diff::PrettyDifference;
@@ -17,7 +18,7 @@ use std::path::PathBuf;
 pub fn run_request<'a>(
     frame: &'a mut Frame,
     register: &'a Register,
-    params: &Params,
+    params: Params,
     interactive: bool,
 ) -> Result<Response, BoxError> {
     let unhydrated_frame: Option<String> = if interactive {
@@ -139,12 +140,20 @@ pub fn single_take(cmd: Take) -> Result<(), BoxError> {
     let frame_str = fr::file_to_string(&cmd.frame)?;
     let cut_str = fr::file_to_string(&cmd.cut)?;
 
-    let mut frame = Frame::new(&frame_str)?;
+    // Frame to be mutably borrowed
+    let frame = Frame::new(&frame_str)?;
+    let mut payload_frame = frame.clone();
+    let base_params = BaseParams::from(&cmd);
     let mut cut_register = Register::new(&cut_str)?;
-    let response = run_request(&mut frame, &cut_register, &Params::from(&cmd), false)?;
+    let response = run_request(
+        &mut payload_frame,
+        &cut_register,
+        base_params.init(frame.get_request())?,
+        false,
+    )?;
 
     process_response(
-        &mut frame,
+        &mut payload_frame,
         &mut cut_register,
         response,
         Some(&cmd.cut),

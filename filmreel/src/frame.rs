@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 /// Represents the entire deserialized frame file.
 ///
 /// [Frame spec](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame)
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Frame<'a> {
     protocol: Protocol,
     // Both the reads and writes can be optional
@@ -133,7 +133,7 @@ impl<'a> Frame<'a> {
 /// Represents the protocol used to send the frame payload.
 ///
 /// [Protocol example](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature)
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 enum Protocol {
     #[serde(rename(serialize = "gRPC", deserialize = "gRPC"))]
     GRPC,
@@ -160,14 +160,21 @@ impl Request {
         serde_json::to_string_pretty(&self.body)
     }
 
-    pub fn uri(&self) -> String {
+    pub fn get_uri(&self) -> String {
         self.uri.clone()
+    }
+
+    pub fn get_header(&self) -> Option<Value> {
+        self.header.clone()
+    }
+
+    pub fn get_endpoint(&self) -> Option<String> {
+        self.endpoint.clone()
     }
 }
 
-/// Contains read and write instructions for the [Cut
-/// Register](::Cut::Register), `InstructionSet` should be immutable once
-/// initialized.
+/// Contains read and write instructions for the [Cut Register](::Cut::Register),
+/// `InstructionSet` should be immutable once initialized.
 ///
 /// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#cut-instruction-set)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
