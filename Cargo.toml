@@ -20,15 +20,17 @@ members = [
 ]
 
 [dependencies]
-colored_json = "2"
 argh = "0.1"
-lazy_static = "1.4"
-which = "3.1"
 colored = "1.9"
+colored-diff = "0.2"
+colored_json = "2"
 filmreel = { version = "0.1", path = "filmreel" }
+lazy_static = "1.4"
 log = { version = "0.4", features = ["std"] }
+prettytable-rs = "^0.8"
+reqwest = { version = "0.10", features = ["blocking", "json"] }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.44"
 serde_yaml = "0.8"
-colored-diff = "0.2"
-prettytable-rs = "^0.8"
+url = "2.1"
+which = "3.1"

@@ -3,6 +3,7 @@ use std::error::Error;
 use std::path::PathBuf;
 
 pub mod grpc;
+pub mod http;
 pub mod params;
 pub mod record;
 pub mod take;

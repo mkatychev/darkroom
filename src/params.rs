@@ -1,8 +1,9 @@
 use crate::{BoxError, Record, Take};
 use filmreel::frame::Request;
+use url::Url;
 
 /// Parameters needed for a uri method to be sent.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Params {
     pub tls: bool,
     pub header: String,
@@ -59,5 +60,51 @@ impl<'a> BaseParams<'a> {
             header,
             address,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use filmreel::frame::{Frame, Request};
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_init() {
+        let take = &Take {
+            frame: PathBuf::new(),
+            addr: Some("www.initial_addr.com".to_string()),
+            cut: PathBuf::new(),
+            header: Some("initial_header".to_string()),
+            output: None,
+        };
+        let request: Request = serde_json::from_str::<Frame>(
+            r#"
+{
+  "protocol": "HTTP",
+  "request": {
+    "body": {},
+    "header": "Bearer: BIG_BEAR",
+    "endpoint": "localhost:8000",
+    "uri": "POST /it/notes"
+  },
+  "response": {
+    "body": {},
+    "status": 200
+  }
+}
+    "#,
+        )
+        .unwrap()
+        .get_request();
+        let params: Params = BaseParams::from(take).init(request).unwrap();
+        assert_eq!(
+            Params {
+                tls: false,
+                header: "\"Bearer: BIG_BEAR\"".to_string(),
+                address: "localhost:8000".to_string(),
+            },
+            params
+        )
     }
 }
