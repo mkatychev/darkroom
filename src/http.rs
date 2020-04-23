@@ -26,7 +26,7 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxErr
         _ => return Err("unable to parse request uri field".into()),
     };
 
-    Ok(Client::builder().build()?.request(method, tail))
+    Ok(Client::builder().build()?.request(method, tail).header())
 }
 
 // pub fn http_request(prm: Params, req: Request) -> Result<Response, BoxError> {
