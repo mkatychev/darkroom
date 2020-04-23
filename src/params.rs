@@ -54,14 +54,14 @@ impl<'a> BaseParams<'a> {
         };
 
         let address = match request.get_endpoint() {
-            Some(i) => i.to_string(),
+            Some(i) => i,
             None => self.address.clone().ok_or("missing address")?,
         };
 
-        return Ok(Params {
+        Ok(Params {
             tls: self.tls,
             header,
             address,
-        });
+        })
     }
 }

@@ -130,6 +130,7 @@ impl Record {
         if !self.path.is_dir() {
             return Err("<path> must be a valid directory");
         }
+
         if let Some(cut) = &self.cut {
             if !cut.is_file() {
                 return Err("<cut> must be a valid file");

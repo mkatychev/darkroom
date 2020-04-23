@@ -1,5 +1,5 @@
 use crate::params::Params;
-use crate::{BoxError, Record, Take};
+use crate::BoxError;
 use filmreel::frame::{Request, Response};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
