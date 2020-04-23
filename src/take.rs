@@ -55,7 +55,7 @@ pub fn run_request<'a>(
             format!("Press {} to continue...", "ENTER".yellow())
         )
         .expect("write to stdout panic");
-        stdout.flush().expect("stoud flush panic");
+        stdout.flush().expect("stdout flush panic");
 
         // Read a single byte and discard
         let _ = stdin.read(&mut [0u8]).expect("read stdin panic");
@@ -125,7 +125,7 @@ pub fn process_response<'a>(
 
     // If an output was specified create a take file
     if let Some(frame_out) = output {
-        debug!("creating take recepit...");
+        debug!("creating take receipt...");
         fs::write(frame_out, frame.to_string_pretty())?;
     }
     if payload_response != frame.response {

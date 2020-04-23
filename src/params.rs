@@ -17,18 +17,12 @@ pub struct BaseParams<'a> {
     address: &'a Option<String>,
 }
 
-// /// Parameters initially pulled from
-// impl<'a> From<&'a Frame> for Params<'a> {
-//     fn from(record: &'a Record, frame: &'a Request) -> Self {
-//     }
-
 impl<'a> From<&'a Record> for BaseParams<'a> {
     fn from(record: &'a Record) -> Self {
         Self {
-            // TODO handle tls
-            tls: false,
+            tls: record.tls,
             header: &record.header,
-            address: &record.addr,
+            address: &record.address,
         }
     }
 }
@@ -37,14 +31,16 @@ impl<'a> From<&'a Take> for BaseParams<'a> {
     fn from(take: &'a Take) -> Self {
         Self {
             // TODO handle tls
-            tls: false,
+            tls: take.tls,
             header: &take.header,
-            address: &take.addr,
+            address: &take.address,
         }
     }
 }
 
 impl<'a> BaseParams<'a> {
+    /// init provides a frame's request properties to override or populated
+    /// parameter fields desired by a specific Frame
     pub fn init(&self, request: Request) -> Result<Params, BoxError> {
         // let request = frame.get_request();
 

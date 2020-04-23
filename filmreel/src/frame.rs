@@ -120,7 +120,7 @@ impl<'a> Frame<'a> {
                             n.to_string(),
                         ));
                     }
-                    // Now that the cut var is confirmed to exist in the entire instuction set
+                    // Now that the cut var is confirmed to exist in the entire instruction set
                     // perform read operation ony if cut var is present in read instructions
                     reg.read_operation(mat, string)?;
                 }

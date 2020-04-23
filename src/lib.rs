@@ -56,52 +56,60 @@ pub enum SubCommand {
     Record(Record),
 }
 
-/// Takes a single frame, sends the request and compares the returned response
+/// Takes a single frame, emitting the request then validating the returned response
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "take")]
 pub struct Take {
-    /// frame to process
+    /// path of the frame to process
     #[argh(positional)]
     frame: PathBuf,
 
-    /// address passed to grpcurl
+    /// enable TLS
+    #[argh(switch)]
+    tls: bool,
+
+    /// fallback address passed to the specified protocol
     #[argh(positional)]
-    addr: Option<String>,
+    address: Option<String>,
 
-    /// filepath of cut file
-    #[argh(option, short = 'c')]
-    cut: PathBuf,
-
-    /// args passed to grpcurl
+    /// fallback header passed to the specified protocol
     #[argh(option, short = 'H')]
     header: Option<String>,
+
+    /// filepath of input cut file
+    #[argh(option, short = 'c')]
+    cut: PathBuf,
 
     /// output of take file
     #[argh(option, short = 'o')]
     output: Option<PathBuf>,
 }
 
-/// Attemps to play through an entire Reel sequence
+/// Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "record")]
 pub struct Record {
-    /// directory where frames and cut register is located
+    /// directory path where frames and (if no explicit cut is provided) the cut are to be found
     #[argh(positional)]
-    path: PathBuf,
+    reel_path: PathBuf,
 
-    /// name of the reel
+    /// name of the reel, used to find corresponding frames for the path provided
     #[argh(positional)]
-    name: String,
+    reel_name: String,
 
-    /// header string passed to grpcurl
+    /// enable TLS
+    #[argh(switch)]
+    tls: bool,
+
+    /// fallback address passed to the specified protocol if not provided by the frame itself
+    #[argh(option, short = 'a')]
+    address: Option<String>,
+
+    /// fallback header passed to the specified protocol if not provided by the frame itself
     #[argh(option, short = 'H')]
     header: Option<String>,
 
-    /// address passed to grpcurl
-    #[argh(option, short = 'a')]
-    addr: Option<String>,
-
-    /// filepath of output cut file
+    /// filepath of input cut file
     #[argh(option, short = 'c')]
     cut: Option<PathBuf>,
 
@@ -127,7 +135,7 @@ impl Take {
 }
 impl Record {
     pub fn validate(&self) -> Result<(), &str> {
-        if !self.path.is_dir() {
+        if !self.reel_path.is_dir() {
             return Err("<path> must be a valid directory");
         }
 
@@ -152,11 +160,16 @@ impl Record {
 
     /// Returns expected cut filename in the given directory with the provided reel name
     pub fn get_cut_file(&self) -> PathBuf {
-        self.path.join(format!("{}.cut.json", self.name))
+        if let Some(cut) = &self.cut {
+            return cut.clone();
+        }
+
+        self.reel_path.join(format!("{}.cut.json", self.reel_name))
     }
 
-    /// Checks for the existence of a copy cut file in the given directory with the provided reel name
+    /// Returns a period  appended path of the current cut file attempting to reduce the likelihood
+    /// that the original cut will be overwritten or for the output to be committed to version control
     pub fn get_cut_copy(&self) -> PathBuf {
-        self.path.join(format!(".{}.cut.json", self.name))
+        self.reel_path.join(format!(".{:?}", self.get_cut_file()))
     }
 }

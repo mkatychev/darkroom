@@ -14,7 +14,7 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
     dbg!(cmd.get_cut_file());
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register = Register::new(&cut_str)?;
-    let reel = Reel::new(&cmd.path, &cmd.name)?;
+    let reel = Reel::new(&cmd.reel_path, &cmd.reel_name)?;
     let base_params = BaseParams::from(&cmd);
     for meta_frame in reel {
         let output = cmd

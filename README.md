@@ -17,7 +17,7 @@ Options:
 Commands:
   take              Takes a single frame, sends the request and compares the
                     returned response
-  record            Attemps to play through an entire Reel sequence
+  record            Attempts to play through an entire Reel sequence
 
 ```
 
@@ -42,7 +42,7 @@ Options:
 ```
 Usage: target/debug/dark record <path> <name> [-H <header>] [-a <addr>] [-c <cut>] [-o <output>] [-i]
 
-Attemps to play through an entire Reel sequence
+Attempts to play through an entire Reel sequence
 
 Options:
   -H, --header      header string passed to grpcurl

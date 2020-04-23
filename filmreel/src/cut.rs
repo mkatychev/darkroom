@@ -4,7 +4,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, ops::Range};
 
-/// Holds Cut Variables and their corresonding values stored in a series of
+/// Holds Cut Variables and their corresponding values stored in a series of
 /// key/value pairs.
 ///
 /// [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
@@ -221,7 +221,7 @@ pub enum Match<'a> {
 }
 
 impl<'a> Match<'a> {
-    /// the range over the starting and ending byte offsets for the corresonding
+    /// the range over the starting and ending byte offsets for the corresponding
     /// Replacement.
     fn range(&self) -> Range<usize> {
         match self {
