@@ -12,11 +12,14 @@ use std::path::{Path, PathBuf};
 
 pub fn run_record(cmd: Record) -> Result<(), BoxError> {
     dbg!(cmd.get_cut_file());
+    dbg!(&cmd.output);
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register = Register::new(&cut_str)?;
+    dbg!(&cut_register);
     let reel = Reel::new(&cmd.reel_path, &cmd.reel_name)?;
     let base_params = BaseParams::from(&cmd);
     for meta_frame in reel {
+        // if cmd.output is Some, provide a take PathBuf
         let output = cmd
             .output
             .as_ref()
@@ -51,8 +54,11 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
         )?;
     }
 
-    debug!("writing to cut file...");
-    fs::write(cmd.get_cut_copy(), &cut_register.to_string_pretty())?;
+    if let Some(_) = cmd.output {
+        debug!("writing to cut file...");
+        fs::write(cmd.get_cut_copy(), &cut_register.to_string_pretty())
+            .expect("unable to write to cmd.get_cut_copy()");
+    }
 
     Ok(())
 }

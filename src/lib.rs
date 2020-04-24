@@ -139,6 +139,8 @@ impl Record {
             return Err("<path> must be a valid directory");
         }
 
+        // this permits `zsh =(thing)` FIFO syntax
+        // https://superuser.com/questions/1059781/what-exactly-is-in-bash-and-in-zsh
         if let Some(cut) = &self.cut {
             if !cut.is_file() {
                 return Err("<cut> must be a valid file");
@@ -170,6 +172,6 @@ impl Record {
     /// Returns a period  appended path of the current cut file attempting to reduce the likelihood
     /// that the original cut will be overwritten or for the output to be committed to version control
     pub fn get_cut_copy(&self) -> PathBuf {
-        self.reel_path.join(format!(".{:?}", self.get_cut_file()))
+        self.reel_path.join(format!(".{}.cut.json", self.reel_name))
     }
 }

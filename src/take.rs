@@ -61,9 +61,9 @@ pub fn run_request<'a>(
         let _ = stdin.read(&mut [0u8]).expect("read stdin panic");
     } else {
         info!("[{}] frame:", "Hydrated".green());
-        info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
-        info!("\n");
         info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
+        info!("\n");
+        info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
         info!("{}", "=======================".magenta());
         info!("\n");
     }
