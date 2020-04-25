@@ -25,6 +25,7 @@ colored = "1.9"
 colored-diff = "0.2"
 colored_json = "2"
 filmreel = { version = "0.1", path = "filmreel" }
+http = "0.2"
 lazy_static = "1.4"
 log = { version = "0.4", features = ["std"] }
 prettytable-rs = "^0.8"

@@ -1,6 +1,7 @@
 use crate::params::Params;
 use crate::BoxError;
 use filmreel::frame::{Request, Response};
+use http::header::HeaderMap;
 use lazy_static::lazy_static;
 use reqwest::blocking::*;
 use reqwest::Method;
@@ -14,19 +15,30 @@ use url::Url;
 
 /// Parses a Frame Request and a Params object to send a HTTP payload using reqwest
 pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxError> {
-    // let (_method: Method, _endpoint: String, ..) =
+    // let (_method: Method, _entrypoint: String, ..) =
     let method: Method;
-    let tail: Url;
+    let endpoint: Url;
 
     match req.get_uri().split(" ").collect::<Vec<&str>>().as_slice() {
         [method_str, tail_str] => {
             method = Method::from_bytes(method_str.as_bytes())?;
-            tail = Url::parse(prm.address.as_str())?.join(tail_str)?;
+            endpoint = Url::parse(prm.address.as_str())?.join(tail_str)?;
         }
         _ => return Err("unable to parse request uri field".into()),
     };
 
-    Ok(Client::builder().build()?.request(method, tail).header())
+    Ok(Client::builder()
+        .build()?
+        .request(method, endpoint)
+        .headers(build_header(&prm.header)?))
+}
+
+fn build_header(header: &str) -> Result<HeaderMap, BoxError> {
+    let map: HashMap<String, String> = serde_json::from_str(header)?;
+    return match HeaderMap::try_from(&map) {
+        Ok(m) => Ok(m),
+        Err(m) => Err(m.into()),
+    };
 }
 
 // pub fn http_request(prm: Params, req: Request) -> Result<Response, BoxError> {

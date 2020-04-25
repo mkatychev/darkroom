@@ -50,7 +50,7 @@ impl<'a> BaseParams<'a> {
             None => self.header.clone().ok_or("missing header")?,
         };
 
-        let address = match request.get_endpoint() {
+        let address = match request.get_entrypoint() {
             Some(i) => i,
             None => self.address.clone().ok_or("missing address")?,
         };
@@ -72,8 +72,9 @@ mod tests {
     #[test]
     fn test_init() {
         let take = &Take {
+            tls: false,
             frame: PathBuf::new(),
-            addr: Some("www.initial_addr.com".to_string()),
+            address: Some("www.initial_addr.com".to_string()),
             cut: PathBuf::new(),
             header: Some("initial_header".to_string()),
             output: None,
@@ -84,8 +85,8 @@ mod tests {
   "protocol": "HTTP",
   "request": {
     "body": {},
-    "header": "Bearer: BIG_BEAR",
-    "endpoint": "localhost:8000",
+    "header": "Authorization: Bearer BIG_BEAR",
+    "entrypoint": "localhost:8000",
     "uri": "POST /it/notes"
   },
   "response": {
@@ -101,7 +102,7 @@ mod tests {
         assert_eq!(
             Params {
                 tls: false,
-                header: "\"Bearer: BIG_BEAR\"".to_string(),
+                header: "\"Authorization: Bearer BIG_BEAR\"".to_string(),
                 address: "localhost:8000".to_string(),
             },
             params

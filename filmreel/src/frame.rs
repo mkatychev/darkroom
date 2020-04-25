@@ -67,10 +67,10 @@ impl<'a> Frame<'a> {
             Self::hydrate_val(&set, header, reg)?;
         }
 
-        // URI and endpoint is given an explicit read operation
+        // URI and entrypoint is given an explicit read operation
         Self::hydrate_str(&set, &mut self.request.uri, reg)?;
-        if let Some(endpoint) = &mut self.request.endpoint {
-            Self::hydrate_str(&set, endpoint, reg)?;
+        if let Some(entrypoint) = &mut self.request.entrypoint {
+            Self::hydrate_str(&set, entrypoint, reg)?;
         }
         Ok(())
     }
@@ -140,39 +140,6 @@ enum Protocol {
     HTTP,
 }
 
-/// Encapsulates the request payload to be sent.
-///
-/// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
-#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
-pub struct Request {
-    body: Value,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    header: Option<Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    endpoint: Option<String>,
-    #[serde(flatten)]
-    etc: Value,
-    uri: String,
-}
-
-impl Request {
-    pub fn to_payload(&self) -> Result<String, SerdeError> {
-        serde_json::to_string_pretty(&self.body)
-    }
-
-    pub fn get_uri(&self) -> String {
-        self.uri.clone()
-    }
-
-    pub fn get_header(&self) -> Option<Value> {
-        self.header.clone()
-    }
-
-    pub fn get_endpoint(&self) -> Option<String> {
-        self.endpoint.clone()
-    }
-}
-
 /// Contains read and write instructions for the [Cut Register](::Cut::Register),
 /// `InstructionSet` should be immutable once initialized.
 ///
@@ -217,6 +184,39 @@ impl<'a> InstructionSet<'a> {
             ));
         }
         Ok(())
+    }
+}
+
+/// Encapsulates the request payload to be sent.
+///
+/// [Request Object](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#request)
+#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
+pub struct Request {
+    body: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    header: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    entrypoint: Option<String>,
+    #[serde(flatten)]
+    etc: Value,
+    uri: String,
+}
+
+impl Request {
+    pub fn to_payload(&self) -> Result<String, SerdeError> {
+        serde_json::to_string_pretty(&self.body)
+    }
+
+    pub fn get_uri(&self) -> String {
+        self.uri.clone()
+    }
+
+    pub fn get_header(&self) -> Option<Value> {
+        self.header.clone()
+    }
+
+    pub fn get_entrypoint(&self) -> Option<String> {
+        self.entrypoint.clone()
     }
 }
 
@@ -344,7 +344,7 @@ mod tests {
     "header": {
       "Authorization": "${USER_TOKEN}"
     },
-    "endpoint": "${HOST}:${PORT}",
+    "entrypoint": "${HOST}:${PORT}",
     "body": {
       "name": "${FIRST} ${LAST}",
       "email": "${EMAIL}"
@@ -392,7 +392,7 @@ mod tests {
                         "email": "new_user@humanmail.com"
                     }),
                     header: Some(json!({"Authorization": "Bearer jWt"})),
-                    endpoint: Some("localhost:8080".to_string()),
+                    entrypoint: Some("localhost:8080".to_string()),
                     etc: json!({}),
                     uri: "user_api.User/CreateUser".to_string(),
                 },
@@ -484,7 +484,7 @@ mod serde_tests {
         Request {
             body: json!({"email": "new_user@humanmail.com"}),
             header: None,
-            endpoint: None,
+            entrypoint: None,
             etc: json!({}),
             uri: "user_api.User/CreateUser".to_string(),
         },
@@ -508,7 +508,7 @@ mod serde_tests {
         Request {
             body: json!({}),
             header: Some(json!({"Authorization": "${USER_TOKEN}"})),
-            endpoint: None,
+            entrypoint: None,
             etc: json!({"id": "007"}),
             uri: "POST /logout/${USER_ID}".to_string(),
         },
