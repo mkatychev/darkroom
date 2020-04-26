@@ -1,6 +1,6 @@
 use crate::grpc::grpcurl;
 use crate::http::http_request;
-use crate::params::{BaseParams, Params};
+use crate::params::BaseParams;
 use crate::{BoxError, Take};
 use colored::*;
 use colored_diff::PrettyDifference;

@@ -1,6 +1,5 @@
 use crate::{BoxError, Record, Take};
 use filmreel::frame::Request;
-use url::Url;
 
 /// Parameters needed for a uri method to be sent.
 #[derive(Debug, PartialEq)]

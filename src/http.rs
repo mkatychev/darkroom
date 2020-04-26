@@ -2,14 +2,11 @@ use crate::params::Params;
 use crate::BoxError;
 use filmreel::frame::{Request, Response};
 use http::header::HeaderMap;
-use lazy_static::lazy_static;
 use reqwest::blocking::*;
 use reqwest::Method;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::path::PathBuf;
 use url::Url;
 
 /// Parses a Frame Request and a Params object to send a HTTP payload using reqwest
