@@ -6,7 +6,7 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 
 ```
-Usage: target/debug/dark [-v] <command> [<args>]
+Usage: dark [-v] <command> [<args>]
 
 Top-level command.
 
@@ -15,9 +15,10 @@ Options:
   --help            display usage information
 
 Commands:
-  take              Takes a single frame, sends the request and compares the
-                    returned response
-  record            Attempts to play through an entire Reel sequence
+  take              Takes a single frame, emitting the request then validating
+                    the returned response
+  record            Attempts to play through an entire Reel sequence running a
+                    take for every frame in the sequence
 
 ```
 
@@ -25,13 +26,14 @@ Commands:
 `dark take`:
 
 ```
-Usage: target/debug/dark take <frame> [<addr>] -c <cut> [-H <header>] [-o <output>]
+Usage: darq take <frame> [<address>] [--tls] [-H <header>] -c <cut> [-o <output>]
 
-Takes a single frame, sends the request and compares the returned response
+Takes a single frame, emitting the request then validating the returned response
 
 Options:
-  -c, --cut         filepath of cut file
-  -H, --header      args passed to grpcurl
+  --tls             enable TLS
+  -H, --header      fallback header passed to the specified protocol
+  -c, --cut         filepath of input cut file
   -o, --output      output of take file
   --help            display usage information
 
@@ -40,14 +42,17 @@ Options:
 `dark record`:
 
 ```
-Usage: target/debug/dark record <path> <name> [-H <header>] [-a <addr>] [-c <cut>] [-o <output>] [-i]
+Usage: darq record <reel_path> <reel_name> [--tls] [-a <address>] [-H <header>] [-c <cut>] [-o <output>] [-i]
 
-Attempts to play through an entire Reel sequence
+Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
 Options:
-  -H, --header      header string passed to grpcurl
-  -a, --addr        address passed to grpcurl
-  -c, --cut         filepath of output cut file
+  --tls             enable TLS
+  -a, --address     fallback address passed to the specified protocol if not
+                    provided by the frame itself
+  -H, --header      fallback header passed to the specified protocol if not
+                    provided by the frame itself
+  -c, --cut         filepath of input cut file
   -o, --output      output directory for successful takes
   -i, --interactive interactive frame sequence transitions
   --help            display usage information
