@@ -1,0 +1,35 @@
+{
+  "cut": {
+    "from": [
+      "address"
+    ],
+    "to": {
+      "trace": "'response'.'body'.'headers'.'X-Amzn-Trace-Id'",
+      "origin": "'response'.'body'.'origin'"
+    }
+  },
+  "protocol": "HTTP",
+  "request": {
+    "body": "the exact body that is sent",
+    "uri": "POST post",
+    "entrypoint": "${address}"
+  },
+  "response": {
+    "body": {
+      "args": {},
+      "data": "\"the exact body that is sent\"",
+      "files": {},
+      "form": {},
+      "headers": {
+        "Accept": "*/*",
+        "Content-Length": "29",
+        "Host": "httpbin.org",
+        "X-Amzn-Trace-Id": "${trace}"
+      },
+      "json": "the exact body that is sent",
+      "origin": "${origin}",
+      "url": "http://httpbin.org/post"
+    },
+    "status": 200
+  }
+}
