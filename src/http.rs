@@ -10,7 +10,6 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
-use std::process::Command;
 use url::Url;
 
 /// Parses a Frame Request and a Params object to send a HTTP payload using reqwest
@@ -27,12 +26,17 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxErr
         _ => return Err("unable to parse request uri field".into()),
     };
 
-    Ok(Client::builder()
+    let builder = Client::builder()
         .build()?
         .request(method, endpoint)
-        .headers(build_header(&prm.header)?))
+        .body(req.to_payload()?);
+    if let Some(h) = prm.header {
+        return Ok(builder.headers(build_header(&h)?));
+    }
+    Ok(builder)
 }
 
+/// Builds a header map from the header arg passed in from a ::Take or ::Record struct
 fn build_header(header: &str) -> Result<HeaderMap, BoxError> {
     let map: HashMap<String, String> = serde_json::from_str(header)?;
     return match HeaderMap::try_from(&map) {
@@ -41,62 +45,49 @@ fn build_header(header: &str) -> Result<HeaderMap, BoxError> {
     };
 }
 
-// pub fn http_request(prm: Params, req: Request) -> Result<Response, BoxError> {
-//     let tls = if prm.tls { "" } else { "-plaintext" };
+pub fn http_request(prm: Params, req: Request) -> Result<Response, BoxError> {
+    let response = build_request(prm, req)?.send()?;
+    let status = response.status().as_u16() as u32;
 
-//     let req_cmd = Command::new("grpcurl")
-//         .arg("-H")
-//         .arg(prm.header)
-//         .arg(tls)
-//         .arg("-d")
-//         .arg(req.to_payload()?)
-//         .arg(prm.address)
-//         .arg(req.get_uri())
-//         .output()?;
+    Ok(Response {
+        body: response.json()?,
+        // TODO add response headers
+        etc: json!({}),
+        status,
+    })
+}
 
-//     let response: Response = match req_cmd.status.code() {
-//         Some(0) => Response {
-//             body: serde_json::from_slice(&req_cmd.stdout)?,
-//             status: 0,
-//             etc: json!({}),
-//         },
-//         Some(_) => {
-//             let err: ResponseError = ResponseError::try_from(&req_cmd.stderr)?;
-//             // create frame response from deserialized grpcurl error
-//             Response {
-//                 body: serde_json::Value::String(err.message),
-//                 status: err.code,
-//                 etc: json!({}),
-//             }
-//         }
-//         None => return Err("None Response code".into()),
-//     };
-//     Ok(response)
-// }
-
-// #[derive(Debug, Serialize, PartialEq)]
-// struct ResponseError {
-//     code: u32,
-//     message: String,
-// }
-
-// impl TryFrom<&Vec<u8>> for ResponseError {
-//     type Error = BoxError;
-
-//     fn try_from(stderr: &Vec<u8>) -> Result<ResponseError, Self::Error> {
-//         let stripped = cram_yaml(stderr);
-//         match serde_yaml::from_slice::<ResponseError>(&stripped) {
-//             Err(_) => Err(String::from_utf8(stderr.clone())?.into()),
-//             Ok(err) => Ok(err),
-//         }
-//     }
-// }
 #[cfg(test)]
 mod tests {
     use super::*;
+    use http::header;
+    use rstest::*;
 
-    // #[test]
-    // fn test_http_request() {
-    //     http_request().unwrap();
-    // }
+    fn header_map(case: u32) -> HeaderMap {
+        let mut header = HeaderMap::new();
+        match case {
+            1 => {
+                header.insert(header::AUTHORIZATION, "Bearer jWt".parse().unwrap());
+            }
+            2 => {
+                header.insert(header::CONNECTION, "keep-alive".parse().unwrap());
+                header.insert(header::AUTHORIZATION, "Bearer jWt".parse().unwrap());
+            }
+            _ => return header,
+        };
+        header
+    }
+
+    #[rstest(
+        string_header,
+        expected,
+        case(r#"{"Authorization": "Bearer jWt"}"#, header_map(1)),
+        case(
+            r#"{"Connection": "keep-alive", "Authorization": "Bearer jWt"}"#,
+            header_map(2)
+        )
+    )]
+    fn test_build_header(string_header: &str, expected: HeaderMap) {
+        assert_eq!(expected, build_header(string_header).unwrap());
+    }
 }

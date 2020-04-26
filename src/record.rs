@@ -11,11 +11,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn run_record(cmd: Record) -> Result<(), BoxError> {
-    dbg!(cmd.get_cut_file());
-    dbg!(&cmd.output);
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register = Register::new(&cut_str)?;
-    dbg!(&cut_register);
     let reel = Reel::new(&cmd.reel_path, &cmd.reel_name)?;
     let base_params = BaseParams::from(&cmd);
     for meta_frame in reel {
@@ -42,7 +39,7 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
         let payload_response = run_request(
             &mut payload_frame,
             &cut_register,
-            base_params.init(frame.get_request())?,
+            &base_params,
             cmd.interactive,
         )?;
         process_response(

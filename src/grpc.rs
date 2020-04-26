@@ -25,24 +25,35 @@ pub fn grpcurl(prm: Params, req: Request) -> Result<Response, BoxError> {
 
     let tls = if prm.tls { "" } else { "-plaintext" };
 
-    let req_cmd = Command::new("grpcurl")
-        .arg("-H")
-        .arg(prm.header)
-        .arg(tls)
-        .arg("-d")
-        .arg(req.to_payload()?)
-        .arg(prm.address)
-        .arg(req.get_uri())
-        .output()?;
+    let mut req_cmd = Command::new("grpcurl");
 
-    let response: Response = match req_cmd.status.code() {
+    let resp_cmd = match prm.header {
+        Some(h) => req_cmd
+            .arg("-H")
+            .arg(h)
+            .arg(tls)
+            .arg("-d")
+            .arg(req.to_payload()?)
+            .arg(prm.address)
+            .arg(req.get_uri())
+            .output()?,
+        None => req_cmd
+            .arg(tls)
+            .arg("-d")
+            .arg(req.to_payload()?)
+            .arg(prm.address)
+            .arg(req.get_uri())
+            .output()?,
+    };
+
+    let response: Response = match resp_cmd.status.code() {
         Some(0) => Response {
-            body: serde_json::from_slice(&req_cmd.stdout)?,
+            body: serde_json::from_slice(&resp_cmd.stdout)?,
             status: 0,
             etc: json!({}),
         },
         Some(_) => {
-            let err: ResponseError = ResponseError::try_from(&req_cmd.stderr)?;
+            let err: ResponseError = ResponseError::try_from(&resp_cmd.stderr)?;
             // create frame response from deserialized grpcurl error
             Response {
                 body: serde_json::Value::String(err.message),

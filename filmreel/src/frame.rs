@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 /// [Frame spec](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame)
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Frame<'a> {
-    protocol: Protocol,
+    pub protocol: Protocol,
     // Both the reads and writes can be optional
     #[serde(default, borrow, skip_serializing_if = "InstructionSet::is_empty")]
     pub cut: InstructionSet<'a>,
@@ -134,7 +134,7 @@ impl<'a> Frame<'a> {
 ///
 /// [Protocol example](https://github.com/Bestowinc/filmReel/blob/supra_dump/frame.md#frame-nomenclature)
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-enum Protocol {
+pub enum Protocol {
     #[serde(rename(serialize = "gRPC", deserialize = "gRPC"))]
     GRPC,
     HTTP,

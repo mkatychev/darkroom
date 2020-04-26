@@ -1,4 +1,5 @@
 use crate::grpc::grpcurl;
+use crate::http::http_request;
 use crate::params::{BaseParams, Params};
 use crate::{BoxError, Take};
 use colored::*;
@@ -6,7 +7,7 @@ use colored_diff::PrettyDifference;
 use colored_json::prelude::*;
 use filmreel as fr;
 use filmreel::cut::Register;
-use filmreel::frame::{Frame, Response};
+use filmreel::frame::{Frame, Protocol, Response};
 use log::{debug, error, info};
 use prettytable::*;
 use std::fs;
@@ -18,7 +19,7 @@ use std::path::PathBuf;
 pub fn run_request<'a>(
     frame: &'a mut Frame,
     register: &'a Register,
-    params: Params,
+    base_params: &BaseParams,
     interactive: bool,
 ) -> Result<Response, BoxError> {
     let unhydrated_frame: Option<String> = if interactive {
@@ -68,8 +69,12 @@ pub fn run_request<'a>(
         info!("\n");
     }
 
+    let params = base_params.init(frame.get_request())?;
     // Send out the payload here
-    grpcurl(params, frame.get_request())
+    match frame.protocol {
+        Protocol::HTTP => http_request(params, frame.get_request()),
+        Protocol::GRPC => grpcurl(params, frame.get_request()),
+    }
 }
 
 pub fn process_response<'a>(
@@ -145,12 +150,7 @@ pub fn single_take(cmd: Take) -> Result<(), BoxError> {
     let mut payload_frame = frame.clone();
     let base_params = BaseParams::from(&cmd);
     let mut cut_register = Register::new(&cut_str)?;
-    let response = run_request(
-        &mut payload_frame,
-        &cut_register,
-        base_params.init(frame.get_request())?,
-        false,
-    )?;
+    let response = run_request(&mut payload_frame, &cut_register, &base_params, false)?;
 
     process_response(
         &mut payload_frame,

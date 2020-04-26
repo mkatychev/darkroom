@@ -6,7 +6,7 @@ use url::Url;
 #[derive(Debug, PartialEq)]
 pub struct Params {
     pub tls: bool,
-    pub header: String,
+    pub header: Option<String>,
     pub address: String,
 }
 
@@ -45,9 +45,9 @@ impl<'a> BaseParams<'a> {
     pub fn init(&self, request: Request) -> Result<Params, BoxError> {
         // let request = frame.get_request();
 
-        let header = match request.get_header() {
-            Some(i) => i.to_string(),
-            None => self.header.clone().ok_or("missing header")?,
+        let header: Option<String> = match request.get_header() {
+            Some(i) => Some(i.to_string()),
+            None => self.header.clone(),
         };
 
         let address = match request.get_entrypoint() {
@@ -102,7 +102,7 @@ mod tests {
         assert_eq!(
             Params {
                 tls: false,
-                header: "\"Authorization: Bearer BIG_BEAR\"".to_string(),
+                header: Some("\"Authorization: Bearer BIG_BEAR\"".to_string()),
                 address: "localhost:8000".to_string(),
             },
             params
