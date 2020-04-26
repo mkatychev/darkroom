@@ -30,7 +30,6 @@ impl<'a> From<&'a Record> for BaseParams<'a> {
 impl<'a> From<&'a Take> for BaseParams<'a> {
     fn from(take: &'a Take) -> Self {
         Self {
-            // TODO handle tls
             tls: take.tls,
             header: &take.header,
             address: &take.address,

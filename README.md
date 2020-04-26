@@ -26,7 +26,7 @@ Commands:
 `dark take`:
 
 ```
-Usage: darq take <frame> [<address>] [--tls] [-H <header>] -c <cut> [-o <output>]
+Usage: dark take <frame> [<address>] [--tls] [-H <header>] -c <cut> [-o <output>]
 
 Takes a single frame, emitting the request then validating the returned response
 
@@ -42,7 +42,7 @@ Options:
 `dark record`:
 
 ```
-Usage: darq record <reel_path> <reel_name> [--tls] [-a <address>] [-H <header>] [-c <cut>] [-o <output>] [-i]
+Usage: dark record <reel_path> <reel_name> [--tls] [-a <address>] [-H <header>] [-c <cut>] [-o <output>] [-i]
 
 Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
