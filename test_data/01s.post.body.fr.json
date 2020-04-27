@@ -28,7 +28,7 @@
       },
       "json": "the exact body that is sent",
       "origin": "${origin}",
-      "url": "http://httpbin.org/post"
+      "url": "https://httpbin.org/post"
     },
     "status": 200
   }

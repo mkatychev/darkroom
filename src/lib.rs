@@ -70,7 +70,7 @@ pub struct Take {
     tls: bool,
 
     /// fallback address passed to the specified protocol
-    #[argh(positional)]
+    #[argh(positional, short = 'a')]
     address: Option<String>,
 
     /// fallback header passed to the specified protocol
@@ -113,6 +113,10 @@ pub struct Record {
     /// filepath of input cut file
     #[argh(option, short = 'c')]
     cut: Option<PathBuf>,
+    ///
+    /// filepath of merge cuts
+    #[argh(positional, short = 'm')]
+    merge_cuts: Vec<PathBuf>,
 
     /// output directory for successful takes
     #[argh(option, short = 'o')]

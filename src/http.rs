@@ -15,18 +15,33 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxErr
     let method: Method;
     let endpoint: Url;
 
-    match req.get_uri().split(" ").collect::<Vec<&str>>().as_slice() {
+    match req
+        .get_uri()
+        .splitn(2, " ")
+        .collect::<Vec<&str>>()
+        .as_slice()
+    {
         [method_str, tail_str] => {
             method = Method::from_bytes(method_str.as_bytes())?;
             endpoint = Url::parse(prm.address.as_str())?.join(tail_str)?;
         }
-        _ => return Err("unable to parse request uri field".into()),
+        var => {
+            dbg!(var);
+            return Err("unable to parse request uri field".into());
+        }
     };
 
-    let builder = Client::builder()
-        .build()?
-        .request(method, endpoint)
-        .body(req.to_payload()?);
+    let mut builder = Client::builder().build()?.request(method, endpoint);
+    match req.to_payload() {
+        Ok(b) => {
+            // TODO handle empty body better
+            if &b != "{}" {
+                builder = builder.body(b);
+            }
+        }
+        Err(e) => return Err(e.into()),
+    }
+
     if let Some(h) = prm.header {
         return Ok(builder.headers(build_header(&h)?));
     }
@@ -60,7 +75,7 @@ mod tests {
     use http::header;
     use rstest::*;
 
-    fn header_map(case: u32) -> HeaderMap {
+    fn build_header_case(case: u32) -> HeaderMap {
         let mut header = HeaderMap::new();
         match case {
             1 => {
@@ -78,10 +93,10 @@ mod tests {
     #[rstest(
         string_header,
         expected,
-        case(r#"{"Authorization": "Bearer jWt"}"#, header_map(1)),
+        case(r#"{"Authorization": "Bearer jWt"}"#, build_header_case(1)),
         case(
             r#"{"Connection": "keep-alive", "Authorization": "Bearer jWt"}"#,
-            header_map(2)
+            build_header_case(2)
         )
     )]
     fn test_build_header(string_header: &str, expected: HeaderMap) {

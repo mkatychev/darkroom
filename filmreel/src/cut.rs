@@ -70,6 +70,18 @@ impl Register {
         self.vars.contains_key(key)
     }
 
+    /// Merges a foreign Cut register into the caller, overriding any values in self with other
+    pub fn destructive_merge<I>(&mut self, others: I)
+    where
+        I: IntoIterator<Item = Register>,
+    {
+        for other in others.into_iter() {
+            for (k, v) in other.iter() {
+                self.insert(k.to_string(), v.to_string());
+            }
+        }
+    }
+
     /// Returns a vector of Match enums enums found in the string provided for
     /// use in cut operations.
     ///
@@ -282,6 +294,39 @@ mod tests {
             vec![(&"FIRST_NAME", "Primus"), (&"RESPONSE", "ALRIGHT")].sort(),
             kv_vec.sort()
         );
+    }
+
+    fn destructive_merge_case(case: u32) -> (Vec<Register>, Register) {
+        match case {
+            1 => (
+                vec![register!({ "NEW_KEY"=> "NEW_VALUE" })],
+                register!({"KEY"=>"VALUE","NEW_KEY"=>"NEW_VALUE"}),
+            ),
+            2 => (
+                vec![register!({ "KEY"=> "NEW_VALUE", "NEW_KEY"=> "NEW_VALUE" })],
+                register!({"KEY"=>"NEW_VALUE","NEW_KEY"=>"NEW_VALUE"}),
+            ),
+            3 => (
+                vec![
+                    register!({ "KEY"=> "NEW_VALUE", "NEW_KEY"=> "NEW_VALUE" }),
+                    register!({ "NEW_KEY"=> "NEWER_VALUE"}),
+                ],
+                register!({"KEY"=>"NEW_VALUE","NEW_KEY"=>"NEWER_VALUE"}),
+            ),
+            _ => (vec![], Register::default()),
+        }
+    }
+
+    #[rstest(
+        input_expected,
+        case(destructive_merge_case(1)),
+        case(destructive_merge_case(2)),
+        case(destructive_merge_case(3))
+    )]
+    fn test_destructive_merge(input_expected: (Vec<Register>, Register)) {
+        let mut reg = register!({ "KEY"=> "VALUE" });
+        reg.destructive_merge(input_expected.0);
+        assert_eq!(reg, input_expected.1);
     }
 
     const TRAGIC_STORY: &str = "I thought not. It's not a story the Jedi would tell you.

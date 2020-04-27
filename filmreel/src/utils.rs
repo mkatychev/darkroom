@@ -1,3 +1,4 @@
+use crate::error::FrError;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -69,20 +70,23 @@ where
     assert_eq!(de_json, actual);
 }
 
-pub fn get_jql_string(val: &Value, query: &str) -> Result<String, String> {
+pub fn get_jql_string(val: &Value, query: &str) -> Result<String, FrError> {
     let selectors = query.replace("'", "\"");
     match jql::walker(val, Some(&selectors)) {
         Ok(v) => match v {
             Value::String(string) => Ok(string),
             v => {
                 dbg!(query);
-                dbg!(v);
-                Err(format!(
-                    "{} did not map to a serde_json::Value::String enum",
-                    query.to_string()
-                ))
+                dbg!(&v);
+                match serde_json::to_string(&v) {
+                    Ok(v) => {
+                        dbg!(&v);
+                        Ok(v)
+                    }
+                    Err(e) => Err(FrError::Serde(e.to_string())),
+                }
             }
         },
-        Err(e) => Err(e),
+        Err(e) => Err(FrError::ReadInstructionf("get_jql_string", String::from(e))),
     }
 }
