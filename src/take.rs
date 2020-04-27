@@ -93,7 +93,7 @@ pub fn process_response<'a>(
                 frame.response.to_string_pretty(),
                 payload_response.to_string_pretty(),
             );
-            return Err(e);
+            return Err(e.into());
         }
         Ok(r) => r,
     };
@@ -107,6 +107,7 @@ pub fn process_response<'a>(
 
         // For now simply run hydrate again to hydrate the newly written cut variables into the
         // Response
+        frame.cut.hydrate_writes = true;
         Frame::hydrate_val(&frame.cut, &mut frame.response.body, &cut_register)?;
         Frame::hydrate_val(&frame.cut, &mut frame.response.etc, &cut_register)?;
     }

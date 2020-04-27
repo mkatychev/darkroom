@@ -36,8 +36,6 @@ impl Register {
     }
 
     /// Inserts entry into the Register's Cut Variables
-    ///
-    /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
     fn insert<T>(&mut self, key: T, val: Value) -> Option<Value>
     where
         T: ToString,
@@ -144,7 +142,7 @@ impl Register {
     /// ::Match provided.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
-    pub fn read_operation(&self, mat: Match, json_string: &mut String) -> Result<(), FrError> {
+    pub fn read_operation(&self, mat: Match, value: &mut Value) -> Result<(), FrError> {
         if let Some(name) = mat.name() {
             if self.get_key_value(name).is_none() {
                 return Err(FrError::ReadInstructionf(
@@ -153,11 +151,17 @@ impl Register {
                 ));
             }
         }
-        mat.read_operation(json_string);
+        mat.read_operation(value)?;
         Ok(())
     }
 
-    /// Takes a response payload value writes to the Cut Register
+    // ensures string slice past is a singular declaration of a `"${VARIABLE}"`
+    pub fn is_single_variable(var_name: &str, frame_str: &str) -> bool {
+        format!("{}{}{}", "${", var_name, "}") == frame_str.as_ref()
+    }
+
+    /// Takes a frame string value and compares it against a payload string value
+    /// returining any declared cut variables found
     pub fn write_match(
         var_name: &str,
         frame_str: &str,
@@ -210,6 +214,9 @@ impl Register {
         }
     }
 
+    /// Inserts a Value entry into the Register's Cut Variables
+    ///
+    /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
     pub fn write_operation(&mut self, key: &str, val: Value) -> Result<Option<Value>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
@@ -243,6 +250,7 @@ impl<'a> Match<'a> {
         }
     }
 
+    // return name string slice of Match enum
     pub fn name(&self) -> Option<&'a str> {
         match self {
             Match::Escape(_) => None,
@@ -250,20 +258,32 @@ impl<'a> Match<'a> {
         }
     }
 
-    fn read_operation(self, json_value: &mut Value) {
+    // replaces json_value with Match.value
+    fn read_operation(self, json_value: &mut Value) -> Result<(), FrError> {
+        // TODO refactor cthulu looking match arms
         match self {
             Match::Escape(range) => match json_value {
-                Value::String(jstr) => jstr.replace_range(range, ""),
-                _ => {}
+                Value::String(json_str) => Ok(json_str.replace_range(range, "")),
+                _ => Err(FrError::ReadInstruction(
+                    "Match::Escape.value is a non string Value",
+                )),
             },
             Match::Variable {
-                value: val,
+                value: match_val,
                 range: r,
                 ..
-            } => match val {
-                Value::String(jstr) => jstr.replace_range(r, &val.to_string()),
-                other => {
-                    other = val;
+            } => match match_val {
+                // if the match value is a string
+                Value::String(match_str) => match json_value {
+                    // and the json value is as well, replace the range within
+                    Value::String(str_val) => Ok(str_val.replace_range(r, &match_str)),
+                    _ => Err(FrError::ReadInstruction(
+                        "Match::Variable given a non string value to replace",
+                    )),
+                },
+                _ => {
+                    *json_value = match_val.clone();
+                    Ok(())
                 }
             },
         }
@@ -287,6 +307,7 @@ macro_rules! register {
 mod tests {
     use super::*;
     use rstest::*;
+    use serde_json::json;
 
     #[test]
     fn test_iter() {
@@ -318,9 +339,9 @@ mod tests {
             3 => (
                 vec![
                     register!({ "KEY"=> "NEW_VALUE", "NEW_KEY"=> "NEW_VALUE" }),
-                    register!({ "NEW_KEY"=> "NEWER_VALUE"}),
+                    register!({ "NEW_KEY"=> json!({"new": "object"})}),
                 ],
-                register!({"KEY"=>"NEW_VALUE","NEW_KEY"=>"NEWER_VALUE"}),
+                register!({"KEY"=>"NEW_VALUE","NEW_KEY"=> json!({"new": "object"})}),
             ),
             _ => (vec![], Register::default()),
         }
@@ -348,37 +369,55 @@ mod tests {
          knew, then his apprentice killed him in his sleep. It's ironic he could save others from \
          death, but not himself.";
 
+    fn case_read_op(case: u32) -> (Value, Value) {
+        return match case {
+            1 => (
+                json!("My name is ${FIRST_NAME} ${LAST_NAME}"),
+                json!("My name is Slim Shady"),
+            ),
+            2 => (
+                json!("My name is ${FIRST_NAME} \\${LAST_NAME}"),
+                json!("My name is Slim ${LAST_NAME}"),
+            ),
+            3 => (
+                json!("My name is \\${FIRST_NAME} \\${LAST_NAME}"),
+                json!("My name is ${FIRST_NAME} ${LAST_NAME}"),
+            ),
+            4 => (
+                json!("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}"),
+                json!(&[
+                    "Did you ever hear the tragedy of Darth Plagueis the Wise? ",
+                    TRAGIC_STORY
+                ]
+                .concat()),
+            ),
+            5 => (json!("${OBJECT}"), json!({"key": "value"})),
+            _ => (json!({}), json!({})),
+        };
+    }
     #[rstest(
-        input,
-        expected,
-        case("My name is ${FIRST_NAME} ${LAST_NAME}", "My name is Slim Shady"),
-        case(
-            "My name is \\${FIRST_NAME} ${LAST_NAME}",
-            "My name is ${FIRST_NAME} Shady"
-        ),
-        case(
-            "My name is ${FIRST_NAME} \\${LAST_NAME}",
-            "My name is Slim ${LAST_NAME}"
-        ),
-        case(
-            "My name is \\${FIRST_NAME} \\${LAST_NAME}",
-            "My name is ${FIRST_NAME} ${LAST_NAME}"
-        ),
-        case("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}",
-            &["Did you ever hear the tragedy of Darth Plagueis the Wise? ", TRAGIC_STORY].concat()),
+        in_out,
+        case(case_read_op(1)),
+        case(case_read_op(2)),
+        case(case_read_op(3)),
+        case(case_read_op(4)),
+        case(case_read_op(5))
     )]
-    fn test_read_op(input: &str, expected: &str) {
+    fn test_read_op(in_out: (Value, Value)) {
+        let (mut input, expected) = in_out;
         let reg = register!({
-            "FIRST_NAME"=> "Slim",
+            "FIRST_NAME"=>"Slim",
             "LAST_NAME"=> "Shady",
-            "INANE_RANT"=> TRAGIC_STORY
+            "INANE_RANT"=> TRAGIC_STORY,
+            "OBJECT"=> json!({"key": "value"})
         });
-        let mut str_with_var = input.to_string();
-        let matches: Vec<Match> = reg.read_match(&str_with_var).expect("match error");
+        let matches: Vec<Match> = reg
+            .read_match(&input.as_str().unwrap())
+            .expect("match error");
         for mat in matches.into_iter() {
-            reg.read_operation(mat, &mut str_with_var).unwrap();
+            reg.read_operation(mat, &mut input).unwrap();
         }
-        assert_eq!(expected.to_string(), str_with_var)
+        assert_eq!(expected, input)
     }
 
     #[rstest(

@@ -24,8 +24,6 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
     &cut_register.destructive_merge(merge_cuts?);
     let reel = Reel::new(&cmd.reel_path, &cmd.reel_name)?;
 
-    dbg!(&cut_register);
-
     let base_params = BaseParams::from(&cmd);
     for meta_frame in reel {
         // if cmd.output is Some, provide a take PathBuf

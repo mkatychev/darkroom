@@ -1,9 +1,9 @@
 use crate::cut::Register;
-use crate::error::{BoxError, FrError};
-use crate::utils::{get_jql_string, ordered_set, ordered_str_map};
+use crate::error::FrError;
+use crate::utils::{get_jql_value, ordered_set, ordered_str_map};
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeError;
-use serde_json::{json, Value};
+use serde_json::{json, to_value, Value};
 use std::collections::{HashMap, HashSet};
 
 /// Represents the entire deserialized frame file.
@@ -34,7 +34,7 @@ impl<'a> Frame<'a> {
 
     /// Serializes the Frame struct to a serde_json::Value
     pub fn to_value(&self) -> Value {
-        serde_json::to_value(self).expect("serialization error")
+        to_value(self).expect("serialization error")
     }
 
     /// Serialized payload
@@ -52,7 +52,7 @@ impl<'a> Frame<'a> {
     /// Returns a Value object from the response body, used for response comparisons and writing to
     /// the cut register
     pub fn get_response_value(&self) -> Result<Value, SerdeError> {
-        serde_json::to_value(&self.response.body)
+        to_value(&self.response.body)
     }
 
     /// Traverses Frame properties where Read Operations are permitted and
@@ -95,8 +95,8 @@ impl<'a> Frame<'a> {
                 }
                 Ok(())
             }
-            Value::String(string) => {
-                Self::hydrate_str(set, string, reg)?;
+            Value::String(_) => {
+                Self::hydrate_str(set, val, reg)?;
                 Ok(())
             }
             _ => Ok(()),
@@ -106,11 +106,11 @@ impl<'a> Frame<'a> {
     /// Performs a Register.read_operation on the entire String
     fn hydrate_str(
         set: &InstructionSet,
-        string: &mut String,
+        string: &mut Value,
         reg: &Register,
     ) -> Result<(), FrError> {
         {
-            let matches = reg.read_match(string)?;
+            let matches = reg.read_match(&string.as_str().expect("hydrate_str None found"))?;
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {
                 if let Some(n) = mat.name() {
@@ -122,7 +122,15 @@ impl<'a> Frame<'a> {
                     }
                     // Now that the cut var is confirmed to exist in the entire instruction set
                     // perform read operation ony if cut var is present in read instructions
-                    reg.read_operation(mat, string)?;
+                    if set.reads.contains(n) {
+                        reg.read_operation(mat, string)?;
+                        continue;
+                    }
+                    // if variable name is found in the "to" field of the InstructionSet
+                    // AND `hydrate_writes` is true
+                    if set.writes.contains_key(n) && set.hydrate_writes {
+                        reg.read_operation(mat, string)?;
+                    }
                 }
             }
             Ok(())
@@ -161,6 +169,8 @@ pub struct InstructionSet<'a> {
         borrow
     )]
     writes: HashMap<&'a str, &'a str>,
+    #[serde(skip_serializing, default)]
+    pub hydrate_writes: bool,
 }
 
 impl<'a> InstructionSet<'a> {
@@ -196,10 +206,10 @@ pub struct Request {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     header: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    entrypoint: Option<String>,
+    entrypoint: Option<Value>,
     #[serde(flatten)]
     etc: Value,
-    uri: String,
+    uri: Value,
 }
 
 impl Request {
@@ -208,7 +218,14 @@ impl Request {
     }
 
     pub fn get_uri(&self) -> String {
-        self.uri.clone()
+        if let Value::String(string) = &self.uri {
+            return string.to_string();
+        }
+        "".to_string()
+    }
+
+    pub fn get_etc(&self) -> Value {
+        self.etc.clone()
     }
 
     pub fn get_header(&self) -> Option<Value> {
@@ -216,7 +233,17 @@ impl Request {
     }
 
     pub fn get_entrypoint(&self) -> Option<String> {
-        self.entrypoint.clone()
+        if self.entrypoint.is_none() {
+            return None;
+        }
+        Some(
+            self.entrypoint
+                .clone()
+                .expect("get_entrypoint string option")
+                .as_str()
+                .expect("as_str cast failed for get_entrypoint")
+                .to_string(),
+        )
     }
 }
 
@@ -236,7 +263,7 @@ impl Response {
     /// traversal: `"response"."body"` should always traverse a serialized Frame struct
     fn to_frame_value(&self) -> Result<Value, FrError> {
         let mut frame_value = json!({"response":{}});
-        frame_value["response"] = serde_json::to_value(self)?;
+        frame_value["response"] = to_value(self)?;
         Ok(frame_value)
     }
     ///
@@ -251,19 +278,36 @@ impl Response {
         &self,
         set: &'a InstructionSet,
         payload_response: &Response,
-    ) -> Result<Option<HashMap<&'a str, String>>, BoxError> {
+    ) -> Result<Option<HashMap<&'a str, Value>>, FrError> {
         let frame_response: Value = self.to_frame_value()?;
         let payload_response: Value = payload_response.to_frame_value()?;
 
-        let mut write_matches: HashMap<&str, String> = HashMap::new();
+        let mut write_matches: HashMap<&str, Value> = HashMap::new();
         for (k, query) in set.writes.iter() {
-            let frame_str = get_jql_string(&frame_response, query)?;
-            let payload_str = get_jql_string(&payload_response, query)?;
+            // ensure frame jql query returns a string object
+            let frame_str = match get_jql_value(&frame_response, query) {
+                Ok(Value::String(v)) => Ok(v),
+                Ok(_) => Err(FrError::FrameParsef(
+                    "frame write instruction did not correspont to a string object:",
+                    query.to_string(),
+                )),
+                Err(e) => Err(e),
+            }?;
+            let payload_val = get_jql_value(&payload_response, query)?;
 
-            let write_match = Register::write_match(k, &frame_str, &payload_str)?;
-            if let Some(mat) = write_match {
-                write_matches.insert(k, mat);
+            if let Value::String(payload_str) = &payload_val {
+                let write_match = Register::write_match(k, &frame_str, payload_str)?;
+                if let Some(mat) = write_match {
+                    write_matches.insert(k, to_value(mat)?);
+                }
+                continue;
             }
+            // handle non string payload values returned by the jql query
+            if !Register::is_single_variable(k, &frame_str) {
+                return Err(FrError::FrameParsef(
+                        "frame cut variable matched a non string Value while having a non singluar cur variable declaration", frame_str));
+            }
+            write_matches.insert(k, payload_val);
         }
 
         if write_matches.iter().next().is_some() {
@@ -336,6 +380,7 @@ mod tests {
       "HOST",
       "LAST",
       "METHOD",
+      "OBJECT",
       "PORT",
       "USER_TOKEN"
     ]
@@ -347,7 +392,8 @@ mod tests {
     "entrypoint": "${HOST}:${PORT}",
     "body": {
       "name": "${FIRST} ${LAST}",
-      "email": "${EMAIL}"
+      "email": "${EMAIL}",
+      "object": "${OBJECT}"
     },
     "uri": "user_api.User/${METHOD}"
   },
@@ -366,6 +412,7 @@ mod tests {
             "HOST"=> "localhost",
             "LAST"=> "Rossi",
             "METHOD"=> "CreateUser",
+            "OBJECT"=>json!({ "key": "value"}),
             "PORT"=> "8080",
             "USER_TOKEN"=> "Bearer jWt"
         });
@@ -381,20 +428,23 @@ mod tests {
                         "HOST",
                         "LAST",
                         "METHOD",
+                        "OBJECT",
                         "PORT",
                         "USER_TOKEN"
                     ],
                     writes: HashMap::new(),
+                    hydrate_writes: false,
                 },
                 request: Request {
                     body: json!({
                         "name": "Mario Rossi",
-                        "email": "new_user@humanmail.com"
+                        "email": "new_user@humanmail.com",
+                        "object": json!({ "key": "value"})
                     }),
                     header: Some(json!({"Authorization": "Bearer jWt"})),
-                    entrypoint: Some("localhost:8080".to_string()),
+                    entrypoint: Some(json!("localhost:8080")),
                     etc: json!({}),
-                    uri: "user_api.User/CreateUser".to_string(),
+                    uri: json!("user_api.User/CreateUser"),
                 },
 
                 response: Response {
@@ -413,20 +463,30 @@ mod tests {
             protocol: Protocol::GRPC,
             cut: InstructionSet {
                 reads: from![],
-                writes: to! ({"USER_ID"=> "'response'.'body'.'id'"}),
+                writes: to! ({
+                    "USER_ID"=> "'response'.'body'.'id'",
+                    "CREATED"=> "'response'.'body'.'created'"
+                }),
+                hydrate_writes: false,
             },
             request: Request {
                 ..Default::default()
             },
             response: Response {
-                body: json!({"id": "${USER_ID}"}),
+                body: json!({
+                    "id": "${USER_ID}",
+                    "created": "${CREATED}"
+                }),
                 etc: json!({}),
                 status: 0,
             },
         };
 
         let payload_response = Response {
-            body: json!({ "id": "ID_010101" }),
+            body: json!({
+                "id": "ID_010101",
+                "created": 101010
+            }),
             etc: json!({}),
             status: 0,
         };
@@ -435,7 +495,8 @@ mod tests {
             .match_payload_response(&frame.cut, &payload_response)
             .unwrap();
         let mut expected_match = HashMap::new();
-        expected_match.insert("USER_ID", "ID_010101".to_string());
+        expected_match.insert("USER_ID", to_value("ID_010101").unwrap());
+        expected_match.insert("CREATED", to_value(101010).unwrap());
         assert_eq!(expected_match, mat.unwrap());
     }
 
@@ -444,6 +505,7 @@ mod tests {
         let set = InstructionSet {
             reads: from!["USER_ID"],
             writes: to! ({"USER_ID"=> "'response'.'body'.'id'"}),
+            hydrate_writes: false,
         };
         assert!(set.validate().is_err());
     }
@@ -486,7 +548,7 @@ mod serde_tests {
             header: None,
             entrypoint: None,
             etc: json!({}),
-            uri: "user_api.User/CreateUser".to_string(),
+            uri: json!("user_api.User/CreateUser"),
         },
         REQUEST_JSON
     );
@@ -510,7 +572,7 @@ mod serde_tests {
             header: Some(json!({"Authorization": "${USER_TOKEN}"})),
             entrypoint: None,
             etc: json!({"id": "007"}),
-            uri: "POST /logout/${USER_ID}".to_string(),
+            uri: json!("POST /logout/${USER_ID}"),
         },
         REQUEST_ETC_JSON
     );
@@ -571,6 +633,7 @@ mod serde_tests {
                 "SESSION_ID" => ".response.body.session_id",
                 "DATETIME" => ".response.body.timestamp"
             }),
+            hydrate_writes: false,
         },
         INSTRUCTION_SET_JSON
     );
@@ -612,13 +675,16 @@ mod serde_tests {
             protocol: Protocol::HTTP,
             cut: InstructionSet {
                 reads: from!["USER_ID", "USER_TOKEN"],
-                writes: to!({"SESSION_ID" => ".response.body.session_id",
-                    "DATETIME" => ".response.body.timestamp"}),
+                writes: to!({
+                    "SESSION_ID" => ".response.body.session_id",
+                    "DATETIME" => ".response.body.timestamp"
+                }),
+                hydrate_writes: false,
             },
             request: Request {
                 body: json!({}),
                 header: Some(json!({ "Authorization": "${USER_TOKEN}" })),
-                uri: "POST /logout/${USER_ID}".to_string(),
+                uri: json!("POST /logout/${USER_ID}"),
                 etc: json!({}),
                 ..Default::default()
             },
@@ -657,7 +723,7 @@ mod serde_tests {
             request: Request {
                 body: json!({}),
                 etc: json!({}),
-                uri: "POST /logout/${USER_ID}".to_string(),
+                uri: json!("POST /logout/${USER_ID}"),
                 ..Default::default()
             },
 

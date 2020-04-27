@@ -2,7 +2,7 @@ pub mod cut;
 mod error;
 pub mod frame;
 pub mod reel;
-mod utils;
+pub mod utils;
 
 use std::fs;
 use std::io::Result;

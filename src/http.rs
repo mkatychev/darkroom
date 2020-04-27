@@ -4,10 +4,18 @@ use filmreel::frame::{Request, Response};
 use http::header::HeaderMap;
 use reqwest::blocking::*;
 use reqwest::Method;
-use serde_json::json;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use url::Url;
+
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+struct Form {
+    #[serde(flatten)]
+    form: BTreeMap<String, Value>,
+}
 
 /// Parses a Frame Request and a Params object to send a HTTP payload using reqwest
 pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxError> {
@@ -15,7 +23,7 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxErr
     let method: Method;
     let endpoint: Url;
 
-    match req
+    match &req
         .get_uri()
         .splitn(2, " ")
         .collect::<Vec<&str>>()
@@ -25,8 +33,7 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxErr
             method = Method::from_bytes(method_str.as_bytes())?;
             endpoint = Url::parse(prm.address.as_str())?.join(tail_str)?;
         }
-        var => {
-            dbg!(var);
+        _ => {
             return Err("unable to parse request uri field".into());
         }
     };
@@ -35,15 +42,22 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxErr
     match req.to_payload() {
         Ok(b) => {
             // TODO handle empty body better
-            if &b != "{}" {
-                builder = builder.body(b);
+            if b != "{}" {
+                builder = builder.body(b.to_string());
             }
         }
         Err(e) => return Err(e.into()),
     }
 
+    let form = serde_json::from_value(req.get_etc()["form"].clone())?;
+    match form {
+        Value::Object(_) => builder = builder.query(&form),
+        Value::Null => {}
+        _ => return Err("request[\"form\"] must be a key value map".into()),
+    }
+
     if let Some(h) = prm.header {
-        return Ok(builder.headers(build_header(&h)?));
+        builder = builder.headers(build_header(&h)?);
     }
     Ok(builder)
 }
@@ -75,7 +89,7 @@ mod tests {
     use http::header;
     use rstest::*;
 
-    fn build_header_case(case: u32) -> HeaderMap {
+    fn case_build_header(case: u32) -> HeaderMap {
         let mut header = HeaderMap::new();
         match case {
             1 => {
@@ -93,10 +107,10 @@ mod tests {
     #[rstest(
         string_header,
         expected,
-        case(r#"{"Authorization": "Bearer jWt"}"#, build_header_case(1)),
+        case(r#"{"Authorization": "Bearer jWt"}"#, case_build_header(1)),
         case(
             r#"{"Connection": "keep-alive", "Authorization": "Bearer jWt"}"#,
-            build_header_case(2)
+            case_build_header(2)
         )
     )]
     fn test_build_header(string_header: &str, expected: HeaderMap) {
