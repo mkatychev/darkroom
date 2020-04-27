@@ -115,7 +115,7 @@ pub struct Record {
     cut: Option<PathBuf>,
     ///
     /// filepath of merge cuts
-    #[argh(positional, short = 'm')]
+    #[argh(positional)]
     merge_cuts: Vec<PathBuf>,
 
     /// output directory for successful takes

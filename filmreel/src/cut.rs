@@ -1,7 +1,8 @@
-use crate::{error::FrError, utils::ordered_string_map};
+use crate::{error::FrError, utils::ordered_val_map};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{collections::HashMap, ops::Range};
 
 /// Holds Cut Variables and their corresponding values stored in a series of
@@ -10,7 +11,7 @@ use std::{collections::HashMap, ops::Range};
 /// [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 pub struct Register {
-    #[serde(serialize_with = "ordered_string_map", flatten)]
+    #[serde(serialize_with = "ordered_val_map", flatten)]
     vars: Variables,
 }
 
@@ -19,7 +20,7 @@ const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscore
 
 /// The Register's map of [Cut Variables]
 /// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-type Variables = HashMap<String, String>;
+type Variables = HashMap<String, Value>;
 
 impl Register {
     /// Creates a new Register object running post deserialization validations
@@ -37,7 +38,7 @@ impl Register {
     /// Inserts entry into the Register's Cut Variables
     ///
     /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
-    fn insert<T>(&mut self, key: T, val: String) -> Option<String>
+    fn insert<T>(&mut self, key: T, val: Value) -> Option<Value>
     where
         T: ToString,
     {
@@ -47,19 +48,19 @@ impl Register {
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get_key_value<K: AsRef<str>>(&self, key: K) -> Option<(&String, &String)> {
+    pub fn get_key_value<K: AsRef<str>>(&self, key: K) -> Option<(&String, &Value)> {
         self.vars.get_key_value(key.as_ref())
     }
 
     /// Gets a reference to the string slice value for the given var name.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
-    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&String> {
+    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&Value> {
         self.vars.get(key.as_ref())
     }
 
     /// An iterator visiting all Cut Variables in arbitrary order.
-    pub fn iter(&self) -> std::collections::hash_map::Iter<String, String> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<String, Value> {
         self.vars.iter()
     }
 
@@ -77,7 +78,7 @@ impl Register {
     {
         for other in others.into_iter() {
             for (k, v) in other.iter() {
-                self.insert(k.to_string(), v.to_string());
+                self.insert(k.to_string(), v.clone());
             }
         }
     }
@@ -123,7 +124,7 @@ impl Register {
                     // push valid match onto Match vec
                     matches.push(Match::Variable {
                         name: k,
-                        value: v.into(),
+                        value: v.clone(),
                         range: full_match.range(),
                     });
                 }
@@ -209,7 +210,7 @@ impl Register {
         }
     }
 
-    pub fn write_operation(&mut self, key: &str, val: String) -> Result<Option<String>, FrError> {
+    pub fn write_operation(&mut self, key: &str, val: Value) -> Result<Option<Value>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
             static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
@@ -227,7 +228,7 @@ pub enum Match<'a> {
     Escape(Range<usize>),
     Variable {
         name: &'a str,
-        value: String,
+        value: Value,
         range: Range<usize>,
     },
 }
@@ -249,14 +250,22 @@ impl<'a> Match<'a> {
         }
     }
 
-    fn read_operation(self, json_string: &mut String) {
+    fn read_operation(self, json_value: &mut Value) {
         match self {
-            Match::Escape(range) => json_string.replace_range(range, ""),
+            Match::Escape(range) => match json_value {
+                Value::String(jstr) => jstr.replace_range(range, ""),
+                _ => {}
+            },
             Match::Variable {
                 value: val,
                 range: r,
                 ..
-            } => json_string.replace_range(r, &val),
+            } => match val {
+                Value::String(jstr) => jstr.replace_range(r, &val.to_string()),
+                other => {
+                    other = val;
+                }
+            },
         }
     }
 }
@@ -269,7 +278,7 @@ macro_rules! register {
         use $crate::cut::Register;
 
         let mut reg = Register::default();
-        $(reg.write_operation($key, $val.to_string()).expect("RegisterInsertError");)*
+        $(reg.write_operation($key, serde_json::value::to_value($val).expect("to_value error")).expect("RegisterInsertError");)*
         reg
     }}
 }
@@ -292,7 +301,7 @@ mod tests {
         }
         assert_eq!(
             vec![(&"FIRST_NAME", "Primus"), (&"RESPONSE", "ALRIGHT")].sort(),
-            kv_vec.sort()
+            kv_vec.sort_by(|a, b| a.0.cmp(b.0))
         );
     }
 
@@ -428,8 +437,11 @@ mod tests {
             "FIRST_NAME"=> "Primus",
             "RESPONSE"=> "ALRIGHT"
         });
-        reg.write_operation("LAST_NAME", "Secundus".to_string())
-            .unwrap();
+        reg.write_operation(
+            "LAST_NAME",
+            serde_json::to_value("Secundus").expect("value parse error"),
+        )
+        .unwrap();
         assert_eq!(reg.get("LAST_NAME"), Some(&"Secundus".to_string()));
     }
 

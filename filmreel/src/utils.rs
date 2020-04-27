@@ -22,10 +22,7 @@ where
 }
 
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
-pub fn ordered_string_map<S>(
-    map: &HashMap<String, String>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+pub fn ordered_val_map<S>(map: &HashMap<String, Value>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
