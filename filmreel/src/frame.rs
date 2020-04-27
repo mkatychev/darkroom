@@ -217,6 +217,10 @@ impl Request {
         serde_json::to_string_pretty(&self.body)
     }
 
+    pub fn to_val_payload(&self) -> Result<Value, SerdeError> {
+        serde_json::to_value(&self.body)
+    }
+
     pub fn get_uri(&self) -> String {
         if let Value::String(string) = &self.uri {
             return string.to_string();

@@ -39,10 +39,10 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, BoxErr
     };
 
     let mut builder = Client::builder().build()?.request(method, endpoint);
-    match req.to_payload() {
+    match req.to_val_payload() {
         Ok(b) => {
             // TODO handle empty body better
-            if b != "{}" {
+            if b != json!({}) {
                 builder = builder.body(b.to_string());
             }
         }

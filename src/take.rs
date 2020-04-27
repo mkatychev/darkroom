@@ -8,7 +8,7 @@ use colored_json::prelude::*;
 use filmreel as fr;
 use filmreel::cut::Register;
 use filmreel::frame::{Frame, Protocol, Response};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use prettytable::*;
 use std::fs;
 use std::io::{self, prelude::*};
@@ -122,6 +122,17 @@ pub fn process_response<'a>(
         );
         return Err("request/response mismatch".into());
     }
+
+    // remove lowercase values
+    cut_register.flush_ignored();
+
+    warn!(
+        "{}{}{}",
+        "= ".green(),
+        "Match 👍 ".yellow(),
+        "============".green()
+    );
+    warn!("");
 
     // Error expected actual
     if let Some(cut_out) = cut_out {

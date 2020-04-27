@@ -52,7 +52,6 @@ macro_rules! test_ser_de {
         }
         #[test]
         fn $de() {
-            dbg!(&$str_json);
             crate::utils::test_deserialize($struct, $str_json)
         }
     };

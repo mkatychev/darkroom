@@ -57,3 +57,11 @@ Options:
   --help            display usage information
 
 ```
+
+### New in `0.2`:
+
+* HTTP support
+* Full json object storage and retrieval, the cut register is no longer a flat associative array, strings are still used to map to JSON objects for templating
+* Variable discarding: `${lowercase}` variables will only be kept around for the duration of the frame
+* Headers and entrypoints can be stored and read on a per JSON frame basis
+

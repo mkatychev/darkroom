@@ -16,7 +16,7 @@ pub struct Register {
 }
 
 const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscores are permitted \
-                            in Cut Variable names => [A-za-z_]";
+                            in Cut Variable names => [A-Za-z_]";
 
 /// The Register's map of [Cut Variables]
 /// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
@@ -41,6 +41,11 @@ impl Register {
         T: ToString,
     {
         self.vars.insert(key.to_string(), val)
+    }
+
+    /// Removes a single key value
+    fn remove(&mut self, key: &str) -> Option<Value> {
+        self.vars.remove(key)
     }
 
     /// Gets a reference to the string slice value for the given var name.
@@ -220,12 +225,30 @@ impl Register {
     pub fn write_operation(&mut self, key: &str, val: Value) -> Result<Option<Value>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
-            static ref KEY_CHECK: Regex = Regex::new(r"^[A-za-z_]+$").unwrap();
+            static ref KEY_CHECK: Regex = Regex::new(r"^[A-Za-z_]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
             return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()));
         }
         Ok(self.insert(key, val))
+    }
+
+    /// Flushes lowercase/ignored variable patters
+    pub fn flush_ignored(&mut self) {
+        lazy_static! {
+        // if key value consists of only lowercase letters and underscores
+            static ref KEY_IGNORE: Regex = Regex::new(r"^[a-z_]+$").unwrap();
+        }
+        let mut remove: Vec<String> = vec![];
+        for (k, _) in self.vars.iter() {
+            if KEY_IGNORE.is_match(k) {
+                // dbg!(format!("key ignored: {}", k));
+                remove.push(k.to_owned());
+            }
+        }
+        for k in remove.iter() {
+            self.remove(&k);
+        }
     }
 }
 
@@ -340,6 +363,7 @@ mod tests {
                 vec![
                     register!({ "KEY"=> "NEW_VALUE", "NEW_KEY"=> "NEW_VALUE" }),
                     register!({ "NEW_KEY"=> json!({"new": "object"})}),
+                    register!({ "ignored_key"=> "ignored_value"}),
                 ],
                 register!({"KEY"=>"NEW_VALUE","NEW_KEY"=> json!({"new": "object"})}),
             ),
@@ -356,6 +380,7 @@ mod tests {
     fn test_destructive_merge(input_expected: (Vec<Register>, Register)) {
         let mut reg = register!({ "KEY"=> "VALUE" });
         reg.destructive_merge(input_expected.0);
+        reg.flush_ignored();
         assert_eq!(reg, input_expected.1);
     }
 
