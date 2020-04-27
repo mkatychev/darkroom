@@ -442,7 +442,10 @@ mod tests {
             serde_json::to_value("Secundus").expect("value parse error"),
         )
         .unwrap();
-        assert_eq!(reg.get("LAST_NAME"), Some(&"Secundus".to_string()));
+        assert_eq!(
+            reg.get("LAST_NAME"),
+            Some(&Value::String("Secundus".to_string()))
+        );
     }
 
     #[test]
@@ -453,12 +456,12 @@ mod tests {
         });
 
         assert_eq!(
-            reg.write_operation("INVALID%STRING", r#"¯\_(ツ)_/¯"#.to_string())
+            reg.write_operation("INVALID%STRING", Value::String(r#"¯\_(ツ)_/¯"#.to_string()))
                 .unwrap_err(),
             FrError::FrameParsef(VAR_NAME_ERR, "INVALID%STRING".to_string())
         );
 
-        reg.write_operation("FIRST_NAME", "Pietre".to_string())
+        reg.write_operation("FIRST_NAME", Value::String("Pietre".to_string()))
             .unwrap();
         assert_eq!(
             register!({
