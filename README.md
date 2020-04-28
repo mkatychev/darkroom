@@ -67,3 +67,14 @@ Options:
 * Headers and entrypoints can be stored and read on a per JSON frame basis
 * SOPS/json secrets support
 
+
+#### SOPS example:
+
+```
+# destrutively merge FIFO sops "KEY_NAME" value into the in-memory cut register
+dark record ./reel_path reel_name -c ./reel_name.cut.json <(sops -d --extract '["KEY_NAME"]' path/to/myfile.enc.json)
+
+# multiple merge cuts can be used, with values being overridden left to right (right will have newer values)
+dark -v record -i ./test_data post -c ./post.cut.json <(echo '{"new":"value"}') <(echo '{"newer": "value", "new":"overridden"}'
+```
+

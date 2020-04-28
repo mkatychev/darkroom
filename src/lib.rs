@@ -65,7 +65,7 @@ pub struct Take {
     #[argh(positional)]
     frame: PathBuf,
 
-    /// enable TLS
+    /// enable TLS (not needed for HTTP/S)
     #[argh(switch)]
     tls: bool,
 
@@ -98,7 +98,7 @@ pub struct Record {
     #[argh(positional)]
     reel_name: String,
 
-    /// enable TLS
+    /// enable TLS (not needed for HTTP/S)
     #[argh(switch)]
     tls: bool,
 
