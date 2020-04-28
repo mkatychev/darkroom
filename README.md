@@ -15,9 +15,10 @@ Options:
   --help            display usage information
 
 Commands:
-  take              Takes a single frame, sends the request and compares the
-                    returned response
-  record            Attemps to play through an entire Reel sequence
+  take              Takes a single frame, emitting the request then validating
+                    the returned response
+  record            Attempts to play through an entire Reel sequence running a
+                    take for every frame in the sequence
 
 ```
 
@@ -25,33 +26,33 @@ Commands:
 `dark take`:
 
 ```
-Usage: dark take <frame> -H <header> [--proto <proto>] -a <addr> -c <cut> [-o <output>]
+Usage: dark take <frame> [<address>] [--tls] [-H <header>] -c <cut> [-o <output>]
 
-Takes a single frame, sends the request and compares the returned response
+Takes a single frame, emitting the request then validating the returned response
 
 Options:
-  -H, --header      args passed to grpcurl
-  --proto           pass proto files used for payload forming
-  -a, --addr        address passed to grpcurl
-  -c, --cut         filepath of cut file
+  --tls             enable TLS
+  -H, --header      fallback header passed to the specified protocol
+  -c, --cut         filepath of input cut file
   -o, --output      output of take file
   --help            display usage information
-
 
 ```
 
 `dark record`:
 
 ```
-Usage: dark record <path> <name> -H <header> [--proto <proto>] -a <addr> [-c <cut>] [-o <output>] [-i]
+Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [--tls] [-a <address>] [-H <header>] [-c <cut>] [-o <output>] [-i]
 
-Attemps to play through an entire Reel sequence
+Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
 Options:
-  -H, --header      header string passed to grpcurl
-  --proto           pass proto files used for payload forming
-  -a, --addr        address passed to grpcurl
-  -c, --cut         filepath of output cut file
+  --tls             enable TLS
+  -a, --address     fallback address passed to the specified protocol if not
+                    provided by the frame itself
+  -H, --header      fallback header passed to the specified protocol if not
+                    provided by the frame itself
+  -c, --cut         filepath of input cut file
   -o, --output      output directory for successful takes
   -i, --interactive interactive frame sequence transitions
   --help            display usage information
