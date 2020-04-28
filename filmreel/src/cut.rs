@@ -8,7 +8,7 @@ use std::{collections::HashMap, ops::Range};
 /// Holds Cut Variables and their corresponding values stored in a series of
 /// key/value pairs.
 ///
-/// [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
+/// [Cut Register](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-register)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 pub struct Register {
     #[serde(serialize_with = "ordered_val_map", flatten)]
@@ -19,7 +19,7 @@ const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscore
                             in Cut Variable names => [A-Za-z_]";
 
 /// The Register's map of [Cut Variables]
-/// (https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
+/// (https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
 type Variables = HashMap<String, Value>;
 
 impl Register {
@@ -50,14 +50,14 @@ impl Register {
 
     /// Gets a reference to the string slice value for the given var name.
     ///
-    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
+    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
     pub fn get_key_value<K: AsRef<str>>(&self, key: K) -> Option<(&String, &Value)> {
         self.vars.get_key_value(key.as_ref())
     }
 
     /// Gets a reference to the string slice value for the given var name.
     ///
-    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
+    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
     pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&Value> {
         self.vars.get(key.as_ref())
     }
@@ -69,7 +69,7 @@ impl Register {
 
     /// Returns a boolean indicating whether Register.vars contains a given key.
     ///
-    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-variable)
+    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
     pub fn contains_key(&self, key: &str) -> bool {
         self.vars.contains_key(key)
     }
@@ -89,7 +89,7 @@ impl Register {
     /// Returns a vector of Match enums enums found in the string provided for
     /// use in cut operations.
     ///
-    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
+    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/master/cut.md#read-operation)
     pub fn read_match(&self, json_string: &str) -> Result<Vec<Match>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
@@ -146,7 +146,7 @@ impl Register {
     /// Replaces a byte range in a given string with the range given in the
     /// ::Match provided.
     ///
-    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#read-operation)
+    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/master/cut.md#read-operation)
     pub fn read_operation(&self, mat: Match, value: &mut Value) -> Result<(), FrError> {
         if let Some(name) = mat.name() {
             if self.get_key_value(name).is_none() {
@@ -166,7 +166,7 @@ impl Register {
     }
 
     /// Takes a frame string value and compares it against a payload string value
-    /// returining any declared cut variables found
+    /// returning any declared cut variables found
     pub fn write_match(
         var_name: &str,
         frame_str: &str,
@@ -313,7 +313,7 @@ impl<'a> Match<'a> {
     }
 }
 
-/// Constructs a [Cut Register](https://github.com/Bestowinc/filmReel/blob/supra_dump/cut.md#cut-register)
+/// Constructs a [Cut Register](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-register)
 /// from the provided series of key value pairs.
 #[macro_export]
 macro_rules! register {

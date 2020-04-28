@@ -71,7 +71,7 @@ Options:
 #### SOPS example:
 
 ```sh
-# destrutively merge FIFO sops "KEY_NAME" value into the in-memory cut register
+# destructively merge FIFO sops "KEY_NAME" value into the in-memory cut register
 dark record ./reel_path reel_name -c ./reel_name.cut.json \
     <(sops -d --extract '["KEY_NAME"]' path/to/myfile.enc.json)
 
