@@ -77,7 +77,7 @@ Options:
 
 * Added hidden variable support, hidden variables are defined with a leading underscore: `${_HIDDEN}`
 * Added `dark version` command
-* moved common parameters into the main `dark` command to be shared accross subcommands
+* moved common parameters into the main `dark` command to be shared across subcommands
 
 
 #### SOPS example:

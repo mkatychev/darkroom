@@ -38,7 +38,7 @@ pub struct Command {
     #[argh(switch, short = 'v')]
     verbose: bool,
 
-    /// enable TLS (not needed for HTTP/S)
+    /// enable TLS (automatically inferred HTTP/S)
     #[argh(switch)]
     tls: bool,
 
