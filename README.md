@@ -9,7 +9,7 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 <!-- dark start -->
 ```
-Usage: dark [<address>] [-v] [--tls] [--proto <proto>] [-H <header>] <command> [<args>]
+Usage: dark [<address>] [-v] [--tls] [--proto <proto>] [-H <header>] [-C <cut-out>] <command> [<args>]
 
 Top-level command.
 
@@ -18,6 +18,7 @@ Options:
   --tls             enable TLS (not needed for HTTP/S)
   --proto           pass proto files used for payload forming
   -H, --header      fallback header passed to the specified protocol
+  -C, --cut-out     output of final cut file
   --help            display usage information
 
 Commands:
