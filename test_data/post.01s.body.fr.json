@@ -5,7 +5,7 @@
     ],
     "to": {
       "trace": "'response'.'body'.'headers'.'X-Amzn-Trace-Id'",
-      "origin": "'response'.'body'.'origin'"
+      "IP": "'response'.'body'.'origin'"
     }
   },
   "protocol": "HTTP",
@@ -27,7 +27,7 @@
         "X-Amzn-Trace-Id": "${trace}"
       },
       "json": "the exact body that is sent",
-      "origin": "${origin}",
+      "origin": "${IP}",
       "url": "https://httpbin.org/post"
     },
     "status": 200

@@ -70,13 +70,7 @@ pub fn run_request<'a>(
     } else {
         info!("[{}] frame:", "Hydrated".green());
         info!("{} {}\n", "Request URI:".yellow(), frame.get_request_uri()?);
-        info!(
-            "{}",
-            unhydrated_frame
-                .unwrap()
-                .to_string_pretty()
-                .to_colored_json_auto()?
-        );
+        info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
         info!("{}\n", "=======================".magenta());
     }
 
