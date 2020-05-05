@@ -1,3 +1,4 @@
+use crate::params::BaseParams;
 use argh::FromArgs;
 use std::error::Error;
 use std::path::PathBuf;
@@ -9,6 +10,10 @@ pub mod record;
 pub mod take;
 
 pub type BoxError = Box<dyn Error>;
+
+pub use filmreel::cut::Register;
+pub use filmreel::frame::*;
+pub use filmreel::reel::{MetaFrame, Reel};
 
 pub struct Logger;
 
@@ -33,8 +38,44 @@ pub struct Command {
     #[argh(switch, short = 'v')]
     verbose: bool,
 
+    /// enable TLS (not needed for HTTP/S)
+    #[argh(switch)]
+    tls: bool,
+
+    /// pass proto files used for payload forming
+    #[argh(option)]
+    proto: Vec<PathBuf>,
+
+    /// fallback address passed to the specified protocol
+    #[argh(positional, short = 'a')]
+    address: Option<String>,
+
+    /// fallback header passed to the specified protocol
+    #[argh(option, short = 'H')]
+    header: Option<String>,
+
+    /// output of final cut file
+    #[argh(option, short = 'C')]
+    cut_out: Option<PathBuf>,
+
     #[argh(subcommand)]
     pub nested: SubCommand,
+}
+
+impl Command {
+    pub fn base_params(&self) -> BaseParams {
+        BaseParams {
+            tls: self.tls,
+            header: self.header.clone(),
+            address: self.address.clone(),
+            proto: self.proto.clone(),
+            cut_out: self.cut_out.clone(),
+        }
+    }
+
+    pub fn get_nested(self) -> SubCommand {
+        self.nested
+    }
 }
 
 /// Additional options such as verbosity
@@ -53,8 +94,25 @@ impl Opts {
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand)]
 pub enum SubCommand {
+    Version(Version),
     Take(Take),
     Record(Record),
+}
+
+/// returns CARGO_PKG_VERSION
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "version")]
+pub struct Version {
+    /// returns cargo package version, this is a temporary argh workaround
+    #[argh(switch)]
+    version: bool,
+}
+
+/// argh version workaround
+pub fn version() -> String {
+    option_env!("CARGO_PKG_VERSION")
+        .unwrap_or("unknown")
+        .to_string()
 }
 
 /// Takes a single frame, emitting the request then validating the returned response
@@ -64,18 +122,6 @@ pub struct Take {
     /// path of the frame to process
     #[argh(positional)]
     frame: PathBuf,
-
-    /// enable TLS (not needed for HTTP/S)
-    #[argh(switch)]
-    tls: bool,
-
-    /// fallback address passed to the specified protocol
-    #[argh(positional, short = 'a')]
-    address: Option<String>,
-
-    /// fallback header passed to the specified protocol
-    #[argh(option, short = 'H')]
-    header: Option<String>,
 
     /// filepath of input cut file
     #[argh(option, short = 'c')]
@@ -98,22 +144,13 @@ pub struct Record {
     #[argh(positional)]
     reel_name: String,
 
-    /// enable TLS (not needed for HTTP/S)
-    #[argh(switch)]
-    tls: bool,
-
-    /// fallback address passed to the specified protocol if not provided by the frame itself
-    #[argh(option, short = 'a')]
-    address: Option<String>,
-
-    /// fallback header passed to the specified protocol if not provided by the frame itself
-    #[argh(option, short = 'H')]
-    header: Option<String>,
-
     /// filepath of input cut file
     #[argh(option, short = 'c')]
     cut: Option<PathBuf>,
-    ///
+
+    // filepath of component reel files with every reel indicated by the the pipe separated "<reel_filepath>|<reel_name>" string
+    // #[argh(option, short = 'C')]
+    // merge_reels: Vec<String>,
     /// filepath of merge cuts
     #[argh(positional)]
     merge_cuts: Vec<PathBuf>,
@@ -128,24 +165,30 @@ pub struct Record {
 }
 
 impl Take {
+    /// validate ensures the frame and cut filepaths provided point to valid files
     pub fn validate(&self) -> Result<(), &str> {
         if !self.frame.is_file() {
             return Err("<frame> must be a valid file");
         }
-        if !self.cut.is_file() {
-            return Err("<cut> must be a valid file");
-        }
+
+        // TODO for now remove file requirement
+        //
+        // this permits describable zsh `=(thing)` or basic `<(thing)` FIFO syntax
+        // https://superuser.com/questions/1059781/what-exactly-is-in-bash-and-in-zsh
+        // if !self.cut.is_file() {
+        //     return Err("<cut> must be a valid file");
+        // }
         Ok(())
     }
 }
 impl Record {
+    /// validate ensures the reels is a valid directory and ensures that the corresponding cut file
+    /// exists
     pub fn validate(&self) -> Result<(), &str> {
         if !self.reel_path.is_dir() {
             return Err("<path> must be a valid directory");
         }
 
-        // this permits `zsh =(thing)` FIFO syntax
-        // https://superuser.com/questions/1059781/what-exactly-is-in-bash-and-in-zsh
         if let Some(cut) = &self.cut {
             if !cut.is_file() {
                 return Err("<cut> must be a valid file");

@@ -8,8 +8,9 @@ use colored_json::prelude::*;
 use filmreel as fr;
 use filmreel::cut::Register;
 use filmreel::frame::{Frame, Protocol, Response};
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use prettytable::*;
+use serde_json::Value;
 use std::fs;
 use std::io::{self, prelude::*};
 use std::path::PathBuf;
@@ -22,8 +23,8 @@ pub fn run_request<'a>(
     base_params: &BaseParams,
     interactive: bool,
 ) -> Result<Response, BoxError> {
-    let unhydrated_frame: Option<String> = if interactive {
-        Some(frame.to_string_pretty())
+    let unhydrated_frame: Option<Frame> = if interactive {
+        Some(frame.clone())
     } else {
         info!("[{}] frame:", "Unhydrated".red());
         info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
@@ -33,7 +34,7 @@ pub fn run_request<'a>(
         None
     };
 
-    frame.hydrate(&register)?;
+    frame.hydrate(&register, false)?;
 
     if interactive {
         let mut stdin = io::stdin();
@@ -44,10 +45,16 @@ pub fn run_request<'a>(
             "Cut Register",
             format!("[{}] frame", "Hydrated".green()),
         ]);
+        let mut hidden_frame = unhydrated_frame.clone().expect("None for hidden frame");
+        hidden_frame.hydrate(&register, true)?;
+
         table.add_row(row![
-            unhydrated_frame.unwrap().to_colored_json_auto()?,
-            register.to_string_pretty().to_colored_json_auto()?,
-            frame.to_string_pretty().to_colored_json_auto()?,
+            unhydrated_frame
+                .expect("None for unhydrated_frame")
+                .to_string_pretty()
+                .to_colored_json_auto()?,
+            register.to_string_hidden()?.to_colored_json_auto()?,
+            hidden_frame.to_string_pretty().to_colored_json_auto()?,
         ]);
         table.printstd();
         write!(
@@ -62,11 +69,15 @@ pub fn run_request<'a>(
         let _ = stdin.read(&mut [0u8]).expect("read stdin panic");
     } else {
         info!("[{}] frame:", "Hydrated".green());
-        info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
-        info!("\n");
-        info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
-        info!("{}", "=======================".magenta());
-        info!("\n");
+        info!("{} {}\n", "Request URI:".yellow(), frame.get_request_uri()?);
+        info!(
+            "{}",
+            unhydrated_frame
+                .unwrap()
+                .to_string_pretty()
+                .to_colored_json_auto()?
+        );
+        info!("{}\n", "=======================".magenta());
     }
 
     let params = base_params.init(frame.get_request())?;
@@ -108,8 +119,8 @@ pub fn process_response<'a>(
         // For now simply run hydrate again to hydrate the newly written cut variables into the
         // Response
         frame.cut.hydrate_writes = true;
-        Frame::hydrate_val(&frame.cut, &mut frame.response.body, &cut_register)?;
-        Frame::hydrate_val(&frame.cut, &mut frame.response.etc, &cut_register)?;
+        Frame::hydrate_val(&frame.cut, &mut frame.response.body, &cut_register, false)?;
+        Frame::hydrate_val(&frame.cut, &mut frame.response.etc, &cut_register, false)?;
     }
 
     if frame.response != payload_response {
@@ -120,19 +131,24 @@ pub fn process_response<'a>(
                 actual: &payload_response.to_string_pretty(),
             }
         );
+        error!(
+            "{}{}{}",
+            "= ".red(),
+            "Value Mismatch 🤷‍♀️ ".yellow(),
+            "===".red()
+        );
         return Err("request/response mismatch".into());
     }
 
     // remove lowercase values
     cut_register.flush_ignored();
 
-    warn!(
+    info!(
         "{}{}{}",
         "= ".green(),
         "Match 👍 ".yellow(),
-        "============".green()
+        "============\n".green()
     );
-    warn!("");
 
     // Error expected actual
     if let Some(cut_out) = cut_out {
@@ -153,14 +169,13 @@ pub fn process_response<'a>(
 }
 
 /// Run single take using the darkroom::Take struct
-pub fn single_take(cmd: Take) -> Result<(), BoxError> {
+pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), BoxError> {
     let frame_str = fr::file_to_string(&cmd.frame)?;
     let cut_str = fr::file_to_string(&cmd.cut)?;
 
     // Frame to be mutably borrowed
     let frame = Frame::new(&frame_str)?;
     let mut payload_frame = frame.clone();
-    let base_params = BaseParams::from(&cmd);
     let mut cut_register = Register::new(&cut_str)?;
     let response = run_request(&mut payload_frame, &cut_register, &base_params, false)?;
 
@@ -171,6 +186,12 @@ pub fn single_take(cmd: Take) -> Result<(), BoxError> {
         Some(&cmd.cut),
         cmd.output.clone(),
     )?;
+
+    if let Some(path) = base_params.cut_out {
+        debug!("writing cut output to PathBuf...");
+        fs::write(path, &cut_register.to_string_hidden()?)
+            .expect("unable to write to cmd.get_cut_copy()");
+    }
     Ok(())
 }
 
@@ -188,6 +209,12 @@ fn log_mismatch(frame_str: String, response_str: String) {
         response_str
             .to_colored_json_auto()
             .expect("log_mismatch actual panic")
+    );
+    error!(
+        "{}{}{}",
+        "= ".red(),
+        "Form Mismatch 🌋 ".yellow(),
+        "====".red()
     );
 }
 

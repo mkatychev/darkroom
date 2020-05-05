@@ -1,9 +1,28 @@
+/*!
+
+A [filmReel](https://github.com/Bestowinc/filmReel) implementation for Rust.
+
+The `filmreel` crate is a pure Rust implementation of the declarative contract testing spec enjoying the memory safety
+property and other benefits from the Rust language.
+
+## Quick Start
+
+Add the following to the Cargo.toml of your project:
+
+```toml
+[dependencies]
+filmreel = "0.2"
+```
+
+*/
+
 pub mod cut;
 mod error;
 pub mod frame;
 pub mod reel;
 pub mod utils;
 
+pub use reel::Reel;
 use std::fs;
 use std::io::Result;
 use std::path::Path;

@@ -1,3 +1,4 @@
+use crate::params::iter_path_args;
 use crate::params::Params;
 use crate::BoxError;
 use filmreel::frame::{Request, Response};
@@ -5,6 +6,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::convert::TryFrom;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -23,37 +25,50 @@ pub fn validate_grpcurl() -> Result<(), &'static str> {
 pub fn grpcurl(prm: Params, req: Request) -> Result<Response, BoxError> {
     validate_grpcurl()?;
 
-    let tls = if prm.tls { "" } else { "-plaintext" };
+    let mut flags: Vec<&OsStr> = vec![];
 
-    let mut req_cmd = Command::new("grpcurl");
+    if !prm.tls {
+        flags.push(OsStr::new("-plaintext"));
+    }
+    // prepend "-proto" to every protos PathBuf provided
+    let mut proto_args: Vec<&OsStr> = match prm.proto {
+        Some(protos) => {
+            iter_path_args(OsStr::new("-proto"), protos.iter().map(|x| x.as_ref())).collect()
+        }
+        None => vec![],
+    };
+    flags.append(&mut proto_args);
 
-    let resp_cmd = match prm.header {
-        Some(h) => req_cmd
-            .arg("-H")
-            .arg(h)
-            .arg(tls)
-            .arg("-d")
-            .arg(req.to_payload()?)
-            .arg(prm.address)
-            .arg(req.get_uri())
-            .output()?,
-        None => req_cmd
-            .arg(tls)
-            .arg("-d")
-            .arg(req.to_payload()?)
-            .arg(prm.address)
-            .arg(req.get_uri())
-            .output()?,
+    let headers = match prm.header {
+        Some(h) => Some(h.replace("\"", "")),
+        None => None,
     };
 
-    let response: Response = match resp_cmd.status.code() {
+    if let Some(h) = headers.as_ref() {
+        flags.push(OsStr::new("-H"));
+        flags.push(h.as_ref());
+    }
+
+    let req_cmd = match Command::new("grpcurl")
+        .args(flags)
+        .arg("-d")
+        .arg(req.to_payload()?)
+        .arg(prm.address)
+        .arg(req.get_uri())
+        .output()
+    {
+        Ok(v) => v,
+        Err(e) => return Err(format!("grpcurl error: {}", e).into()),
+    };
+
+    let response: Response = match req_cmd.status.code() {
         Some(0) => Response {
-            body: serde_json::from_slice(&resp_cmd.stdout)?,
+            body: serde_json::from_slice(&req_cmd.stdout)?,
             status: 0,
             etc: json!({}),
         },
         Some(_) => {
-            let err: ResponseError = ResponseError::try_from(&resp_cmd.stderr)?;
+            let err: ResponseError = ResponseError::try_from(&req_cmd.stderr)?;
             // create frame response from deserialized grpcurl error
             Response {
                 body: serde_json::Value::String(err.message),

@@ -57,20 +57,20 @@ impl<'a> Frame<'a> {
 
     /// Traverses Frame properties where Read Operations are permitted and
     /// performs Register.read_operation on Strings with Cut Variables
-    pub fn hydrate(&mut self, reg: &Register) -> Result<(), FrError> {
+    pub fn hydrate(&mut self, reg: &Register, hide: bool) -> Result<(), FrError> {
         let set = self.cut.clone();
-        Self::hydrate_val(&set, &mut self.request.body, reg)?;
-        Self::hydrate_val(&set, &mut self.request.etc, reg)?;
-        Self::hydrate_val(&set, &mut self.response.body, reg)?;
-        Self::hydrate_val(&set, &mut self.response.etc, reg)?;
+        Self::hydrate_val(&set, &mut self.request.body, reg, hide)?;
+        Self::hydrate_val(&set, &mut self.request.etc, reg, hide)?;
+        Self::hydrate_val(&set, &mut self.response.body, reg, hide)?;
+        Self::hydrate_val(&set, &mut self.response.etc, reg, hide)?;
         if let Some(header) = &mut self.request.header {
-            Self::hydrate_val(&set, header, reg)?;
+            Self::hydrate_val(&set, header, reg, hide)?;
         }
 
         // URI and entrypoint is given an explicit read operation
-        Self::hydrate_str(&set, &mut self.request.uri, reg)?;
+        Self::hydrate_str(&set, &mut self.request.uri, reg, hide)?;
         if let Some(entrypoint) = &mut self.request.entrypoint {
-            Self::hydrate_str(&set, entrypoint, reg)?;
+            Self::hydrate_str(&set, entrypoint, reg, hide)?;
         }
         Ok(())
     }
@@ -81,22 +81,23 @@ impl<'a> Frame<'a> {
         set: &InstructionSet,
         val: &mut Value,
         reg: &Register,
+        hide: bool,
     ) -> Result<(), FrError> {
         match val {
             Value::Object(map) => {
                 for (_, val) in map.iter_mut() {
-                    Self::hydrate_val(set, val, reg)?;
+                    Self::hydrate_val(set, val, reg, hide)?;
                 }
                 Ok(())
             }
             Value::Array(vec) => {
                 for val in vec.iter_mut() {
-                    Self::hydrate_val(set, val, reg)?;
+                    Self::hydrate_val(set, val, reg, hide)?;
                 }
                 Ok(())
             }
             Value::String(_) => {
-                Self::hydrate_str(set, val, reg)?;
+                Self::hydrate_str(set, val, reg, hide)?;
                 Ok(())
             }
             _ => Ok(()),
@@ -108,6 +109,7 @@ impl<'a> Frame<'a> {
         set: &InstructionSet,
         string: &mut Value,
         reg: &Register,
+        hide: bool,
     ) -> Result<(), FrError> {
         {
             let matches = reg.read_match(&string.as_str().expect("hydrate_str None found"))?;
@@ -123,13 +125,13 @@ impl<'a> Frame<'a> {
                     // Now that the cut var is confirmed to exist in the entire instruction set
                     // perform read operation ony if cut var is present in read instructions
                     if set.reads.contains(n) {
-                        reg.read_operation(mat, string)?;
+                        reg.read_operation(mat, string, hide)?;
                         continue;
                     }
                     // if variable name is found in the "to" field of the InstructionSet
                     // AND `hydrate_writes` is true
                     if set.writes.contains_key(n) && set.hydrate_writes {
-                        reg.read_operation(mat, string)?;
+                        reg.read_operation(mat, string, hide)?;
                     }
                 }
             }
@@ -270,7 +272,7 @@ impl Response {
         frame_value["response"] = to_value(self)?;
         Ok(frame_value)
     }
-    ///
+
     /// Pretty json formatting for Response serialization
     pub fn to_string_pretty(&self) -> String {
         serde_json::to_string_pretty(self).expect("serialization error")
@@ -307,10 +309,7 @@ impl Response {
                 continue;
             }
             // handle non string payload values returned by the jql query
-            if !Register::is_single_variable(k, &frame_str) {
-                return Err(FrError::FrameParsef(
-                        "frame cut variable matched a non string Value while having a non singular cur variable declaration", frame_str));
-            }
+            Register::expect_standalone_var(k, &frame_str)?;
             write_matches.insert(k, payload_val);
         }
 
@@ -421,7 +420,8 @@ mod tests {
             "USER_TOKEN"=> "Bearer jWt"
         });
         let mut frame: Frame = Frame::new(FRAME_JSON).unwrap();
-        frame.hydrate(&reg).unwrap();
+        // TODO add hidden test
+        frame.hydrate(&reg, false).unwrap();
         assert_eq!(
             Frame {
                 protocol: Protocol::GRPC,

@@ -30,9 +30,27 @@ impl Register {
         Ok(reg)
     }
 
-    /// Pretty json formatting for Frame serialization
+    /// Pretty json formatting for Register serialization
     pub fn to_string_pretty(&self) -> String {
         serde_json::to_string_pretty(self).expect("serialization error")
+    }
+
+    /// Pretty formatting for Register serialization, any variables starting with an underscore as
+    /// it's value hidden
+    pub fn to_string_hidden(&self) -> Result<String, FrError> {
+        let val = match serde_json::to_value(self)? {
+            Value::Object(mut map) => {
+                for (k, v) in map.iter_mut() {
+                    if k.starts_with("_") {
+                        *v = Value::String("${_HIDDEN}".to_string());
+                    }
+                }
+                Value::Object(map)
+            }
+            i => i,
+        };
+        let str_val = serde_json::to_string_pretty(&val)?;
+        Ok(str_val)
     }
 
     /// Inserts entry into the Register's Cut Variables
@@ -147,7 +165,12 @@ impl Register {
     /// ::Match provided.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/master/cut.md#read-operation)
-    pub fn read_operation(&self, mat: Match, value: &mut Value) -> Result<(), FrError> {
+    pub fn read_operation(
+        &self,
+        mat: Match,
+        value: &mut Value,
+        hide_vars: bool,
+    ) -> Result<(), FrError> {
         if let Some(name) = mat.name() {
             if self.get_key_value(name).is_none() {
                 return Err(FrError::ReadInstructionf(
@@ -155,14 +178,31 @@ impl Register {
                     name.to_string(),
                 ));
             }
+            if hide_vars && name.starts_with('_') {
+                let expected = format!("{}{}{}", "${", name, "}");
+                if let Value::String(val) = value {
+                    if val.contains(&expected) {
+                        Match::Hide.read_operation(value)?;
+                        return Ok(());
+                    }
+                }
+            }
         }
+
         mat.read_operation(value)?;
         Ok(())
     }
 
     // ensures string slice past is a singular declaration of a `"${VARIABLE}"`
-    pub fn is_single_variable(var_name: &str, frame_str: &str) -> bool {
-        format!("{}{}{}", "${", var_name, "}") == frame_str.as_ref()
+    pub fn expect_standalone_var(var_name: &str, frame_str: &str) -> Result<(), FrError> {
+        let expected = format!("{}{}{}", "${", var_name, "}");
+        if expected != frame_str.as_ref() {
+            return Err(FrError::FrameParsef(
+                "Singe variable mismatch -",
+                format!("Expected:{}, Got:{}", expected, frame_str),
+            ));
+        }
+        Ok(())
     }
 
     /// Takes a frame string value and compares it against a payload string value
@@ -261,6 +301,7 @@ pub enum Match<'a> {
         value: Value,
         range: Range<usize>,
     },
+    Hide,
 }
 
 impl<'a> Match<'a> {
@@ -270,6 +311,7 @@ impl<'a> Match<'a> {
         match self {
             Match::Escape(range) => range.clone(),
             Match::Variable { range: r, .. } => r.clone(),
+            Match::Hide => panic!("range called on Match::Hide"),
         }
     }
 
@@ -277,6 +319,7 @@ impl<'a> Match<'a> {
     pub fn name(&self) -> Option<&'a str> {
         match self {
             Match::Escape(_) => None,
+            Match::Hide => None,
             Match::Variable { name: n, .. } => Some(*n),
         }
     }
@@ -308,6 +351,15 @@ impl<'a> Match<'a> {
                     *json_value = match_val.clone();
                     Ok(())
                 }
+            },
+            Match::Hide => match json_value {
+                Value::String(json_str) => {
+                    *json_str = "${_HIDDEN}".to_string();
+                    Ok(())
+                }
+                _ => Err(FrError::ReadInstruction(
+                    "Match::Hide.value is a non string Value",
+                )),
             },
         }
     }
@@ -440,7 +492,7 @@ mod tests {
             .read_match(&input.as_str().unwrap())
             .expect("match error");
         for mat in matches.into_iter() {
-            reg.read_operation(mat, &mut input).unwrap();
+            reg.read_operation(mat, &mut input, false).unwrap();
         }
         assert_eq!(expected, input)
     }

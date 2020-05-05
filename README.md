@@ -5,59 +5,64 @@
 A contract testing tool built in Rust using the [filmReel format](https://github.com/Bestowinc/filmReel).
 
 
+`dark`:
+
+<!-- dark start -->
 ```
-Usage: dark [-v] <command> [<args>]
+Usage: dark [<address>] [-v] [--tls] [--proto <proto>] [-H <header>] <command> [<args>]
 
 Top-level command.
 
 Options:
   -v, --verbose     enable verbose output
+  --tls             enable TLS (not needed for HTTP/S)
+  --proto           pass proto files used for payload forming
+  -H, --header      fallback header passed to the specified protocol
   --help            display usage information
 
 Commands:
+  version           returns CARGO_PKG_VERSION
   take              Takes a single frame, emitting the request then validating
                     the returned response
   record            Attempts to play through an entire Reel sequence running a
                     take for every frame in the sequence
 
 ```
+<!-- dark stop -->
 
 
 `dark take`:
 
+<!-- dark take start -->
 ```
-Usage: dark take <frame> [<address>] [--tls] [-H <header>] -c <cut> [-o <output>]
+Usage: dark take <frame> -c <cut> [-o <output>]
 
 Takes a single frame, emitting the request then validating the returned response
 
 Options:
-  --tls             enable TLS
-  -H, --header      fallback header passed to the specified protocol
   -c, --cut         filepath of input cut file
   -o, --output      output of take file
   --help            display usage information
 
 ```
+<!-- dark take stop -->
 
 `dark record`:
 
+<!-- dark record start -->
 ```
-Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [--tls] [-a <address>] [-H <header>] [-c <cut>] [-o <output>] [-i]
+Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-o <output>] [-i]
 
 Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
 Options:
-  --tls             enable TLS
-  -a, --address     fallback address passed to the specified protocol if not
-                    provided by the frame itself
-  -H, --header      fallback header passed to the specified protocol if not
-                    provided by the frame itself
   -c, --cut         filepath of input cut file
   -o, --output      output directory for successful takes
   -i, --interactive interactive frame sequence transitions
   --help            display usage information
 
 ```
+<!-- dark record stop -->
 
 ### New in `0.2`:
 

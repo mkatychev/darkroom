@@ -10,7 +10,7 @@ use log::{debug, warn};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn run_record(cmd: Record) -> Result<(), BoxError> {
+pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), BoxError> {
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register: Register = Register::new(&cut_str)?;
     // &cut_register.destructive_merge::<Vec<Register>>(
@@ -24,7 +24,6 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
     &cut_register.destructive_merge(merge_cuts?);
     let reel = Reel::new(&cmd.reel_path, &cmd.reel_name)?;
 
-    let base_params = BaseParams::from(&cmd);
     for meta_frame in reel {
         // if cmd.output is Some, provide a take PathBuf
         let output = cmd
@@ -61,9 +60,15 @@ pub fn run_record(cmd: Record) -> Result<(), BoxError> {
         )?;
     }
 
-    if let Some(_) = cmd.output {
+    if let Some(path) = base_params.cut_out {
+        debug!("writing cut output to PathBuf...");
+        fs::write(path, &cut_register.to_string_hidden()?)
+            .expect("unable to write to cmd.get_cut_copy()");
+    }
+    // if take output was specified write to default cut copy path
+    else if cmd.output.is_some() {
         debug!("writing to cut file...");
-        fs::write(cmd.get_cut_copy(), &cut_register.to_string_pretty())
+        fs::write(cmd.get_cut_copy(), &cut_register.to_string_hidden()?)
             .expect("unable to write to cmd.get_cut_copy()");
     }
 

@@ -1,10 +1,11 @@
 [package]
 name = "darkroom"
-version = "0.2.0"
+version = "0.2.1"
 description = "A contract testing tool built in Rust"
 authors = ["Matthew Planchard <msplanchard@gmail.com>", "Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
 license = "GPL-3.0"
+readme = "README.md"
 
 documentation = "https://docs.rs/crate/darkroom/"
 homepage = "https://crates.io/crates/darkroom"

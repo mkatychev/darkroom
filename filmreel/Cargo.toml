@@ -5,6 +5,7 @@ description = "filmReel parser for Rust"
 authors = ["Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
 license = "GPL-3.0"
+readme = "README.md"
 
 documentation = "https://docs.rs/crate/filmreel-rust/"
 homepage = "https://crates.io/crates/filmreel-rust"
