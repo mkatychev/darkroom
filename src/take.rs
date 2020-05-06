@@ -144,12 +144,6 @@ pub fn process_response<'a>(
         "============\n".green()
     );
 
-    // Error expected actual
-    if let Some(cut_out) = cut_out {
-        debug!("writing to cut file...");
-        fs::write(cut_out, &cut_register.to_string_pretty())?;
-    }
-
     // If an output was specified create a take file
     if let Some(frame_out) = output {
         debug!("creating take receipt...");
