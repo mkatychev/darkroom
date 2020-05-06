@@ -1,7 +1,7 @@
 {
   "cut": {
     "from": [
-      "address"
+      "ADDRESS"
     ],
     "to": {
       "trace": "'response'.'body'.'headers'.'X-Amzn-Trace-Id'",
@@ -12,7 +12,7 @@
   "request": {
     "body": "the exact body that is sent",
     "uri": "POST post",
-    "entrypoint": "${address}"
+    "entrypoint": "${ADDRESS}"
   },
   "response": {
     "body": {
