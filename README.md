@@ -15,7 +15,7 @@ Top-level command.
 
 Options:
   -v, --verbose     enable verbose output
-  --tls             enable TLS (not needed for HTTP/S)
+  --tls             enable TLS (automatically inferred HTTP/S)
   --proto           pass proto files used for payload forming
   -H, --header      fallback header passed to the specified protocol
   -C, --cut-out     output of final cut file
@@ -98,3 +98,10 @@ dark -v record -i ./test_data post -c ./test_data/post.cut.json \
 dark -C >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
 ```
 
+<!--
+cargo build --release
+tar czf darkroom-0.1.2-x86_64-apple-darwin.tar.gz target/release/dark
+alias rust-musl-builder='docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder'
+rust-musl-builder cargo build --release
+tar czf darkroom-0.1.2-x86_64-unknown-linux-musl.tar.gz ./target/x86_64-unknown-linux-musl/release/dark
+-->
