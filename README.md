@@ -111,11 +111,17 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 * Added `dark version` command
 * moved common parameters into the main `dark` command to be shared across subcommands
 
+#### `0.2.3`:
+
+* Added component reel support, component reels are generate as a prelude to the provided reel   `dark record --component "<dir>&<reel_name>" ./dir/ my_reel_name`
+* Added anyhow error handling
+* `--cut-out` can now be returned on a failed `record` or `take`
+
 
 <!--
-cargo build --release
-tar czf darkroom-0.1.2-x86_64-apple-darwin.tar.gz target/release/dark
-alias rust-musl-builder='docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder'
-rust-musl-builder cargo build --release
-tar czf darkroom-0.1.2-x86_64-unknown-linux-musl.tar.gz ./target/x86_64-unknown-linux-musl/release/dark
+VERSION="0.2.3"
+cargo build --release && \
+tar czf darkroom-"$VERSION"-x86_64-apple-darwin.tar.gz target/release/dark && \
+docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release && \
+tar czf darkroom-"$VERSION"-x86_64-unknown-linux-musl.tar.gz ./target/x86_64-unknown-linux-musl/release/dark
 -->
