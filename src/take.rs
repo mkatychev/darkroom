@@ -7,6 +7,7 @@ use anyhow::{anyhow, Error};
 use colored::*;
 use colored_diff::PrettyDifference;
 use colored_json::prelude::*;
+use colored_json::{Colour, Styler};
 use filmreel as fr;
 use fr::cut::Register;
 use fr::frame::{Frame, Protocol, Response};
@@ -17,6 +18,28 @@ use std::convert::TryFrom;
 use std::fs;
 use std::io::{self, prelude::*};
 use std::path::PathBuf;
+
+fn get_styler() -> Styler {
+    Styler {
+        bool_value: Colour::Purple.normal(),
+        float_value: Colour::RGB(255, 123, 0).normal(),
+        integer_value: Colour::RGB(255, 123, 0).normal(),
+        ..Default::default()
+    }
+}
+
+trait ToTakeColoredJson: ToColoredJson {
+    fn to_take_colored_json(&self) -> serde_json::Result<String>;
+}
+
+impl<S> ToTakeColoredJson for S
+where
+    S: ?Sized + AsRef<str>,
+{
+    fn to_take_colored_json(&self) -> serde_json::Result<String> {
+        self.to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
+    }
+}
 
 /// Performs a single frame hydration using a given json file and outputs a Take to either stdout
 /// or a designated file
@@ -37,7 +60,7 @@ pub fn run_request<'a>(
         hidden_frame = Some(hydrated);
     }
     info!("[{}] frame:", "Unhydrated".red());
-    info!("{}", frame.to_string_pretty().to_colored_json_auto()?);
+    info!("{}", frame.to_string_pretty().to_take_colored_json()?,);
     info!("{}", "=======================".magenta());
     info!("HYDRATING...");
     info!("{}", "=======================".magenta());
@@ -62,9 +85,9 @@ pub fn run_request<'a>(
             unhydrated_frame
                 .expect("None for unhydrated_frame")
                 .to_string_pretty()
-                .to_colored_json_auto()?,
-            register.to_string_hidden()?.to_colored_json_auto()?,
-            hidden.to_string_pretty().to_colored_json_auto()?,
+                .to_take_colored_json()?,
+            register.to_string_hidden()?.to_take_colored_json()?,
+            hidden.to_string_pretty().to_take_colored_json()?,
         ]);
         table.printstd();
         write!(
@@ -84,7 +107,12 @@ pub fn run_request<'a>(
         };
         info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
         info!("[{}] frame:", "Hydrated".green());
-        info!("{}", hidden.to_string_pretty().to_colored_json_auto()?);
+        info!(
+            "{}",
+            hidden
+                .to_string_pretty()
+                .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?
+        );
     }
 
     let params = base_params.init(frame.get_request())?;
@@ -211,14 +239,14 @@ fn log_mismatch(frame_str: String, response_str: String) {
     error!(
         "{}\n",
         frame_str
-            .to_colored_json_auto()
+            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
             .expect("log_mismatch expected panic")
     );
     error!("{}\n", "Actual:".magenta());
     error!(
         "{}\n",
         response_str
-            .to_colored_json_auto()
+            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
             .expect("log_mismatch actual panic")
     );
     error!(
