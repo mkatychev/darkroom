@@ -1,8 +1,9 @@
+use anyhow::Error;
 use darkroom::record::run_record;
 use darkroom::take::single_take;
 use darkroom::*;
 
-fn main() -> Result<(), BoxError> {
+fn main() -> Result<(), Error> {
     let args: Command = argh::from_env();
     let opts: Opts = Opts::new(&args);
     let base_params = args.base_params();

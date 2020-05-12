@@ -1,3 +1,4 @@
 {
-  "ADDRESS": "https://httpbin.org"
+  "ADDRESS": "https://httpbin.org",
+  "BODY": "the exact body that is sent"
 }

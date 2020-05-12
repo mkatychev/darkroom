@@ -1,6 +1,6 @@
 use crate::params::iter_path_args;
 use crate::params::Params;
-use crate::BoxError;
+use anyhow::{anyhow, Context, Error};
 use filmreel::frame::{Request, Response};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -11,19 +11,19 @@ use std::path::PathBuf;
 use std::process::Command;
 
 /// Checks to see if grpcurl is in the system path
-pub fn validate_grpcurl() -> Result<(), &'static str> {
+pub fn validate_grpcurl() -> Result<(), Error> {
     lazy_static! {
         static ref GRPCURL: which::Result<PathBuf> = which::which("grpcurl");
     }
     if !GRPCURL.is_ok() {
-        return Err("`grpcurl` was not found! Check your PATH!");
+        return Err(anyhow!("`grpcurl` was not found! Check your PATH!"));
     }
     Ok(())
 }
 
 /// Parses a Frame Request and a Params object to send a gRPC payload using grpcurl
-pub fn grpcurl(prm: Params, req: Request) -> Result<Response, BoxError> {
-    validate_grpcurl()?;
+pub fn grpcurl(prm: Params, req: Request) -> Result<Response, Error> {
+    validate_grpcurl().context("grpcurl request failure")?;
 
     let mut flags: Vec<&OsStr> = vec![];
 
@@ -49,17 +49,19 @@ pub fn grpcurl(prm: Params, req: Request) -> Result<Response, BoxError> {
         flags.push(h.as_ref());
     }
 
-    let req_cmd = match Command::new("grpcurl")
+    let req_cmd = Command::new("grpcurl")
         .args(flags)
         .arg("-d")
         .arg(req.to_payload()?)
         .arg(prm.address)
         .arg(req.get_uri())
         .output()
-    {
-        Ok(v) => v,
-        Err(e) => return Err(format!("grpcurl error: {}", e).into()),
-    };
+        .context("grpcurl error")?;
+
+    // {
+    //     Ok(v) => v,
+    //     Err(e) => return Err(e.context("grpcurl error")),
+    // };
 
     let response: Response = match req_cmd.status.code() {
         Some(0) => Response {
@@ -76,7 +78,7 @@ pub fn grpcurl(prm: Params, req: Request) -> Result<Response, BoxError> {
                 etc: json!({}),
             }
         }
-        None => return Err("None Response code".into()),
+        None => return Err(anyhow!("grpcurl Response code was <None>")),
     };
     Ok(response)
 }
@@ -88,12 +90,12 @@ struct ResponseError {
 }
 
 impl TryFrom<&Vec<u8>> for ResponseError {
-    type Error = BoxError;
+    type Error = Error;
 
     fn try_from(stderr: &Vec<u8>) -> Result<ResponseError, Self::Error> {
         let stripped = cram_yaml(stderr);
         match serde_yaml::from_slice::<ResponseError>(&stripped) {
-            Err(_) => Err(String::from_utf8(stderr.clone())?.into()),
+            Err(_) => Err(anyhow!(String::from_utf8(stderr.clone())?)),
             Ok(err) => Ok(err),
         }
     }

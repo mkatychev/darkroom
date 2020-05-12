@@ -1,6 +1,6 @@
 use crate::params::BaseParams;
+use anyhow::{anyhow, Error};
 use argh::FromArgs;
-use std::error::Error;
 use std::path::PathBuf;
 
 pub mod grpc;
@@ -8,8 +8,6 @@ pub mod http;
 pub mod params;
 pub mod record;
 pub mod take;
-
-pub type BoxError = Box<dyn Error>;
 
 pub use filmreel::cut::Register;
 pub use filmreel::frame::*;
@@ -38,12 +36,12 @@ pub struct Command {
     #[argh(switch, short = 'v')]
     verbose: bool,
 
-    /// enable TLS (automatically inferred HTTP/S)
+    /// enable TLS (automatically inferred for HTTP/S)
     #[argh(switch)]
     tls: bool,
 
     /// pass proto files used for payload forming
-    #[argh(option)]
+    #[argh(option, short = 'p')]
     proto: Vec<PathBuf>,
 
     /// fallback address passed to the specified protocol
@@ -58,6 +56,10 @@ pub struct Command {
     #[argh(option, short = 'C')]
     cut_out: Option<PathBuf>,
 
+    /// interactive frame sequence transitions
+    #[argh(switch, short = 'i')]
+    interactive: bool,
+
     #[argh(subcommand)]
     pub nested: SubCommand,
 }
@@ -70,6 +72,8 @@ impl Command {
             address: self.address.clone(),
             proto: self.proto.clone(),
             cut_out: self.cut_out.clone(),
+            interactive: self.interactive,
+            verbose: self.verbose,
         }
     }
 
@@ -99,7 +103,7 @@ pub enum SubCommand {
     Record(Record),
 }
 
-/// returns CARGO_PKG_VERSION
+/// Returns CARGO_PKG_VERSION
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "version")]
 pub struct Version {
@@ -129,7 +133,7 @@ pub struct Take {
 
     /// output of take file
     #[argh(option, short = 'o')]
-    output: Option<PathBuf>,
+    take_out: Option<PathBuf>,
 }
 
 /// Attempts to play through an entire Reel sequence running a take for every frame in the sequence
@@ -148,27 +152,24 @@ pub struct Record {
     #[argh(option, short = 'c')]
     cut: Option<PathBuf>,
 
-    // filepath of component reel files with every reel indicated by the the pipe separated "<reel_filepath>|<reel_name>" string
-    // #[argh(option, short = 'C')]
-    // merge_reels: Vec<String>,
+    /// repeatable component reel pattern using an ampersand separator: `--component "<dir>&<reel_name>"`
+    #[argh(option, short = 'b')]
+    component: Vec<String>,
+
     /// filepath of merge cuts
     #[argh(positional)]
     merge_cuts: Vec<PathBuf>,
 
     /// output directory for successful takes
     #[argh(option, short = 'o')]
-    output: Option<PathBuf>,
-
-    /// interactive frame sequence transitions
-    #[argh(switch, short = 'i')]
-    interactive: bool,
+    take_out: Option<PathBuf>,
 }
 
 impl Take {
     /// validate ensures the frame and cut filepaths provided point to valid files
-    pub fn validate(&self) -> Result<(), &str> {
+    pub fn validate(&self) -> Result<(), Error> {
         if !self.frame.is_file() {
-            return Err("<frame> must be a valid file");
+            return Err(anyhow!("<frame> must be a valid file"));
         }
 
         // TODO for now remove file requirement
@@ -184,25 +185,27 @@ impl Take {
 impl Record {
     /// validate ensures the reels is a valid directory and ensures that the corresponding cut file
     /// exists
-    pub fn validate(&self) -> Result<(), &str> {
+    pub fn validate(&self) -> Result<(), Error> {
         if !self.reel_path.is_dir() {
-            return Err("<path> must be a valid directory");
+            return Err(anyhow!("<path> must be a valid directory"));
         }
 
         if let Some(cut) = &self.cut {
             if !cut.is_file() {
-                return Err("<cut> must be a valid file");
+                return Err(anyhow!("<cut> must be a valid file"));
             }
         } else {
             // check existence of implicit cut file in the same directory
             if !self.get_cut_file().is_file() {
-                return Err("unable to find a matching cut file in the given directory");
+                return Err(anyhow!(
+                    "unable to find a matching cut file in the given directory"
+                ));
             }
         }
 
-        if let Some(output) = &self.output {
+        if let Some(output) = &self.take_out {
             if !output.is_dir() {
-                return Err("<output> must be a valid directory");
+                return Err(anyhow!("<output> must be a valid directory"));
             }
         }
         Ok(())

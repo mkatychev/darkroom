@@ -1,7 +1,8 @@
 {
   "cut": {
     "from": [
-      "ADDRESS"
+      "ADDRESS",
+      "BODY"
     ],
     "to": {
       "trace": "'response'.'body'.'headers'.'X-Amzn-Trace-Id'",
@@ -17,7 +18,7 @@
   "response": {
     "body": {
       "args": {},
-      "data": "\"the exact body that is sent\"",
+      "data": "\"${BODY}\"",
       "files": {},
       "form": {},
       "headers": {
@@ -26,7 +27,7 @@
         "Host": "httpbin.org",
         "X-Amzn-Trace-Id": "${trace}"
       },
-      "json": "the exact body that is sent",
+      "json": "${BODY}",
       "origin": "${IP}",
       "url": "https://httpbin.org/post"
     },

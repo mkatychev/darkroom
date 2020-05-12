@@ -1,4 +1,4 @@
-use crate::error::{BoxError, FrError};
+use crate::error::FrError;
 use glob::glob;
 use std::convert::TryFrom;
 use std::iter::FromIterator;
@@ -10,12 +10,13 @@ use std::result::Result;
 /// [Reel spec](https://github.com/Bestowinc/filmReel/blob/master/Reel.md#reel)
 #[derive(Debug)]
 pub struct Reel {
+    dir: PathBuf,
     frames: Vec<MetaFrame>,
 }
 
 impl Reel {
     /// A new reel is created from a provided Path or PathBuf
-    pub fn new<P: AsRef<Path>>(dir: P, reel_name: &str) -> Result<Self, BoxError> {
+    pub fn new<P: AsRef<Path>>(dir: P, reel_name: &str) -> Result<Self, FrError> {
         let mut frames = Vec::new();
         let dir_glob = dir.as_ref().join(format!("{}.*.*.fr.json", reel_name));
 
@@ -30,14 +31,29 @@ impl Reel {
         // sort by string value since sorting by f32 is not idiomatic
         frames.sort_by(|a, b| a.path.cmp(&b.path));
 
-        Ok(Self { frames })
+        Ok(Self {
+            dir: PathBuf::from(dir.as_ref().to_str().expect("None Reel dir")),
+            frames,
+        })
     }
-    fn into_success_iter(self) -> Vec<MetaFrame> {
-        self.frames
-            .clone()
-            .into_iter()
-            .filter(|x| x.is_success())
-            .collect()
+
+    /// convenience function to get default associated cut file
+    pub fn get_default_cut_path(&self) -> PathBuf {
+        let reel_name = self.frames[0].reel_name.clone();
+        self.dir.join(format!("{}.cut.json", reel_name))
+    }
+
+    /// Return only successful frames
+    pub fn success_only(self) -> Self {
+        Self {
+            dir: self.dir,
+            frames: self
+                .frames
+                .clone()
+                .into_iter()
+                .filter(|x| x.is_success())
+                .collect(),
+        }
     }
 }
 
@@ -75,7 +91,7 @@ pub struct MetaFrame {
 }
 
 impl TryFrom<PathBuf> for MetaFrame {
-    type Error = BoxError;
+    type Error = FrError;
 
     fn try_from(p: PathBuf) -> Result<Self, Self::Error> {
         let mut reel_parts: Vec<&str> = match p
@@ -85,7 +101,7 @@ impl TryFrom<PathBuf> for MetaFrame {
             .map(|s| s.split('.').collect())
         {
             Some(s) => s,
-            None => return Err(FrError::ReelParse("failed parsing PathBuf").into()),
+            None => return Err(FrError::ReelParse("failed parsing PathBuf")),
         };
 
         let reel_name = String::from(reel_parts.remove(0));
@@ -114,7 +130,7 @@ impl MetaFrame {
     }
 }
 
-fn parse_sequence(seq: &str) -> Result<(f32, FrameType), BoxError> {
+fn parse_sequence(seq: &str) -> Result<(f32, FrameType), FrError> {
     let mut seq_chars: Vec<char> = Vec::new();
     let mut type_str: String = String::new();
     for ch in seq.chars() {
@@ -131,18 +147,29 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), BoxError> {
                 seq_chars.push('.');
             }
             _ => {
-                return Err(
-                    FrError::ReelParsef("{} is an invalidsequence char!", ch.to_string()).into(),
-                )
+                return Err(FrError::ReelParsef(
+                    "{} is an invalidsequence char!",
+                    ch.to_string(),
+                ))
             }
         }
     }
 
-    let seq_f32 = String::from_iter(seq_chars).parse::<f32>()?;
+    let seq_f32 = match String::from_iter(&seq_chars).parse::<f32>() {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(FrError::ReelParsef(
+                "Could not parse value into f32",
+                e.to_string(),
+            ))
+        }
+    };
     let frame_type = FrameType::from(type_str);
 
     if let FrameType::Invalid = frame_type {
-        return Err(FrError::ReelParse("Unrecognized frame type in frame sequence").into());
+        return Err(FrError::ReelParse(
+            "Unrecognized frame type in frame sequence",
+        ));
     }
 
     Ok((seq_f32, frame_type))

@@ -1,4 +1,5 @@
-use crate::{BoxError, Command};
+use crate::Command;
+use anyhow::{anyhow, Error};
 use filmreel::frame::Request;
 use std::path::PathBuf;
 
@@ -20,6 +21,8 @@ pub struct BaseParams {
     pub address: Option<String>,
     pub proto: Vec<PathBuf>,
     pub cut_out: Option<PathBuf>,
+    pub interactive: bool,
+    pub verbose: bool,
 }
 
 impl From<&Command> for BaseParams {
@@ -30,6 +33,8 @@ impl From<&Command> for BaseParams {
             address: cmd.address.clone(),
             proto: cmd.proto.clone(),
             cut_out: cmd.cut_out.clone(),
+            interactive: cmd.interactive,
+            verbose: cmd.verbose,
         }
     }
 }
@@ -37,7 +42,7 @@ impl From<&Command> for BaseParams {
 impl BaseParams {
     /// init provides a frame's request properties to override or populated
     /// parameter fields desired by a specific Frame
-    pub fn init(&self, request: Request) -> Result<Params, BoxError> {
+    pub fn init(&self, request: Request) -> Result<Params, Error> {
         // let request = frame.get_request();
 
         let header: Option<String> = match request.get_header() {
@@ -47,7 +52,10 @@ impl BaseParams {
 
         let address = match request.get_entrypoint() {
             Some(i) => i,
-            None => self.address.clone().ok_or("Params: missing address")?,
+            None => self
+                .address
+                .clone()
+                .ok_or(anyhow!("Params: missing address"))?,
         };
 
         let proto = match self.proto.len() {
@@ -92,6 +100,7 @@ mod tests {
             proto: vec![],
             verbose: false,
             cut_out: None,
+            interactive: false,
             nested: SubCommand::Version(Version { version: true }),
         };
         let request: Request = serde_json::from_str::<Frame>(

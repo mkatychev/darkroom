@@ -23,11 +23,16 @@ const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscore
 type Variables = HashMap<String, Value>;
 
 impl Register {
-    /// Creates a new Register object running post deserialization validations
-    pub fn new<T: AsRef<str>>(json_string: T) -> Result<Register, FrError> {
+    /// Creates a Register from a string ref
+    pub fn from<T: AsRef<str>>(json_string: T) -> Result<Register, FrError> {
         let reg: Register = serde_json::from_str(json_string.as_ref())?;
         // reg.validate()?;
         Ok(reg)
+    }
+
+    // Alias for Register::default
+    pub fn new() -> Self {
+        Register::default()
     }
 
     /// Pretty json formatting for Register serialization

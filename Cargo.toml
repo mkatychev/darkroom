@@ -1,6 +1,6 @@
 [package]
 name = "darkroom"
-version = "0.2.2"
+version = "0.2.3"
 description = "A contract testing tool built in Rust"
 authors = ["Matthew Planchard <msplanchard@gmail.com>", "Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
@@ -21,6 +21,7 @@ members = [
 ]
 
 [dependencies]
+anyhow = "1.0"
 argh = "0.1"
 colored = "1.9"
 colored-diff = "0.2"
