@@ -26,10 +26,11 @@ pub fn run_request<'a>(
     base_params: &BaseParams,
 ) -> Result<Response, Error> {
     let interactive = base_params.interactive;
+    let verbose = base_params.verbose;
 
     let mut unhydrated_frame: Option<Frame> = None;
     let mut hidden_frame: Option<Frame> = None;
-    if interactive || base_params.verbose {
+    if interactive || verbose {
         unhydrated_frame = Some(frame.clone());
         let mut hydrated = frame.clone();
         hydrated.hydrate(&register, true)?;
@@ -55,7 +56,7 @@ pub fn run_request<'a>(
 
         let hidden = match hidden_frame {
             Some(f) => f,
-            None => return Err(anyhow!("None for hidden_frame")),
+            None => return Err(anyhow!("None for interactive hidden_frame")),
         };
         table.add_row(row![
             unhydrated_frame
@@ -76,10 +77,10 @@ pub fn run_request<'a>(
 
         // Read a single byte and discard
         let _ = stdin.read(&mut [0u8]).expect("read stdin panic");
-    } else {
+    } else if verbose {
         let hidden = match hidden_frame {
             Some(f) => f,
-            None => return Err(anyhow!("None for hidden_frame")),
+            None => return Err(anyhow!("None for interactive hidden_frame")),
         };
         info!("{} {}\n", "Request URI:".yellow(), frame.get_request_uri()?);
         info!("[{}] frame:", "Hydrated".green());

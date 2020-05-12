@@ -113,7 +113,7 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 
 #### `0.2.3`:
 
-* Added component reel support, component reels are generate as a prelude to the provided reel   `dark record --component "<dir>&<reel_name>" ./dir/ my_reel_name`
+* Added component reel support, component reels are generated as a prelude to the provided reel   `dark record --component "<dir>&<reel_name>" ./dir/ my_reel_name`
 * Added anyhow error handling
 * `--cut-out` can now be returned on a failed `record` or `take`
 
