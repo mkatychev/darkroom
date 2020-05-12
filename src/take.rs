@@ -50,7 +50,7 @@ pub fn run_request<'a>(
         let mut table = Table::new();
         table.add_row(row![
             format!("[{}] frame", "Unhydrated".red()),
-            "Cut Register",
+            format!("[{}]", "Cut Register".yellow()),
             format!("[{}] frame", "Hydrated".green()),
         ]);
 
@@ -82,10 +82,9 @@ pub fn run_request<'a>(
             Some(f) => f,
             None => return Err(anyhow!("None for interactive hidden_frame")),
         };
-        info!("{} {}\n", "Request URI:".yellow(), frame.get_request_uri()?);
+        info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
         info!("[{}] frame:", "Hydrated".green());
         info!("{}", hidden.to_string_pretty().to_colored_json_auto()?);
-        info!("{}\n", "=======================".magenta());
     }
 
     let params = base_params.init(frame.get_request())?;
