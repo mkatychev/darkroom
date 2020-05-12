@@ -24,6 +24,8 @@ fn get_styler() -> Styler {
         bool_value: Colour::Purple.normal(),
         float_value: Colour::RGB(255, 123, 0).normal(),
         integer_value: Colour::RGB(255, 123, 0).normal(),
+        nil_value: Colour::Cyan.normal(),
+        string_include_quotation: false,
         ..Default::default()
     }
 }
