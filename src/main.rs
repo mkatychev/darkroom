@@ -1,7 +1,5 @@
 use anyhow::Error;
-use darkroom::record::run_record;
-use darkroom::take::single_take;
-use darkroom::*;
+use darkroom::{record::run_record, take::single_take, *};
 
 fn main() -> Result<(), Error> {
     let args: Command = argh::from_env();

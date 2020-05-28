@@ -1,8 +1,6 @@
 use colored::*;
-use serde_json::error::Category;
-use serde_json::error::Error as SerdeError;
-use std::error::Error;
-use std::fmt;
+use serde_json::error::{Category, Error as SerdeError};
+use std::{error::Error, fmt};
 
 /// An error that occurred during parsing or hydrating a filmReel file
 #[derive(Debug, PartialEq)]

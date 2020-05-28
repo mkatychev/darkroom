@@ -1,9 +1,11 @@
 use crate::error::FrError;
 use glob::glob;
-use std::convert::TryFrom;
-use std::iter::FromIterator;
-use std::path::{Path, PathBuf};
-use std::result::Result;
+use std::{
+    convert::TryFrom,
+    iter::FromIterator,
+    path::{Path, PathBuf},
+    result::Result,
+};
 
 /// Represents the sequence of Frames to execute.
 ///
@@ -127,6 +129,13 @@ impl TryFrom<PathBuf> for MetaFrame {
 impl MetaFrame {
     fn is_success(&self) -> bool {
         self.frame_type == FrameType::Success
+    }
+
+    // get_filename returns the str representation of the MetaFrame.path file stem
+    pub fn get_filename(&self) -> Option<String> {
+        self.path
+            .file_stem()
+            .map(|x| String::from(x.to_string_lossy()))
     }
 }
 

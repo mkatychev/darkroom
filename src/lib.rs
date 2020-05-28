@@ -9,9 +9,11 @@ pub mod params;
 pub mod record;
 pub mod take;
 
-pub use filmreel::cut::Register;
-pub use filmreel::frame::*;
-pub use filmreel::reel::{MetaFrame, Reel};
+pub use filmreel::{
+    cut::Register,
+    frame::*,
+    reel::{MetaFrame, Reel},
+};
 
 pub struct Logger;
 

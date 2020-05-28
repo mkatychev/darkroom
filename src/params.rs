@@ -1,15 +1,17 @@
 use crate::Command;
 use anyhow::{anyhow, Error};
 use filmreel::frame::Request;
+use serde::Deserialize;
 use std::path::PathBuf;
 
 /// Parameters needed for a uri method to be sent.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Params<'a> {
     pub tls: bool,
     pub header: Option<String>,
     pub address: String,
     pub proto: Option<&'a Vec<PathBuf>>,
+    pub attempts: Option<Attempts>,
 }
 
 /// BaseParams contains parameter values provided by a Record or Take object
@@ -23,6 +25,12 @@ pub struct BaseParams {
     pub cut_out: Option<PathBuf>,
     pub interactive: bool,
     pub verbose: bool,
+}
+
+#[derive(Clone, Deserialize, Default, Debug, PartialEq)]
+pub struct Attempts {
+    pub times: u32,
+    pub ms: u64,
 }
 
 impl From<&Command> for BaseParams {
@@ -49,13 +57,17 @@ impl BaseParams {
             Some(i) => Some(i.to_string()),
             None => self.header.clone(),
         };
-
         let address = match request.get_entrypoint() {
             Some(i) => i,
             None => self
                 .address
                 .clone()
-                .ok_or(anyhow!("Params: missing address"))?,
+                .ok_or_else(|| anyhow!("Params: missing address"))?,
+        };
+
+        let attempts: Option<Attempts> = match request.get_etc().get("attempts") {
+            Some(v) => serde_json::from_value(v.clone())?,
+            None => None,
         };
 
         let proto = match self.proto.len() {
@@ -68,6 +80,7 @@ impl BaseParams {
             header,
             address,
             proto,
+            attempts,
         })
     }
 }
@@ -88,8 +101,7 @@ mod tests {
     use super::*;
     use crate::{Command, SubCommand, Version};
     use filmreel::frame::{Frame, Request};
-    use std::ffi::OsStr;
-    use std::path::PathBuf;
+    use std::{ffi::OsStr, path::PathBuf};
 
     #[test]
     fn test_init() {
@@ -111,7 +123,11 @@ mod tests {
     "body": {},
     "header": "Authorization: Bearer BIG_BEAR",
     "entrypoint": "localhost:8000",
-    "uri": "POST /it/notes"
+    "uri": "POST /it/notes",
+    "attempts": {
+      "times": 2,
+      "ms": 200
+    }
   },
   "response": {
     "body": {},
@@ -131,6 +147,7 @@ mod tests {
                 header: Some("\"Authorization: Bearer BIG_BEAR\"".to_string()),
                 address: "localhost:8000".to_string(),
                 proto: None,
+                attempts: Some(Attempts { times: 2, ms: 200 }),
             },
             params
         )

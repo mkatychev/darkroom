@@ -1,24 +1,27 @@
-use crate::grpc::grpcurl;
-use crate::http::http_request;
-use crate::params::BaseParams;
-use crate::record::write_cut;
-use crate::Take;
-use anyhow::{anyhow, Error};
+use crate::{grpc::grpcurl, http::http_request, params::BaseParams, record::write_cut, Take};
+use anyhow::{anyhow, Context, Error};
 use colored::*;
 use colored_diff::PrettyDifference;
-use colored_json::prelude::*;
-use colored_json::{Colour, Styler};
+use colored_json::{prelude::*, Colour, Styler};
 use filmreel as fr;
-use fr::cut::Register;
-use fr::frame::{Frame, Protocol, Response};
-use fr::reel::MetaFrame;
-use log::{debug, error, info};
+use filmreel::{
+    cut::Register,
+    frame::{Frame, Protocol, Response},
+    reel::MetaFrame,
+    FrError, ToStringHidden, ToStringPretty,
+};
+use log::{debug, error, info, warn};
 use prettytable::*;
-use std::convert::TryFrom;
-use std::fs;
-use std::io::{self, prelude::*};
-use std::path::PathBuf;
+use serde::Serialize;
+use std::{
+    convert::TryFrom,
+    fs,
+    io::{self, prelude::*},
+    path::PathBuf,
+    thread, time,
+};
 
+/// get_styler returns the custom syntax values for stdout json
 fn get_styler() -> Styler {
     Styler {
         bool_value: Colour::Purple.normal(),
@@ -30,16 +33,34 @@ fn get_styler() -> Styler {
     }
 }
 
-trait ToTakeColoredJson: ToColoredJson {
-    fn to_take_colored_json(&self) -> serde_json::Result<String>;
+trait ToTakeColouredJson {
+    fn to_coloured_tk_json(&self) -> Result<String, FrError>;
 }
 
-impl<S> ToTakeColoredJson for S
+impl<T> ToTakeColouredJson for T
 where
-    S: ?Sized + AsRef<str>,
+    T: ToStringPretty,
 {
-    fn to_take_colored_json(&self) -> serde_json::Result<String> {
-        self.to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
+    fn to_coloured_tk_json(&self) -> Result<String, FrError> {
+        Ok(self
+            .to_string_pretty()?
+            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
+    }
+}
+
+trait ToTakeHiddenColouredJson: ToTakeColouredJson {
+    // fn to_colored_json(&self) -> Result<String, FrError>;
+    fn to_hidden_tk_json(&self) -> Result<String, FrError>;
+}
+
+impl<T> ToTakeHiddenColouredJson for T
+where
+    T: ToStringHidden + Serialize,
+{
+    fn to_hidden_tk_json(&self) -> Result<String, FrError> {
+        Ok(self
+            .to_string_hidden()?
+            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
     }
 }
 
@@ -54,15 +75,16 @@ pub fn run_request<'a>(
     let verbose = base_params.verbose;
 
     let mut unhydrated_frame: Option<Frame> = None;
-    let mut hidden_frame: Option<Frame> = None;
-    if interactive || verbose {
+    let hidden_frame: Option<Frame> = if interactive || verbose {
         unhydrated_frame = Some(frame.clone());
         let mut hydrated = frame.clone();
         hydrated.hydrate(&register, true)?;
-        hidden_frame = Some(hydrated);
-    }
+        Some(hydrated)
+    } else {
+        None
+    };
     info!("[{}] frame:", "Unhydrated".red());
-    info!("{}", frame.to_string_pretty().to_take_colored_json()?,);
+    info!("{}", frame.to_coloured_tk_json()?);
     info!("{}", "=======================".magenta());
     info!("HYDRATING...");
     info!("{}", "=======================".magenta());
@@ -86,10 +108,9 @@ pub fn run_request<'a>(
         table.add_row(row![
             unhydrated_frame
                 .expect("None for unhydrated_frame")
-                .to_string_pretty()
-                .to_take_colored_json()?,
-            register.to_string_hidden()?.to_take_colored_json()?,
-            hidden.to_string_pretty().to_take_colored_json()?,
+                .to_coloured_tk_json()?,
+            register.to_hidden_tk_json()?,
+            hidden.to_coloured_tk_json()?,
         ]);
         table.printstd();
         write!(
@@ -109,20 +130,39 @@ pub fn run_request<'a>(
         };
         info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
         info!("[{}] frame:", "Hydrated".green());
-        info!(
-            "{}",
-            hidden
-                .to_string_pretty()
-                .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?
-        );
+        info!("{}", hidden.to_coloured_tk_json()?);
     }
 
+    let request_fn = match frame.protocol {
+        Protocol::HTTP => http_request,
+        Protocol::GRPC => grpcurl,
+    };
     let params = base_params.init(frame.get_request())?;
-    // Send out the payload here
-    match frame.protocol {
-        Protocol::HTTP => http_request(params, frame.get_request()),
-        Protocol::GRPC => grpcurl(params, frame.get_request()),
+    if let Some(attempts) = params.attempts.clone() {
+        for n in 1..attempts.times {
+            warn!(
+                "attempt [{}/{}] | interval [{}{}]",
+                n.to_string().yellow(),
+                attempts.times,
+                attempts.ms,
+                "ms".yellow(),
+            );
+            let param_attempt = params.clone();
+            if let Ok(r) = request_fn(param_attempt, frame.get_request()) {
+                return Ok(r);
+            }
+            thread::sleep(time::Duration::from_millis(attempts.ms));
+        }
+        // for final retry attempt do not swallow error propagation
+        warn!(
+            "attempt [{}/{}]",
+            attempts.times.to_string().red(),
+            attempts.times
+        );
+        return request_fn(params, frame.get_request());
     }
+
+    request_fn(params, frame.get_request())
 }
 
 pub fn process_response<'a>(
@@ -137,9 +177,10 @@ pub fn process_response<'a>(
     {
         Err(e) => {
             log_mismatch(
-                frame.response.to_string_pretty(),
-                payload_response.to_string_pretty(),
-            );
+                frame.response.to_string_pretty()?,
+                payload_response.to_string_pretty()?,
+            )
+            .context("fn log_mismatch failure")?;
             return Err(Error::from(e));
         }
         Ok(r) => r,
@@ -163,8 +204,8 @@ pub fn process_response<'a>(
         error!(
             "{}",
             PrettyDifference {
-                expected: &frame.response.to_string_pretty(),
-                actual: &payload_response.to_string_pretty(),
+                expected: &frame.response.to_string_pretty()?,
+                actual: &payload_response.to_string_pretty()?,
             }
         );
         error!(
@@ -189,10 +230,7 @@ pub fn process_response<'a>(
     // If an output was specified create a take file
     if let Some(frame_out) = output {
         debug!("creating take receipt...");
-        fs::write(frame_out, frame.to_string_pretty())?;
-    }
-    if payload_response != frame.response {
-        error!("OK");
+        fs::write(frame_out, frame.to_string_pretty()?)?;
     }
 
     Ok(cut_register)
@@ -202,14 +240,17 @@ pub fn process_response<'a>(
 pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     let frame_str = fr::file_to_string(&cmd.frame)?;
     let cut_str = fr::file_to_string(&cmd.cut)?;
+    let get_metaframe = || MetaFrame::try_from(cmd.frame.clone());
 
     // Frame to be mutably borrowed
-    let frame = Frame::new(&frame_str)?;
+    let frame = Frame::new(&frame_str).context(
+        get_metaframe()?
+            .get_filename()
+            .expect("MetaFrame.get_filename() panic"),
+    )?;
     let mut payload_frame = frame.clone();
     let mut cut_register = Register::from(&cut_str)?;
     let payload_response = run_request(&mut payload_frame, &cut_register, &base_params)?;
-
-    let get_metaframe = || MetaFrame::try_from(cmd.frame.clone());
 
     if let Err(e) = process_response(
         &mut payload_frame,
@@ -236,20 +277,21 @@ pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     Ok(())
 }
 
-fn log_mismatch(frame_str: String, response_str: String) {
+fn log_mismatch(frame_str: String, response_str: String) -> Result<(), Error> {
     error!("{}\n", "Expected:".magenta());
+    dbg!(&frame_str);
     error!(
         "{}\n",
         frame_str
             .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
-            .expect("log_mismatch expected panic")
+            .context("log_mismatch \"Expected:\" serialization")?
     );
     error!("{}\n", "Actual:".magenta());
     error!(
         "{}\n",
         response_str
             .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
-            .expect("log_mismatch actual panic")
+            .context("log_mismatch \"Actual:\"  serialization")?
     );
     error!(
         "{}{}{}",
@@ -257,14 +299,13 @@ fn log_mismatch(frame_str: String, response_str: String) {
         "Form Mismatch 🌋 ".yellow(),
         "====".red()
     );
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmreel::cut::Register;
-    use filmreel::frame::Response;
-    use filmreel::register;
+    use filmreel::{cut::Register, frame::Response, register};
     use serde_json::{self, json};
 
     #[test]

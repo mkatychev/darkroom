@@ -4,6 +4,7 @@ force_explicit_abi = true
 hard_tabs = false
 max_width = 100
 merge_derives = true
+merge_imports = true
 newline_style = "Auto"
 remove_nested_parens = true
 reorder_imports = true

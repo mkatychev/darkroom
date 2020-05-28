@@ -1,14 +1,10 @@
-use crate::params::iter_path_args;
-use crate::params::Params;
+use crate::params::{iter_path_args, Params};
 use anyhow::{anyhow, Context, Error};
 use filmreel::frame::{Request, Response};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::convert::TryFrom;
-use std::ffi::OsStr;
-use std::path::PathBuf;
-use std::process::Command;
+use std::{ffi::OsStr, path::PathBuf, process::Command};
 
 /// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), Error> {
@@ -25,19 +21,18 @@ pub fn validate_grpcurl() -> Result<(), Error> {
 pub fn grpcurl(prm: Params, req: Request) -> Result<Response, Error> {
     validate_grpcurl().context("grpcurl request failure")?;
 
-    let mut flags: Vec<&OsStr> = vec![];
+    let mut flags: Vec<&OsStr> = vec![OsStr::new("-format-error")];
 
     if !prm.tls {
         flags.push(OsStr::new("-plaintext"));
     }
     // prepend "-proto" to every protos PathBuf provided
-    let mut proto_args: Vec<&OsStr> = match prm.proto {
-        Some(protos) => {
-            iter_path_args(OsStr::new("-proto"), protos.iter().map(|x| x.as_ref())).collect()
-        }
-        None => vec![],
-    };
-    flags.append(&mut proto_args);
+    if let Some(protos) = prm.proto {
+        flags.extend(iter_path_args(
+            OsStr::new("-proto"),
+            protos.iter().map(|x| x.as_ref()),
+        ));
+    }
 
     let headers = match prm.header {
         Some(h) => Some(h.replace("\"", "")),
@@ -58,11 +53,6 @@ pub fn grpcurl(prm: Params, req: Request) -> Result<Response, Error> {
         .output()
         .context("grpcurl error")?;
 
-    // {
-    //     Ok(v) => v,
-    //     Err(e) => return Err(e.context("grpcurl error")),
-    // };
-
     let response: Response = match req_cmd.status.code() {
         Some(0) => Response {
             body: serde_json::from_slice(&req_cmd.stdout)?,
@@ -70,7 +60,7 @@ pub fn grpcurl(prm: Params, req: Request) -> Result<Response, Error> {
             etc: json!({}),
         },
         Some(_) => {
-            let err: ResponseError = ResponseError::try_from(&req_cmd.stderr)?;
+            let err: ResponseError = serde_json::from_slice(&req_cmd.stderr)?;
             // create frame response from deserialized grpcurl error
             Response {
                 body: serde_json::Value::String(err.message),
@@ -83,127 +73,48 @@ pub fn grpcurl(prm: Params, req: Request) -> Result<Response, Error> {
     Ok(response)
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct ResponseError {
     code: u32,
     message: String,
 }
 
-impl TryFrom<&Vec<u8>> for ResponseError {
-    type Error = Error;
-
-    fn try_from(stderr: &Vec<u8>) -> Result<ResponseError, Self::Error> {
-        let stripped = cram_yaml(stderr);
-        match serde_yaml::from_slice::<ResponseError>(&stripped) {
-            Err(_) => Err(anyhow!(String::from_utf8(stderr.clone())?)),
-            Ok(err) => Ok(err),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for ResponseError {
-    /// Handles string version error codes returned by grpcurl
-    /// [gRPC Status codes](https://github.com/grpc/grpc/blob/master/doc/statuscodes.md)
-    #[allow(non_snake_case)]
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::de::Deserializer<'de>,
-    {
-        use serde::de::Error;
-
-        // deserialize a nested yaml object by casting it to an inner struct first
-        #[derive(Deserialize)]
-        struct Outer {
-            ERROR: Inner,
-        }
-
-        #[derive(Deserialize)]
-        struct Inner {
-            Code: String,
-            Message: String,
-        }
-        let outer = Outer::deserialize(deserializer)?;
-        let code = match outer.ERROR.Code.as_str() {
-            "Canceled" => 1,
-            "Unknown" => 2,
-            "InvalidArgument" => 3,
-            "DeadlineExceeded" => 4,
-            "NotFound" => 5,
-            "AlreadyExists" => 6,
-            "PermissionDenied" => 7,
-            "ResourceExhausted" => 8,
-            "FailedPrecondition" => 9,
-            "Aborted" => 10,
-            "OutOfRange" => 11,
-            "Unimplemented" => 12,
-            "Internal" => 13,
-            "Unavailable" => 14,
-            "DataLoss" => 15,
-            "Unauthenticated" => 16,
-            _ => return Err(D::Error::custom("unexpected gRPC error code")),
-        };
-        Ok(ResponseError {
-            code,
-            message: outer.ERROR.Message,
-        })
-    }
-}
-
-/// Horrible hack to make grpcurl output look like yaml
-fn cram_yaml(stderr: &[u8]) -> Vec<u8> {
-    let mut clean_vec: Vec<String> = Vec::new();
-    for line in std::str::from_utf8(stderr)
-        .expect("failed string cast")
-        .lines()
-    {
-        if let Some(col_index) = line.find(':') {
-            let (key, val) = line.split_at(col_index);
-            let mut clean_val = val.to_string();
-            clean_val.retain(|c| c != ':');
-            clean_vec.push(format!("{}:{}", key, clean_val))
-        } else {
-            clean_vec.push(line.to_string());
-        }
-    }
-    clean_vec.join("\n").as_bytes().to_vec()
-}
-
 #[cfg(test)]
 mod serde_tests {
     use super::*;
-    use serde_yaml;
+    use serde_json;
 
-    const YAML_ERROR: &str = r#"
-        ERROR:
-            Code: Internal
-            Message: input cannot be empty"#;
-    const AUTH_ERROR: &str = r#"
-        ERROR:
-            Code: Unauthenticated
-            Message: rpc error: code = Unauthenticated desc = Empty JWT token"#;
+    const INTERNAL_ERROR: &str = r#"{
+  "code": 13,
+  "message": "input cannot be empty"
+}"#;
+    const AUTH_ERROR: &str = r#"{
+  "code": 16,
+  "message": "rpc error: code = Unauthenticated desc = Empty JWT token"
+}"#;
 
     #[test]
-    fn test_yaml() {
-        let yaml_struct: ResponseError = serde_yaml::from_str(YAML_ERROR).unwrap();
+    fn test_internal() {
+        let json_struct: ResponseError = serde_json::from_str(INTERNAL_ERROR).unwrap();
         assert_eq!(
             ResponseError {
                 code: 13,
                 message: "input cannot be empty".to_owned()
             },
-            yaml_struct
+            json_struct
         );
     }
 
     #[test]
     fn test_auth() {
-        let yaml_struct: ResponseError =
-            ResponseError::try_from(&AUTH_ERROR.as_bytes().to_vec()).unwrap();
+        let json_struct: ResponseError =
+            serde_json::from_slice(&AUTH_ERROR.as_bytes().to_vec()).unwrap();
         assert_eq!(
             ResponseError {
                 code: 16,
-                message: "rpc error code = Unauthenticated desc = Empty JWT token".to_owned()
+                message: "rpc error: code = Unauthenticated desc = Empty JWT token".to_owned()
             },
-            yaml_struct
+            json_struct
         );
     }
 }

@@ -1,15 +1,13 @@
-use crate::params::BaseParams;
-use crate::take::*;
-use crate::Record;
+use crate::{params::BaseParams, take::*, Record};
 use anyhow::{anyhow, Context, Error};
 use colored::*;
 use filmreel as fr;
-use filmreel::cut::Register;
-use filmreel::frame::Frame;
-use filmreel::reel::*;
+use fr::{cut::Register, frame::Frame, reel::*, ToStringHidden};
 use log::{debug, error, warn};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
@@ -21,7 +19,6 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
     comp_reg.destructive_merge(vec![cut_register]);
     comp_reels.push(reel);
     cut_register = comp_reg;
-    // ####
 
     // #### Merge init
     // Merge any found PathBufs into the cut register destructively
@@ -32,7 +29,6 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
         .map(Register::from)
         .collect();
     &cut_register.destructive_merge(merge_cuts?);
-    // ####
 
     for meta_frame in comp_reels.into_iter().flatten() {
         // if cmd.output is Some, provide a take PathBuf
@@ -44,8 +40,7 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
             "{} {:?}",
             "File:".yellow(),
             meta_frame
-                .path
-                .file_stem()
+                .get_filename()
                 .context("unable to unwrap MetaFrame.path")?
         );
         warn!("{}", "=======================".green());
@@ -85,7 +80,7 @@ where
     if let Some(path) = cut_out {
         // announce that write_cut is dumping a failed record register
         if failed_response {
-            error!("{}", "take aborted! writing to --cut_out provided...".red());
+            error!("{}", "take aborted! writing to --cut-out provided...".red());
         }
         // write with a hidden cut if directory w,as provided
         if path.is_dir() {
@@ -130,7 +125,7 @@ pub fn init_components(components: Vec<String>) -> Result<(Vec<Reel>, Register),
 fn parse_component(component: String) -> Result<(Reel, Register), Error> {
     let reel_path: PathBuf;
     let reel_name: &str;
-    match component.splitn(2, "&").collect::<Vec<&str>>().as_slice() {
+    match component.splitn(2, '&').collect::<Vec<&str>>().as_slice() {
         [path_str, name_str] => {
             reel_path = PathBuf::from(path_str);
             reel_name = name_str;

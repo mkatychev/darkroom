@@ -1,6 +1,6 @@
 [package]
 name = "darkroom"
-version = "0.2.4"
+version = "0.3.0"
 description = "A contract testing tool built in Rust"
 authors = ["Matthew Planchard <msplanchard@gmail.com>", "Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
@@ -34,7 +34,6 @@ prettytable-rs = "^0.8"
 reqwest = { version = "0.10", features = ["blocking", "json"] }
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.44"
-serde_yaml = "0.8"
 url = "2.1"
 which = "3.1"
 

@@ -2,13 +2,13 @@ use crate::params::Params;
 use anyhow::{anyhow, Context, Error};
 use filmreel::frame::{Request, Response};
 use http::header::HeaderMap;
-use reqwest::blocking::*;
-use reqwest::Method;
+use reqwest::{blocking::*, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::convert::TryFrom;
+use std::{
+    collections::{BTreeMap, HashMap},
+    convert::TryFrom,
+};
 use url::Url;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
@@ -25,7 +25,7 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error>
 
     match &req
         .get_uri()
-        .splitn(2, " ")
+        .splitn(2, ' ')
         .collect::<Vec<&str>>()
         .as_slice()
     {
@@ -65,10 +65,10 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error>
 /// Builds a header map from the header arg passed in from a ::Take or ::Record struct
 fn build_header(header: &str) -> Result<HeaderMap, Error> {
     let map: HashMap<String, String> = serde_json::from_str(header)?;
-    return match HeaderMap::try_from(&map) {
+    match HeaderMap::try_from(&map) {
         Ok(m) => Ok(m),
         Err(m) => Err(Error::from(m)),
-    };
+    }
 }
 
 pub fn http_request(prm: Params, req: Request) -> Result<Response, Error> {
