@@ -8,7 +8,7 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 ---
 
-* Darkroom requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for gRPC payloads.
+* Darkroom `0.3` or greater requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for making gRPC requests.
 
 
 ## Usage:
