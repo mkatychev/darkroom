@@ -289,7 +289,6 @@ impl Register {
         let mut remove: Vec<String> = vec![];
         for (k, _) in self.vars.iter() {
             if KEY_IGNORE.is_match(k) {
-                // dbg!(format!("key ignored: {}", k));
                 remove.push(k.to_owned());
             }
         }

@@ -1,6 +1,6 @@
 [package]
 name = "darkroom"
-version = "0.3.0"
+version = "0.3.1"
 description = "A contract testing tool built in Rust"
 authors = ["Matthew Planchard <msplanchard@gmail.com>", "Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
@@ -26,7 +26,7 @@ argh = "0.1"
 colored = "1.9"
 colored-diff = "0.2"
 colored_json = "2"
-filmreel = { version = "0.2", path = "filmreel" }
+filmreel = { version = "0.3", path = "filmreel" }
 http = "0.2"
 lazy_static = "1.4"
 log = { version = "0.4", features = ["std"] }

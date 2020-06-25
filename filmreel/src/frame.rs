@@ -57,7 +57,9 @@ impl<'a> Frame<'a> {
         let set = self.cut.clone();
         Self::hydrate_val(&set, &mut self.request.body, reg, hide)?;
         Self::hydrate_val(&set, &mut self.request.etc, reg, hide)?;
-        Self::hydrate_val(&set, &mut self.response.body, reg, hide)?;
+        if let Some(response_body) = &mut self.response.body {
+            Self::hydrate_val(&set, response_body, reg, hide)?;
+        }
         Self::hydrate_val(&set, &mut self.response.etc, reg, hide)?;
         if let Some(header) = &mut self.request.header {
             Self::hydrate_val(&set, header, reg, hide)?;
@@ -254,7 +256,8 @@ impl Request {
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Debug, Default, PartialEq)]
 pub struct Response {
-    pub body: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<Value>,
     #[serde(flatten)]
     pub etc: Value,
     pub status: u32,
@@ -443,7 +446,7 @@ mod tests {
                 },
 
                 response: Response {
-                    body: json!("${RESPONSE}"),
+                    body: Some(json!("${RESPONSE}")),
                     etc: json!({}),
                     status: 0,
                 },
@@ -468,20 +471,20 @@ mod tests {
                 ..Default::default()
             },
             response: Response {
-                body: json!({
+                body: Some(json!({
                     "id": "${USER_ID}",
                     "created": "${CREATED}"
-                }),
+                })),
                 etc: json!({}),
                 status: 0,
             },
         };
 
         let payload_response = Response {
-            body: json!({
+            body: Some(json!({
                 "id": "ID_010101",
                 "created": 101010
-            }),
+            })),
             etc: json!({}),
             status: 0,
         };
@@ -582,7 +585,7 @@ mod serde_tests {
         response_ser,
         response_de,
         Response {
-            body: json!("created user: ${USER_ID}"),
+            body: Some(json!("created user: ${USER_ID}")),
             etc: json!({}),
             status: 0,
         },
@@ -600,7 +603,7 @@ mod serde_tests {
         response_etc_ser,
         response_etc_de,
         Response {
-            body: json!("created user: ${USER_ID}"),
+            body: Some(json!("created user: ${USER_ID}")),
             etc: json!({"user_level": "admin"}),
             status: 0,
         },
@@ -685,11 +688,11 @@ mod serde_tests {
             },
 
             response: Response {
-                body: json!({
+                body: Some(json!({
                   "message": "User ${USER_ID} logged out",
                   "session_id": "${SESSION_ID}",
                   "timestamp": "${DATETIME}"
-                }),
+                })),
                 etc: json!({}),
                 status: 200,
             },
@@ -704,7 +707,6 @@ mod serde_tests {
     "uri": "POST /logout/${USER_ID}"
   },
   "response": {
-    "body": {},
     "status": 200
   }
 }
@@ -723,7 +725,7 @@ mod serde_tests {
             },
 
             response: Response {
-                body: json!({}),
+                body: None,
                 etc: json!({}),
                 status: 200,
             },

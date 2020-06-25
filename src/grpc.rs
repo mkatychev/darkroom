@@ -63,7 +63,7 @@ pub fn grpcurl(prm: Params, req: Request) -> Result<Response, Error> {
             let err: ResponseError = serde_json::from_slice(&req_cmd.stderr)?;
             // create frame response from deserialized grpcurl error
             Response {
-                body: serde_json::Value::String(err.message),
+                body: Some(serde_json::Value::String(err.message)),
                 status: err.code,
                 etc: json!({}),
             }

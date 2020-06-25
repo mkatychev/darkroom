@@ -2,6 +2,7 @@ use crate::params::Params;
 use anyhow::{anyhow, Context, Error};
 use filmreel::frame::{Request, Response};
 use http::header::HeaderMap;
+use log::warn;
 use reqwest::{blocking::*, Method};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -19,7 +20,6 @@ struct Form {
 
 /// Parses a Frame Request and a Params object to send a HTTP payload using reqwest
 pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error> {
-    // let (_method: Method, _entrypoint: String, ..) =
     let method: Method;
     let endpoint: Url;
 
@@ -74,12 +74,22 @@ fn build_header(header: &str) -> Result<HeaderMap, Error> {
 pub fn http_request(prm: Params, req: Request) -> Result<Response, Error> {
     let response = build_request(prm, req)?.send()?;
     let status = response.status().as_u16() as u32;
+    // reqwest.Response is a private Option<Value> field so we rely on
+    // the Response.content_length() method to get the exact body byte size
+    let response_body: Option<Value> = match response.content_length() {
+        Some(0) => None,
+        None => {
+            warn!("unable to determine Response body content length");
+            None
+        }
+        Some(_) => response
+            .json()
+            .context("http_request response.json() decode failure")?,
+    };
 
     Ok(Response {
-        body: response
-            .json()
-            .context("reqwest::Response.json() decode failure")?,
         // TODO add response headers
+        body: response_body,
         etc: json!({}),
         status,
     })
