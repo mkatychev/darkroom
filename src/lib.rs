@@ -1,6 +1,8 @@
 use crate::params::BaseParams;
 use anyhow::{anyhow, Error};
 use argh::FromArgs;
+use colored_json::{prelude::*, Colour, Styler};
+use serde::Serialize;
 use std::path::PathBuf;
 
 pub mod grpc;
@@ -13,6 +15,7 @@ pub use filmreel::{
     cut::Register,
     frame::*,
     reel::{MetaFrame, Reel},
+    FrError, ToStringHidden, ToStringPretty,
 };
 
 pub struct Logger;
@@ -226,5 +229,47 @@ impl Record {
     /// that the original cut will be overwritten or for the output to be committed to version control
     pub fn get_cut_copy(&self) -> PathBuf {
         self.reel_path.join(format!(".{}.cut.json", self.reel_name))
+    }
+}
+
+/// get_styler returns the custom syntax values for stdout json
+fn get_styler() -> Styler {
+    Styler {
+        bool_value: Colour::Purple.normal(),
+        float_value: Colour::RGB(255, 123, 0).normal(),
+        integer_value: Colour::RGB(255, 123, 0).normal(),
+        nil_value: Colour::Cyan.normal(),
+        string_include_quotation: false,
+        ..Default::default()
+    }
+}
+
+trait ToTakeColouredJson {
+    fn to_coloured_tk_json(&self) -> Result<String, FrError>;
+}
+
+impl<T> ToTakeColouredJson for T
+where
+    T: ?Sized + Serialize,
+{
+    fn to_coloured_tk_json(&self) -> Result<String, FrError> {
+        Ok(self
+            .to_string_pretty()?
+            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
+    }
+}
+
+trait ToTakeHiddenColouredJson: ToTakeColouredJson {
+    fn to_hidden_tk_json(&self) -> Result<String, FrError>;
+}
+
+impl<T> ToTakeHiddenColouredJson for T
+where
+    T: ?Sized + Serialize,
+{
+    fn to_hidden_tk_json(&self) -> Result<String, FrError> {
+        Ok(self
+            .to_string_hidden()?
+            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
     }
 }

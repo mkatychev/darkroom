@@ -9,6 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// run_record runs through a Reel sequence using the darkroom::Record struct
 pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register: Register = Register::from(&cut_str)?;
@@ -50,13 +51,7 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
         // Frame to be mutably borrowed
         let mut payload_frame = frame.clone();
 
-        let payload_response = run_request(&mut payload_frame, &cut_register, &base_params)?;
-        if let Err(e) = process_response(
-            &mut payload_frame,
-            &mut cut_register,
-            payload_response,
-            output,
-        ) {
+        if let Err(e) = run_take(&mut payload_frame, &mut cut_register, &base_params, output) {
             write_cut(&base_params.cut_out, &cut_register, &cmd.reel_name, true)?;
             return Err(e);
         }
@@ -96,7 +91,7 @@ where
     Ok(())
 }
 
-/// Grabs a Record command's output directory and joins it with a MetaFrame's file stem
+/// take_output grabs a Record command's output directory and joins it with a MetaFrame's file stem
 pub fn take_output<P: AsRef<Path>>(dir: &P, file: &P) -> PathBuf {
     let frame_stem: &str = file
         .as_ref()
@@ -122,6 +117,8 @@ pub fn init_components(components: Vec<String>) -> Result<(Vec<Reel>, Register),
     Ok((reels, comp_reg))
 }
 
+// parse_component parses the `"<dir>&<reel_name>"` provided to the `--component` cli argument
+// validating the ampersand separated directory and reel name are valid
 fn parse_component(component: String) -> Result<(Reel, Register), Error> {
     let reel_path: PathBuf;
     let reel_name: &str;

@@ -129,9 +129,16 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 
 * frame response body is now optional
 
+#### `0.3.2`:
+
+* request retry attempts now include a `process_response` comparison
+* `ToTakeHiddenColouredJson` is now a generic trait
+* `ToStringHidden` is now a generc trait
+* moved styler out of take.rs and into lib.rs
+
 
 <!--
-VERSION="0.3.1"
+VERSION="0.3.2"
 DR_DIR=$PWD
 GRPCURL_DIR=${GRPCURL_DIR:-../grpcurl}
 cargo build --release && \

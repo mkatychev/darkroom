@@ -1,4 +1,4 @@
-use crate::{error::FrError, utils::ordered_val_map, ToStringHidden};
+use crate::{error::FrError, utils::ordered_val_map};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -21,26 +21,6 @@ const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscore
 /// The Register's map of [Cut Variables]
 /// (https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
 type Variables = HashMap<String, Value>;
-
-impl<'a> ToStringHidden for &'a Register {
-    /// Pretty formatting for Register serialization, any variables starting with an underscore as
-    /// it's value hidden
-    fn to_string_hidden(&self) -> Result<String, FrError> {
-        let val = match serde_json::to_value(self)? {
-            Value::Object(mut map) => {
-                for (k, v) in map.iter_mut() {
-                    if k.starts_with("_") {
-                        *v = Value::String("${_HIDDEN}".to_string());
-                    }
-                }
-                Value::Object(map)
-            }
-            i => i,
-        };
-        let str_val = serde_json::to_string_pretty(&val)?;
-        Ok(str_val)
-    }
-}
 
 impl Register {
     /// Creates a Register from a string ref

@@ -11,7 +11,7 @@ Add the following to the Cargo.toml of your project:
 
 ```toml
 [dependencies]
-filmreel = "0.2"
+filmreel = "0.3"
 ```
 
 */
@@ -35,7 +35,7 @@ pub fn file_to_string<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
     Ok(json_string)
 }
 
-pub trait ToStringHidden {
+pub trait ToStringHidden: ToStringPretty {
     fn to_string_hidden(&self) -> Result<String, FrError>;
 }
 
@@ -49,5 +49,28 @@ where
 {
     fn to_string_pretty(&self) -> Result<String, FrError> {
         Ok(serde_json::to_string_pretty(self)?)
+    }
+}
+
+impl<T> ToStringHidden for T
+where
+    T: ?Sized + Serialize,
+{
+    /// Pretty formatting for Register serialization, any cut variable names starting with an underscore are
+    /// presented as `${_HIDDEN}` in stdout
+    fn to_string_hidden(&self) -> Result<String, FrError> {
+        let val = match serde_json::to_value(self)? {
+            serde_json::Value::Object(mut map) => {
+                for (k, v) in map.iter_mut() {
+                    if k.starts_with('_') {
+                        *v = serde_json::Value::String("${_HIDDEN}".to_string());
+                    }
+                }
+                serde_json::Value::Object(map)
+            }
+            i => i,
+        };
+        let str_val = serde_json::to_string_pretty(&val)?;
+        Ok(str_val)
     }
 }

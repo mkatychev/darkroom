@@ -1,18 +1,20 @@
-use crate::{grpc::grpcurl, http::http_request, params::BaseParams, record::write_cut, Take};
+use crate::{
+    grpc, http,
+    params::{BaseParams, Params},
+    record::write_cut,
+    Take, ToStringPretty, ToTakeColouredJson, ToTakeHiddenColouredJson,
+};
 use anyhow::{anyhow, Context, Error};
 use colored::*;
 use colored_diff::PrettyDifference;
-use colored_json::{prelude::*, Colour, Styler};
 use filmreel as fr;
 use filmreel::{
     cut::Register,
     frame::{Frame, Protocol, Response},
     reel::MetaFrame,
-    FrError, ToStringHidden, ToStringPretty,
 };
 use log::{debug, error, info, warn};
 use prettytable::*;
-use serde::Serialize;
 use std::{
     convert::TryFrom,
     fs,
@@ -21,60 +23,106 @@ use std::{
     thread, time,
 };
 
-/// get_styler returns the custom syntax values for stdout json
-fn get_styler() -> Styler {
-    Styler {
-        bool_value: Colour::Purple.normal(),
-        float_value: Colour::RGB(255, 123, 0).normal(),
-        integer_value: Colour::RGB(255, 123, 0).normal(),
-        nil_value: Colour::Cyan.normal(),
-        string_include_quotation: false,
-        ..Default::default()
-    }
+// run_request decides which protocol to use for sending a hydrated Frame Request
+pub fn run_request<'a>(params: &Params, frame: &'a mut Frame) -> Result<Response, Error> {
+    let request_fn = match frame.protocol {
+        Protocol::HTTP => http::request,
+        Protocol::GRPC => grpc::request,
+    };
+    request_fn(params.clone(), frame.get_request())
 }
 
-trait ToTakeColouredJson {
-    fn to_coloured_tk_json(&self) -> Result<String, FrError>;
-}
-
-impl<T> ToTakeColouredJson for T
-where
-    T: ToStringPretty,
-{
-    fn to_coloured_tk_json(&self) -> Result<String, FrError> {
-        Ok(self
-            .to_string_pretty()?
-            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
-    }
-}
-
-trait ToTakeHiddenColouredJson: ToTakeColouredJson {
-    // fn to_colored_json(&self) -> Result<String, FrError>;
-    fn to_hidden_tk_json(&self) -> Result<String, FrError>;
-}
-
-impl<T> ToTakeHiddenColouredJson for T
-where
-    T: ToStringHidden + Serialize,
-{
-    fn to_hidden_tk_json(&self) -> Result<String, FrError> {
-        Ok(self
-            .to_string_hidden()?
-            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
-    }
-}
-
-/// Performs a single frame hydration using a given json file and outputs a Take to either stdout
-/// or a designated file
-pub fn run_request<'a>(
+// process_response grabs the expected Response from the given Frame and attempts to match the values
+// present in the payload Response printing a "Value Mismatch" diff to stdout and returning an
+// error if there is not a complete match
+pub fn process_response<'a>(
     frame: &'a mut Frame,
-    register: &'a Register,
+    cut_register: &'a mut Register,
+    payload_response: Response,
+    output: Option<PathBuf>,
+) -> Result<&'a Register, Error> {
+    let payload_matches = frame
+        .response
+        .match_payload_response(&frame.cut, &payload_response)
+        .map_err(Error::from)
+        .or_else(|e| {
+            log_mismatch(&frame.response, &payload_response).context("fn log_mismatch failure")?;
+            return Err(e);
+        })?;
+
+    // If there are valid matches for write operations
+    if let Some(matches) = payload_matches {
+        debug!("writing to cut register...");
+        for (k, v) in matches {
+            cut_register.write_operation(k, v)?;
+        }
+
+        // For now simply run hydrate again to hydrate the newly written cut variables into the
+        // Response
+        frame.cut.hydrate_writes = true;
+
+        if let Some(response_body) = &mut frame.response.body {
+            Frame::hydrate_val(&frame.cut, response_body, &cut_register, false)?;
+        }
+        Frame::hydrate_val(&frame.cut, &mut frame.response.etc, &cut_register, false)?;
+    }
+
+    if frame.response != payload_response {
+        error!(
+            "{}",
+            PrettyDifference {
+                expected: &frame.response.to_string_pretty()?,
+                actual: &payload_response.to_string_pretty()?,
+            }
+        );
+        error!(
+            "{}{}{}",
+            "= ".red(),
+            "Value Mismatch 🤷".yellow(),
+            "===".red()
+        );
+        return Err(anyhow!("request/response mismatch"));
+    }
+
+    // remove lowercase values
+    cut_register.flush_ignored();
+
+    info!(
+        "{}{}{}",
+        "= ".green(),
+        "Match 👍 ".yellow(),
+        "============\n".green()
+    );
+
+    // If an output was specified create a take file
+    if let Some(frame_out) = output {
+        debug!("creating take receipt...");
+        fs::write(frame_out, frame.to_string_pretty()?)?;
+    }
+
+    Ok(cut_register)
+}
+
+/// run_take
+/// 1. initializes cli settings for the take using base_params
+/// 2. performs a single frame hydration using a given json file
+/// 3. initializes frame specific settings for the take using base_params.init(frame.get_request())
+/// 4. runs a request and processes the response, multiple times if attempts are present in the Params object
+/// 5. Outputs a diff to stdout and returns an error if there is a mismatch:
+///    - Form Mismatch: output during run_request when the returned JSON does not match the
+///     expected structure
+///    - Value Mismatch: output during process_response when the returned JSON values do not
+///    match
+pub fn run_take(
+    frame: &mut Frame,
+    register: &mut Register,
     base_params: &BaseParams,
-) -> Result<Response, Error> {
+    output: Option<PathBuf>,
+) -> Result<(), Error> {
     let interactive = base_params.interactive;
     let verbose = base_params.verbose;
-
     let mut unhydrated_frame: Option<Frame> = None;
+    // hidden_frame is meant to sanitize ${_HIDDEN} variables
     let hidden_frame: Option<Frame> = if interactive || verbose {
         unhydrated_frame = Some(frame.clone());
         let mut hydrated = frame.clone();
@@ -83,13 +131,16 @@ pub fn run_request<'a>(
     } else {
         None
     };
+
     info!("[{}] frame:", "Unhydrated".red());
     info!("{}", frame.to_coloured_tk_json()?);
     info!("{}", "=======================".magenta());
     info!("HYDRATING...");
     info!("{}", "=======================".magenta());
-
     frame.hydrate(&register, false)?;
+    // init params after hydration so that  cut register params can be pulled otherwise this can
+    // happen: Params { address: "${ADDRESS}", }
+    let params = base_params.init(frame.get_request())?;
 
     if interactive {
         let mut stdin = io::stdin();
@@ -133,12 +184,7 @@ pub fn run_request<'a>(
         info!("{}", hidden.to_coloured_tk_json()?);
     }
 
-    let request_fn = match frame.protocol {
-        Protocol::HTTP => http_request,
-        Protocol::GRPC => grpcurl,
-    };
-    let params = base_params.init(frame.get_request())?;
-    if let Some(attempts) = params.attempts.clone() {
+    if let Some(attempts) = params.attempts {
         for n in 1..attempts.times {
             warn!(
                 "attempt [{}/{}] | interval [{}{}]",
@@ -147,9 +193,10 @@ pub fn run_request<'a>(
                 attempts.ms,
                 "ms".yellow(),
             );
-            let param_attempt = params.clone();
-            if let Ok(r) = request_fn(param_attempt, frame.get_request()) {
-                return Ok(r);
+            if let Ok(response) = run_request(&params, frame) {
+                if process_response(frame, register, response, output.clone()).is_ok() {
+                    return Ok(());
+                }
             }
             thread::sleep(time::Duration::from_millis(attempts.ms));
         }
@@ -159,87 +206,16 @@ pub fn run_request<'a>(
             attempts.times.to_string().red(),
             attempts.times
         );
-        return request_fn(params, frame.get_request());
     }
 
-    request_fn(params, frame.get_request())
+    let response = run_request(&params, frame)?;
+    match process_response(frame, register, response, output) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
 }
 
-pub fn process_response<'a>(
-    frame: &'a mut Frame,
-    cut_register: &'a mut Register,
-    payload_response: Response,
-    output: Option<PathBuf>,
-) -> Result<&'a Register, Error> {
-    let payload_matches = match frame
-        .response
-        .match_payload_response(&frame.cut, &payload_response)
-    {
-        Err(e) => {
-            log_mismatch(
-                frame.response.to_string_pretty()?,
-                payload_response.to_string_pretty()?,
-            )
-            .context("fn log_mismatch failure")?;
-            return Err(Error::from(e));
-        }
-        Ok(r) => r,
-    };
-
-    // If there are valid matches for write operations
-    if let Some(matches) = payload_matches {
-        debug!("writing to cut register...");
-        for (k, v) in matches {
-            cut_register.write_operation(k, v)?;
-        }
-
-        // For now simply run hydrate again to hydrate the newly written cut variables into the
-        // Response
-        frame.cut.hydrate_writes = true;
-
-        if let Some(response_body) = &mut frame.response.body {
-            Frame::hydrate_val(&frame.cut, response_body, &cut_register, false)?;
-        }
-        Frame::hydrate_val(&frame.cut, &mut frame.response.etc, &cut_register, false)?;
-    }
-
-    if frame.response != payload_response {
-        error!(
-            "{}",
-            PrettyDifference {
-                expected: &frame.response.to_string_pretty()?,
-                actual: &payload_response.to_string_pretty()?,
-            }
-        );
-        error!(
-            "{}{}{}",
-            "= ".red(),
-            "Value Mismatch 🤷‍♀️ ".yellow(),
-            "===".red()
-        );
-        return Err(anyhow!("request/response mismatch"));
-    }
-
-    // remove lowercase values
-    cut_register.flush_ignored();
-
-    info!(
-        "{}{}{}",
-        "= ".green(),
-        "Match 👍 ".yellow(),
-        "============\n".green()
-    );
-
-    // If an output was specified create a take file
-    if let Some(frame_out) = output {
-        debug!("creating take receipt...");
-        fs::write(frame_out, frame.to_string_pretty()?)?;
-    }
-
-    Ok(cut_register)
-}
-
-/// Run single take using the darkroom::Take struct
+/// single_take runs a single take using the darkroom::Take struct
 pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     let frame_str = fr::file_to_string(&cmd.frame)?;
     let cut_str = fr::file_to_string(&cmd.cut)?;
@@ -253,12 +229,10 @@ pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     )?;
     let mut payload_frame = frame.clone();
     let mut cut_register = Register::from(&cut_str)?;
-    let payload_response = run_request(&mut payload_frame, &cut_register, &base_params)?;
-
-    if let Err(e) = process_response(
+    if let Err(e) = run_take(
         &mut payload_frame,
         &mut cut_register,
-        payload_response,
+        &base_params,
         cmd.take_out.clone(),
     ) {
         write_cut(
@@ -280,19 +254,21 @@ pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     Ok(())
 }
 
-fn log_mismatch(frame_str: String, response_str: String) -> Result<(), Error> {
+// log_mismatch provides the "Form Mismatch" diff when the returned payload Response does not match
+// the expected object structure of the Frame Response
+fn log_mismatch(frame_response: &Response, payload_response: &Response) -> Result<(), Error> {
     error!("{}\n", "Expected:".magenta());
     error!(
         "{}\n",
-        frame_str
-            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
+        frame_response
+            .to_coloured_tk_json()
             .context("log_mismatch \"Expected:\" serialization")?
     );
     error!("{}\n", "Actual:".magenta());
     error!(
         "{}\n",
-        response_str
-            .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())
+        payload_response
+            .to_coloured_tk_json()
             .context("log_mismatch \"Actual:\"  serialization")?
     );
     error!(

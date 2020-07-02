@@ -27,7 +27,7 @@ pub struct BaseParams {
     pub verbose: bool,
 }
 
-#[derive(Clone, Deserialize, Default, Debug, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Default, Debug, PartialEq)]
 pub struct Attempts {
     pub times: u32,
     pub ms: u64,
