@@ -52,7 +52,12 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
         .arg(prm.address)
         .arg(req.get_uri())
         .output()
-        .context("grpcurl error")?;
+        .context("failed to execute grpcurl process")?;
+
+    if req_cmd.stderr.len() > 0 {
+        let grpcurl_err_msg = String::from_utf8(req_cmd.stderr.clone())?;
+        return Err(anyhow!(grpcurl_err_msg).context("grpcurl error"));
+    }
 
     let response: Response = match req_cmd.status.code() {
         Some(0) => Response {
