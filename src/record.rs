@@ -50,7 +50,6 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
                 .context("unable to unwrap MetaFrame.path")?
         );
         warn!("{}", "=======================".green());
-        continue;
 
         let frame_str = fr::file_to_string(&meta_frame.path)?;
         let frame = Frame::new(&frame_str)?;
