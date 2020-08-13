@@ -7,8 +7,6 @@ use log::{debug, error, warn};
 use std::{
     fs,
     ops::Range,
-    ops::RangeBounds,
-    ops::Bound::*;
     path::{Path, PathBuf},
 };
 
@@ -16,7 +14,11 @@ use std::{
 pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register: Register = Register::from(&cut_str)?;
-    let reel = Reel::new(&cmd.reel_path, &cmd.reel_name, &cmd.range)?;
+    let frame_range = match cmd.range {
+        Some(r) => parse_range(r)?,
+        None => None,
+    };
+    let reel = Reel::new(&cmd.reel_path, &cmd.reel_name, frame_range)?;
 
     // #### Component init
     let (mut comp_reels, mut comp_reg) = init_components(cmd.component)?;
@@ -48,6 +50,7 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
                 .context("unable to unwrap MetaFrame.path")?
         );
         warn!("{}", "=======================".green());
+        continue;
 
         let frame_str = fr::file_to_string(&meta_frame.path)?;
         let frame = Frame::new(&frame_str)?;
@@ -152,10 +155,10 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
     ))
 }
 
-type InRange = Box<dyn FrameBounds>;
+type ParsedRange = Option<Range<u32>>;
 // parse_range parses the `"<start_num>:<end_num>"` provided to the `--range` cli argument
 // returning a range object
-fn parse_range<T>(str_range: T) -> Result<Option<InRange>, Error>
+fn parse_range<T>(str_range: T) -> Result<ParsedRange, Error>
 where
     T: AsRef<str>,
 {
@@ -166,32 +169,18 @@ where
         .as_slice()
     {
         [start, end] => {
-            let start_parse = || start.parse::<u32>().context("start range error");
-            let end_parse = || end.parse::<u32>().context("end range error");
+            let start_parse = || start.parse::<u32>().context("start range parse error");
+            let end_parse = || end.parse::<u32>().context("end range parse error");
             if *start == "" {
                 // make end string range inclusive
-                let end_inclusive: u32 = end_parse()? + 1;
-                Ok::<Option<InRange>, Error>(Some(Box::new(..end_inclusive)));
+                return Ok(Some(0..end_parse()? + 1));
             }
             if *end == "" {
-                Ok::<Option<InRange>, Error>(Some(Box::new(start_parse()?..)));
+                return Ok(Some(start_parse()?..u32::MAX));
             }
-            Ok(Some(Box::new(start_parse()?..end_parse()?)))
+            Ok(Some(start_parse()?..end_parse()? + 1))
         }
         _ => Ok(None),
-    }
-}
-
-trait FrameBounds {
-    fn contains(&self, v: &u32) -> bool;
-}
-
-impl<T> FrameBounds for T
-where
-    T: RangeBounds<u32>,
-{
-    fn contains(&self, v: &u32) -> bool {
-        RangeBounds::contains(self, v)
     }
 }
 
@@ -201,30 +190,17 @@ mod tests {
     use rstest::*;
 
     #[rstest(input, expected,
-        case("04:08", Ok::<Option<InRange>, Error>(Some(Box::new(4..9)))),
-        case(":10", Ok::<Option<InRange>, Error>(Some(Box::new(..11)))),
-        case("3:", Ok::<Option<InRange>, Error>(Some(Box::new(3..)))),
+        case("04:08", Ok::<ParsedRange, Error>(Some(4..9))),
+        case(":10", Ok::<ParsedRange, Error>(Some(0..11))),
+        case("3:", Ok::<ParsedRange, Error>(Some(3..u32::MAX))),
+        case("number:", Err(anyhow!("start range parse error"))),
+        case(":number", Err(anyhow!("end range parse error"))),
+        case("number:number", Err(anyhow!("start range parse error"))),
         )]
-    fn test_parse_range(input: &str, expected: Result<Option<InRange>, Error>) {
+    fn test_parse_range(input: &str, expected: Result<ParsedRange, Error>) {
         match parse_range(input) {
             Ok(mat) => assert_eq!(expected.unwrap(), mat),
-            Err(err) => assert_eq!("some_err", err.to_string()),
+            Err(err) => assert_eq!(expected.unwrap_err().to_string(), err.to_string()),
         }
-    }
-
-    #[test]
-    fn test_metaframe_try_from() {
-        let try_path = MetaFrame::try_from(PathBuf::from("./reel_name.01s.frame_name.fr.json"))
-            .expect("test_metaframe_try_from failed try_from");
-        assert_eq!(
-            MetaFrame {
-                frame_type: FrameType::Success,
-                name: "frame_name".to_string(),
-                path: PathBuf::from("./reel_name.01s.frame_name.fr.json"),
-                reel_name: "reel_name".to_string(),
-                step: 1.0,
-            },
-            try_path
-        );
     }
 }

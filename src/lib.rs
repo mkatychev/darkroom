@@ -169,8 +169,7 @@ pub struct Record {
     #[argh(option, short = 'o')]
     take_out: Option<PathBuf>,
 
-    /// specifies the range inclusive list of frames to provied to the Reel object, colon
-    /// separated: `--range 2:`
+    /// the range (inclusive) of frames that a record session will use, colon separated: `--range <start>:<end>` `--range <start>:`
     #[argh(option, short = 'r')]
     range: Option<String>,
 }
