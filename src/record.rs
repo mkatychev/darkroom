@@ -6,6 +6,9 @@ use fr::{cut::Register, frame::Frame, reel::*, ToStringHidden};
 use log::{debug, error, warn};
 use std::{
     fs,
+    ops::Range,
+    ops::RangeBounds,
+    ops::Bound::*;
     path::{Path, PathBuf},
 };
 
@@ -13,7 +16,7 @@ use std::{
 pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register: Register = Register::from(&cut_str)?;
-    let reel = Reel::new(&cmd.reel_path, &cmd.reel_name)?;
+    let reel = Reel::new(&cmd.reel_path, &cmd.reel_name, &cmd.range)?;
 
     // #### Component init
     let (mut comp_reels, mut comp_reg) = init_components(cmd.component)?;
@@ -131,7 +134,7 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
             return Err(anyhow!("unable to parse component string => {}", component));
         }
     }
-    let reel = Reel::new(reel_path, reel_name)
+    let reel = Reel::new(reel_path, reel_name, None)
         .context(format!("component Reel::new failure => {}", reel_name))?;
     let cut_path = reel.get_default_cut_path();
     if !cut_path.is_file() {
@@ -147,4 +150,81 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
             cut_path
         ))?,
     ))
+}
+
+type InRange = Box<dyn FrameBounds>;
+// parse_range parses the `"<start_num>:<end_num>"` provided to the `--range` cli argument
+// returning a range object
+fn parse_range<T>(str_range: T) -> Result<Option<InRange>, Error>
+where
+    T: AsRef<str>,
+{
+    match str_range
+        .as_ref()
+        .splitn(3, ':')
+        .collect::<Vec<&str>>()
+        .as_slice()
+    {
+        [start, end] => {
+            let start_parse = || start.parse::<u32>().context("start range error");
+            let end_parse = || end.parse::<u32>().context("end range error");
+            if *start == "" {
+                // make end string range inclusive
+                let end_inclusive: u32 = end_parse()? + 1;
+                Ok::<Option<InRange>, Error>(Some(Box::new(..end_inclusive)));
+            }
+            if *end == "" {
+                Ok::<Option<InRange>, Error>(Some(Box::new(start_parse()?..)));
+            }
+            Ok(Some(Box::new(start_parse()?..end_parse()?)))
+        }
+        _ => Ok(None),
+    }
+}
+
+trait FrameBounds {
+    fn contains(&self, v: &u32) -> bool;
+}
+
+impl<T> FrameBounds for T
+where
+    T: RangeBounds<u32>,
+{
+    fn contains(&self, v: &u32) -> bool {
+        RangeBounds::contains(self, v)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::*;
+
+    #[rstest(input, expected,
+        case("04:08", Ok::<Option<InRange>, Error>(Some(Box::new(4..9)))),
+        case(":10", Ok::<Option<InRange>, Error>(Some(Box::new(..11)))),
+        case("3:", Ok::<Option<InRange>, Error>(Some(Box::new(3..)))),
+        )]
+    fn test_parse_range(input: &str, expected: Result<Option<InRange>, Error>) {
+        match parse_range(input) {
+            Ok(mat) => assert_eq!(expected.unwrap(), mat),
+            Err(err) => assert_eq!("some_err", err.to_string()),
+        }
+    }
+
+    #[test]
+    fn test_metaframe_try_from() {
+        let try_path = MetaFrame::try_from(PathBuf::from("./reel_name.01s.frame_name.fr.json"))
+            .expect("test_metaframe_try_from failed try_from");
+        assert_eq!(
+            MetaFrame {
+                frame_type: FrameType::Success,
+                name: "frame_name".to_string(),
+                path: PathBuf::from("./reel_name.01s.frame_name.fr.json"),
+                reel_name: "reel_name".to_string(),
+                step: 1.0,
+            },
+            try_path
+        );
+    }
 }

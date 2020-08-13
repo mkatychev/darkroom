@@ -168,6 +168,11 @@ pub struct Record {
     /// output directory for successful takes
     #[argh(option, short = 'o')]
     take_out: Option<PathBuf>,
+
+    /// specifies the range inclusive list of frames to provied to the Reel object, colon
+    /// separated: `--range 2:`
+    #[argh(option, short = 'r')]
+    range: Option<String>,
 }
 
 impl Take {

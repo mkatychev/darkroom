@@ -2,7 +2,9 @@ use crate::error::FrError;
 use glob::glob;
 use std::{
     convert::TryFrom,
+    ffi::OsStr,
     iter::FromIterator,
+    ops::Range,
     path::{Path, PathBuf},
     result::Result,
 };
@@ -18,17 +20,14 @@ pub struct Reel {
 
 impl Reel {
     /// A new reel is created from a provided Path or PathBuf
-    pub fn new<P: AsRef<Path>>(dir: P, reel_name: &str) -> Result<Self, FrError> {
-        let mut frames = Vec::new();
+    pub fn new<P: AsRef<Path>>(
+        dir: P,
+        reel_name: &str,
+        range: Option<Range<u32>>,
+    ) -> Result<Self, FrError> {
         let dir_glob = dir.as_ref().join(format!("{}.*.*.fr.json", reel_name));
 
-        for entry in glob(&dir_glob.to_str().unwrap())
-            .expect("Failed to read glob pattern")
-            .filter_map(|r| r.ok())
-            .filter(|path| path.is_file())
-        {
-            frames.push(MetaFrame::try_from(entry)?);
-        }
+        let mut frames = Reel::get_metaframes(&dir_glob, range)?;
 
         // sort by string value since sorting by f32 is not idiomatic
         frames.sort_by(|a, b| a.path.cmp(&b.path));
@@ -56,6 +55,32 @@ impl Reel {
                 .filter(|x| x.is_success())
                 .collect(),
         }
+    }
+
+    /// get_metaframes takes a directory glob ref and a possible range, returning a vector of
+    /// MetaFrames
+    fn get_metaframes<T>(dir_glob: T, range: Option<Range<u32>>) -> Result<Vec<MetaFrame>, FrError>
+    where
+        T: AsRef<OsStr>,
+    {
+        let permit_frame: Box<dyn Fn(u32) -> bool> = match range {
+            Some(r) => Box::new(move |n| r.contains(&n)),
+            None => Box::new(|_| true),
+        };
+
+        let mut frames = Vec::new();
+
+        for entry in glob(dir_glob.as_ref().to_str().unwrap())
+            .expect("Failed to read glob pattern")
+            .filter_map(|r| r.ok())
+            .filter(|path| path.is_file())
+        {
+            let frame = MetaFrame::try_from(entry)?;
+            if permit_frame(frame.step as u32) {
+                frames.push(frame);
+            }
+        }
+        Ok(frames)
     }
 }
 
