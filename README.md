@@ -141,7 +141,7 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 
 #### `0.3.3`:
 
-* range is added to recordings: `dark record --range "<start_num>:<end_num>" ./dir/ my_reel_name`
+* range is added to recordings: `dark record --range "<start_u32>:<end_u32>" ./dir/ my_reel_name`
 * `grpcurl` errors propagate to stdout properly
 
 <!--

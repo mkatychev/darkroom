@@ -155,7 +155,7 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
 }
 
 type ParsedRange = Option<Range<u32>>;
-// parse_range parses the `"<start_num>:<end_num>"` provided to the `--range` cli argument
+// parse_range parses the `"<start_u32>:<end_u32>"` provided to the `--range` cli argument
 // returning a range object
 fn parse_range<T>(str_range: T) -> Result<ParsedRange, Error>
 where
