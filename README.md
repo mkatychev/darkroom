@@ -145,7 +145,7 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 * `grpcurl` errors propagate to stdout properly
 
 <!--
-VERSION="0.3.3"
+VERSION="0.3.3-b"
 DR_DIR=$PWD
 GRPCURL_DIR=${GRPCURL_DIR:-../grpcurl}
 cargo build --release && \
