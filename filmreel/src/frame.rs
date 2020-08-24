@@ -237,17 +237,10 @@ impl Request {
     }
 
     pub fn get_entrypoint(&self) -> Option<String> {
-        if self.entrypoint.is_none() {
-            return None;
+        if let Some(entrypoint) = self.entrypoint.clone() {
+            return Some(String::from(entrypoint.as_str()?));
         }
-        Some(
-            self.entrypoint
-                .clone()
-                .expect("get_entrypoint string option")
-                .as_str()
-                .expect("as_str cast failed for get_entrypoint")
-                .to_string(),
-        )
+        None
     }
 }
 

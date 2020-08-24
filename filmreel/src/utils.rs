@@ -73,6 +73,6 @@ pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
             Value::String(_) => Ok(v),
             v => Ok(v),
         },
-        Err(e) => Err(FrError::ReadInstructionf("get_jql_value", String::from(e))),
+        Err(e) => Err(FrError::ReadInstructionf("get_jql_value", e)),
     }
 }

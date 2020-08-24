@@ -2,7 +2,9 @@ use crate::error::FrError;
 use glob::glob;
 use std::{
     convert::TryFrom,
+    ffi::OsStr,
     iter::FromIterator,
+    ops::Range,
     path::{Path, PathBuf},
     result::Result,
 };
@@ -18,17 +20,13 @@ pub struct Reel {
 
 impl Reel {
     /// A new reel is created from a provided Path or PathBuf
-    pub fn new<P: AsRef<Path>>(dir: P, reel_name: &str) -> Result<Self, FrError> {
-        let mut frames = Vec::new();
-        let dir_glob = dir.as_ref().join(format!("{}.*.*.fr.json", reel_name));
+    pub fn new<P>(dir: P, reel_name: &str, range: Option<Range<u32>>) -> Result<Self, FrError>
+    where
+        P: AsRef<Path>,
+    {
+        let dir_glob = Self::get_frame_dir_glob(&dir, reel_name);
 
-        for entry in glob(&dir_glob.to_str().unwrap())
-            .expect("Failed to read glob pattern")
-            .filter_map(|r| r.ok())
-            .filter(|path| path.is_file())
-        {
-            frames.push(MetaFrame::try_from(entry)?);
-        }
+        let mut frames = Self::get_metaframes(&dir_glob, range)?;
 
         // sort by string value since sorting by f32 is not idiomatic
         frames.sort_by(|a, b| a.path.cmp(&b.path));
@@ -49,13 +47,51 @@ impl Reel {
     pub fn success_only(self) -> Self {
         Self {
             dir: self.dir,
-            frames: self
-                .frames
-                .clone()
-                .into_iter()
-                .filter(|x| x.is_success())
-                .collect(),
+            frames: self.frames.into_iter().filter(|x| x.is_success()).collect(),
         }
+    }
+
+    // get_frame_dir_glob returns a glob pattern corresponding to all the Frame JSON files contained in
+    // the path directory provided non-recursively
+    pub fn get_frame_dir_glob<P>(dir: P, reel_name: &str) -> PathBuf
+    where
+        P: AsRef<Path>,
+    {
+        let dir_ref = dir.as_ref();
+        if !dir_ref.is_dir() {
+            panic!(
+                "dir argument to get_frame_dir_glob is not a directory: {}",
+                dir_ref.to_string_lossy().to_string(),
+            );
+        }
+
+        dir_ref.join(format!("{}.*.*.fr.json", reel_name))
+    }
+
+    /// get_metaframes takes a directory glob ref and a possible range, returning a vector of
+    /// MetaFrames
+    fn get_metaframes<T>(dir_glob: T, range: Option<Range<u32>>) -> Result<Vec<MetaFrame>, FrError>
+    where
+        T: AsRef<OsStr>,
+    {
+        let permit_frame: Box<dyn Fn(u32) -> bool> = match range {
+            Some(r) => Box::new(move |n| r.contains(&n)),
+            None => Box::new(|_| true),
+        };
+
+        let mut frames = Vec::new();
+
+        for entry in glob(dir_glob.as_ref().to_str().unwrap())
+            .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))?
+            .filter_map(|r| r.ok())
+            .filter(|path| path.is_file())
+        {
+            let frame = MetaFrame::try_from(entry)?;
+            if permit_frame(frame.step as u32) {
+                frames.push(frame);
+            }
+        }
+        Ok(frames)
     }
 }
 

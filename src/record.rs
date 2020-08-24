@@ -6,6 +6,7 @@ use fr::{cut::Register, frame::Frame, reel::*, ToStringHidden};
 use log::{debug, error, warn};
 use std::{
     fs,
+    ops::Range,
     path::{Path, PathBuf},
 };
 
@@ -13,7 +14,11 @@ use std::{
 pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register: Register = Register::from(&cut_str)?;
-    let reel = Reel::new(&cmd.reel_path, &cmd.reel_name)?;
+    let frame_range = match cmd.range {
+        Some(r) => parse_range(r)?,
+        None => None,
+    };
+    let reel = Reel::new(&cmd.reel_path, &cmd.reel_name, frame_range)?;
 
     // #### Component init
     let (mut comp_reels, mut comp_reg) = init_components(cmd.component)?;
@@ -29,7 +34,7 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
         .flat_map(fr::file_to_string)
         .map(Register::from)
         .collect();
-    &cut_register.destructive_merge(merge_cuts?);
+    cut_register.destructive_merge(merge_cuts?);
 
     for meta_frame in comp_reels.into_iter().flatten() {
         // if cmd.output is Some, provide a take PathBuf
@@ -110,7 +115,7 @@ pub fn init_components(components: Vec<String>) -> Result<(Vec<Reel>, Register),
     for comp in components {
         let (reel, register) = parse_component(comp)?;
         // TODO implement single merge
-        &comp_reg.destructive_merge(vec![register]);
+        comp_reg.destructive_merge(vec![register]);
         reels.push(reel);
     }
 
@@ -131,7 +136,7 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
             return Err(anyhow!("unable to parse component string => {}", component));
         }
     }
-    let reel = Reel::new(reel_path, reel_name)
+    let reel = Reel::new(reel_path, reel_name, None)
         .context(format!("component Reel::new failure => {}", reel_name))?;
     let cut_path = reel.get_default_cut_path();
     if !cut_path.is_file() {
@@ -147,4 +152,54 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
             cut_path
         ))?,
     ))
+}
+
+type ParsedRange = Option<Range<u32>>;
+// parse_range parses the `"<start_u32>:<end_u32>"` provided to the `--range` cli argument
+// returning a range object
+fn parse_range<T>(str_range: T) -> Result<ParsedRange, Error>
+where
+    T: AsRef<str>,
+{
+    match str_range
+        .as_ref()
+        .splitn(2, ':')
+        .collect::<Vec<&str>>()
+        .as_slice()
+    {
+        [start, end] => {
+            let start_parse = || start.parse::<u32>().context("start range parse error");
+            let end_parse = || end.parse::<u32>().context("end range parse error");
+            if *start == "" {
+                // make end string range inclusive
+                return Ok(Some(0..end_parse()? + 1));
+            }
+            if *end == "" {
+                return Ok(Some(start_parse()?..u32::MAX));
+            }
+            Ok(Some(start_parse()?..end_parse()? + 1))
+        }
+        _ => Ok(None),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::*;
+
+    #[rstest(input, expected,
+        case("04:08", Ok::<ParsedRange, Error>(Some(4..9))),
+        case(":10", Ok::<ParsedRange, Error>(Some(0..11))),
+        case("3:", Ok::<ParsedRange, Error>(Some(3..u32::MAX))),
+        case("number:", Err(anyhow!("start range parse error"))),
+        case(":number", Err(anyhow!("end range parse error"))),
+        case("number:number", Err(anyhow!("start range parse error"))),
+        )]
+    fn test_parse_range(input: &str, expected: Result<ParsedRange, Error>) {
+        match parse_range(input) {
+            Ok(mat) => assert_eq!(expected.unwrap(), mat),
+            Err(err) => assert_eq!(expected.unwrap_err().to_string(), err.to_string()),
+        }
+    }
 }

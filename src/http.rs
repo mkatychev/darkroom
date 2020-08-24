@@ -13,7 +13,7 @@ use std::{
 use url::Url;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
-struct Form {
+struct BuilderParam {
     #[serde(flatten)]
     form: BTreeMap<String, Value>,
 }
@@ -49,11 +49,16 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error>
         Err(e) => return Err(Error::from(e)),
     }
 
-    let form = serde_json::from_value(req.get_etc()["form"].clone())?;
-    match form {
-        Value::Object(_) => builder = builder.query(&form),
-        Value::Null => {}
+    match req.get_etc().get("form") {
+        Some(Value::Object(f)) => builder = builder.form(&f),
+        Some(Value::Null) | None => {}
         _ => return Err(anyhow!("request[\"form\"] must be a key value map")),
+    }
+
+    match req.get_etc().get("query") {
+        Some(Value::Object(f)) => builder = builder.query(&f),
+        Some(Value::Null) | None => {}
+        _ => return Err(anyhow!("request[\"query\"] must be a key value map")),
     }
 
     if let Some(h) = prm.header {

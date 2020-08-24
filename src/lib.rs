@@ -168,6 +168,10 @@ pub struct Record {
     /// output directory for successful takes
     #[argh(option, short = 'o')]
     take_out: Option<PathBuf>,
+
+    /// the range (inclusive) of frames that a record session will use, colon separated: `--range <start>:<end>` `--range <start>:`
+    #[argh(option, short = 'r')]
+    range: Option<String>,
 }
 
 impl Take {

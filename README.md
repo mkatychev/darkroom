@@ -62,7 +62,7 @@ Options:
 
 <!-- dark record start -->
 ```
-Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>]
+Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>] [-r <range>]
 
 Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
@@ -71,6 +71,9 @@ Options:
   -b, --component   repeatable component reel pattern using an ampersand
                     separator: `--component "<dir>&<reel_name>"`
   -o, --take-out    output directory for successful takes
+  -r, --range       the range (inclusive) of frames that a record session will
+                    use, colon separated: `--range <start>:<end>` `--range
+                    <start>:`
   --help            display usage information
 
 ```
@@ -103,21 +106,21 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 
 * HTTP support
 * added `form` key to HTTP frame requests: `{"request":{"uri":"POST post","form":{"key":"val","array[0]":"val0"}}}`
-* Full JSON object storage and retrieval, the cut register is no longer a flat associative array, strings are still used to map to JSON objects for templating
-* Variable discarding: `${lowercase}` variables will only be kept around for the duration of the frame
-* Headers and entrypoints can be stored and read on a per JSON frame basis
+* full JSON object storage and retrieval, the cut register is no longer a flat associative array, strings are still used to map to JSON objects for templating
+* variable discarding: `${lowercase}` variables will only be kept around for the duration of the frame
+* headers and entrypoints can be stored and read on a per JSON frame basis
 * SOPS/JSON secrets support
 
 #### `0.2.1`:
 
-* Added hidden variable support, hidden variables are defined with a leading underscore: `${_HIDDEN}`
-* Added `dark version` command
+* added hidden variable support, hidden variables are defined with a leading underscore: `${_HIDDEN}`
+* added `dark version` command
 * moved common parameters into the main `dark` command to be shared across subcommands
 
 #### `0.2.3`:
 
-* Added component reel support, component reels are generated as a prelude to the provided reel   `dark record --component "<dir>&<reel_name>" ./dir/ my_reel_name`
-* Added anyhow error handling
+* added component reel support, component reels are generated as a prelude to the provided reel   `dark record --component "<dir>&<reel_name>" ./dir/ my_reel_name`
+* added anyhow error handling
 * `--cut-out` can now be returned on a failed `record` or `take`
 
 #### `0.3.0`:
@@ -136,9 +139,19 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 * `ToStringHidden` is now a generc trait
 * moved styler out of take.rs and into lib.rs
 
+#### `0.3.3`:
+
+* range is added to recordings: `dark record --range "<start_u32>:<end_u32>" ./dir/ my_reel_name`
+* `grpcurl` errors propagate to stdout properly
+* `"request"["form"]` request building URL functionality moved to `"request"["query"]`
+* `"request"["form"]` now properly bulids the form data of the HTTP request
+
+#### `0.4.0`:
+
+* range is added to recordings: `dark record --range "<start_u32>:<end_u32>" ./dir/ my_reel_name`
 
 <!--
-VERSION="0.3.2"
+VERSION="0.4.0"
 DR_DIR=$PWD
 GRPCURL_DIR=${GRPCURL_DIR:-../grpcurl}
 cargo build --release && \

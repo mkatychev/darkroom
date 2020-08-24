@@ -183,7 +183,7 @@ impl Register {
     // ensures string slice past is a singular declaration of a `"${VARIABLE}"`
     pub fn expect_standalone_var(var_name: &str, frame_str: &str) -> Result<(), FrError> {
         let expected = format!("{}{}{}", "${", var_name, "}");
-        if expected != frame_str.as_ref() {
+        if expected != frame_str {
             return Err(FrError::FrameParsef(
                 "Singe variable mismatch -",
                 format!("Expected:{}, Got:{}", expected, frame_str),
@@ -315,7 +315,10 @@ impl<'a> Match<'a> {
         // TODO refactor cthulu looking match arms
         match self {
             Match::Escape(range) => match json_value {
-                Value::String(json_str) => Ok(json_str.replace_range(range, "")),
+                Value::String(json_str) => {
+                    json_str.replace_range(range, "");
+                    Ok(())
+                }
                 _ => Err(FrError::ReadInstruction(
                     "Match::Escape.value is a non string Value",
                 )),
@@ -328,7 +331,10 @@ impl<'a> Match<'a> {
                 // if the match value is a string
                 Value::String(match_str) => match json_value {
                     // and the json value is as well, replace the range within
-                    Value::String(str_val) => Ok(str_val.replace_range(r, &match_str)),
+                    Value::String(str_val) => {
+                        str_val.replace_range(r, &match_str);
+                        Ok(())
+                    }
                     _ => Err(FrError::ReadInstruction(
                         "Match::Variable given a non string value to replace",
                     )),
