@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use darkroom::{record::run_record, take::single_take, *};
+use std::io::{self, Write};
 
 fn main() -> Result<(), Error> {
     let args: Command = argh::from_env();
@@ -28,7 +29,11 @@ fn main() -> Result<(), Error> {
         SubCommand::Record(cmd) => {
             cmd.validate()?;
             match run_record(cmd, base_params) {
-                Err(e) => Err(anyhow!("{}{}", params::fmt_timestamp(true), e)),
+                Err(e) => {
+                    write!(io::stderr(), "[{}] ", chrono::Utc::now())
+                        .expect("write to stderr panic");
+                    Err(e)
+                }
                 _ => Ok(()),
             }
         }

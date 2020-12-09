@@ -73,7 +73,7 @@ impl Command {
     pub fn base_params(&self) -> BaseParams {
         BaseParams {
             timeout: 30,
-            timestamp: false,
+            use_timestamp: false,
             tls: self.tls,
             header: self.header.clone(),
             address: self.address.clone(),

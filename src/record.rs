@@ -47,7 +47,7 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
             .map(|dir| take_output(&dir, &&meta_frame.path));
         warn!(
             "{}{} {:?}",
-            base_params.get_timestamp(),
+            base_params.fmt_timestamp(),
             "File:".yellow(),
             meta_frame
                 .get_filename()
@@ -65,9 +65,9 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
             return Err(e);
         }
     }
-    base_params.warn_timestamp();
     warn!(
-        "{}{}{}",
+        "{}{}{}{}",
+        base_params.fmt_timestamp(),
         "= ".green(),
         "Success 🎉 ".yellow(),
         "==========\n".green()
