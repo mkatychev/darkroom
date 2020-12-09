@@ -1,12 +1,15 @@
 use crate::Command;
 use anyhow::{anyhow, Error};
 use filmreel::frame::Request;
+use log::{error, warn};
 use serde::Deserialize;
 use std::path::PathBuf;
 
 /// Parameters needed for a uri method to be sent.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct Params<'a> {
+    pub timeout: u64,
+    pub timestamp: bool,
     pub tls: bool,
     pub header: Option<String>,
     pub address: String,
@@ -14,10 +17,44 @@ pub struct Params<'a> {
     pub attempts: Option<Attempts>,
 }
 
+impl<'a> Params<'a> {
+    pub fn get_timestamp(&self) -> String {
+        fmt_timestamp(self.timestamp)
+    }
+
+    pub fn error_timestamp(&self) {
+        error_timestamp(self.timestamp)
+    }
+}
+
+// TODO rename
+pub fn fmt_timestamp(timestamp: bool) -> String {
+    if timestamp {
+        return format!("[{}] ", chrono::Utc::now());
+    }
+    return "".to_string();
+}
+
+// TODO rename
+pub fn error_timestamp(timestamp: bool) {
+    if timestamp {
+        error!("[{}]", chrono::Utc::now())
+    }
+}
+
+// TODO rename
+pub fn warn_timestamp(timestamp: bool) {
+    if timestamp {
+        warn!("[{}]", chrono::Utc::now())
+    }
+}
+
 /// BaseParams contains parameter values provided by a Record or Take object
 /// before the given values are checked for in the Frame
 #[derive(Clone)]
 pub struct BaseParams {
+    pub timeout: u64,
+    pub timestamp: bool,
     pub tls: bool,
     pub header: Option<String>,
     pub address: Option<String>,
@@ -36,6 +73,8 @@ pub struct Attempts {
 impl From<&Command> for BaseParams {
     fn from(cmd: &Command) -> Self {
         Self {
+            timeout: 30,
+            timestamp: false,
             tls: cmd.tls,
             header: cmd.header.clone(),
             address: cmd.address.clone(),
@@ -76,12 +115,46 @@ impl BaseParams {
         };
 
         Ok(Params {
+            timeout: self.timeout,
+            timestamp: self.timestamp,
             tls: self.tls,
             header,
             address,
             proto,
             attempts,
         })
+    }
+    pub fn with_timeout(self, timeout: u64) -> Self {
+        BaseParams {
+            timeout,
+            timestamp: self.timestamp,
+            tls: self.tls,
+            header: self.header.clone(),
+            address: self.address.clone(),
+            proto: self.proto.clone(),
+            cut_out: self.cut_out.clone(),
+            interactive: self.interactive,
+            verbose: self.verbose,
+        }
+    }
+    pub fn with_timestamp(self, timestamp: bool) -> Self {
+        BaseParams {
+            timeout: self.timeout,
+            timestamp,
+            tls: self.tls,
+            header: self.header.clone(),
+            address: self.address.clone(),
+            proto: self.proto.clone(),
+            cut_out: self.cut_out.clone(),
+            interactive: self.interactive,
+            verbose: self.verbose,
+        }
+    }
+    pub fn get_timestamp(&self) -> String {
+        fmt_timestamp(self.timestamp)
+    }
+    pub fn warn_timestamp(&self) {
+        warn_timestamp(self.timestamp)
     }
 }
 
@@ -143,6 +216,8 @@ mod tests {
         let params: Params = base_params.init(request).unwrap();
         assert_eq!(
             Params {
+                timeout: 30,
+                timestamp: false,
                 tls: false,
                 header: Some("\"Authorization: Bearer BIG_BEAR\"".to_string()),
                 address: "localhost:8000".to_string(),

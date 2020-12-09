@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, HashMap},
     convert::TryFrom,
+    time::Duration,
 };
 use url::Url;
 
@@ -22,6 +23,11 @@ struct BuilderParam {
 pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error> {
     let method: Method;
     let endpoint: Url;
+
+    let timeout = match prm.timeout {
+        0 => None,
+        _ => Some(Duration::from_secs(prm.timeout)),
+    };
 
     match &req
         .get_uri()
@@ -38,7 +44,10 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error>
         }
     };
 
-    let mut builder = Client::builder().build()?.request(method, endpoint);
+    let mut builder = Client::builder()
+        .timeout(timeout)
+        .build()?
+        .request(method, endpoint);
     match req.to_val_payload() {
         Ok(b) => {
             // TODO handle empty body better

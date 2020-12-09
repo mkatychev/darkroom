@@ -72,6 +72,8 @@ pub struct Command {
 impl Command {
     pub fn base_params(&self) -> BaseParams {
         BaseParams {
+            timeout: 30,
+            timestamp: false,
             tls: self.tls,
             header: self.header.clone(),
             address: self.address.clone(),
@@ -157,7 +159,7 @@ pub struct Record {
     #[argh(option, short = 'c')]
     cut: Option<PathBuf>,
 
-    /// repeatable component reel pattern using an ampersand separator: `--component "<dir>&<reel_name>"`
+    /// repeatable component reel pattern using an ampersand separator: --component "<dir>&<reel_name>"
     #[argh(option, short = 'b')]
     component: Vec<String>,
 
@@ -169,9 +171,17 @@ pub struct Record {
     #[argh(option, short = 'o')]
     take_out: Option<PathBuf>,
 
-    /// the range (inclusive) of frames that a record session will use, colon separated: `--range <start>:<end>` `--range <start>:`
+    /// the range (inclusive) of frames that a record session will use, colon separated: --range <start>:<end> --range <start>:
     #[argh(option, short = 'r')]
     range: Option<String>,
+
+    /// HTTP/S client request timeout in seconds, --timeout 0 disables request timeout [default: 30]
+    #[argh(option, short = 't', default = "30")]
+    timeout: u64,
+
+    /// return timestamp at execution start, error return, and reel completion
+    #[argh(switch, short = 's')]
+    timestamp: bool,
 }
 
 impl Take {

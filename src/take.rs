@@ -36,6 +36,7 @@ pub fn run_request<'a>(params: &Params, frame: &'a mut Frame) -> Result<Response
 // present in the payload Response printing a "Value Mismatch" diff to stdout and returning an
 // error if there is not a complete match
 pub fn process_response<'a>(
+    params: Params,
     frame: &'a mut Frame,
     cut_register: &'a mut Register,
     payload_response: Response,
@@ -46,7 +47,8 @@ pub fn process_response<'a>(
         .match_payload_response(&frame.cut, &payload_response)
         .map_err(Error::from)
         .or_else(|e| {
-            log_mismatch(&frame.response, &payload_response).context("fn log_mismatch failure")?;
+            log_mismatch(&params, &frame.response, &payload_response)
+                .context("fn log_mismatch failure")?;
             return Err(e);
         })?;
 
@@ -68,6 +70,7 @@ pub fn process_response<'a>(
     }
 
     if frame.response != payload_response {
+        params.error_timestamp();
         error!(
             "{}",
             PrettyDifference {
@@ -194,7 +197,9 @@ pub fn run_take(
                 "ms".yellow(),
             );
             if let Ok(response) = run_request(&params, frame) {
-                if process_response(frame, register, response, output.clone()).is_ok() {
+                if process_response(params.clone(), frame, register, response, output.clone())
+                    .is_ok()
+                {
                     return Ok(());
                 }
             }
@@ -209,7 +214,7 @@ pub fn run_take(
     }
 
     let response = run_request(&params, frame)?;
-    match process_response(frame, register, response, output) {
+    match process_response(params, frame, register, response, output) {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
     }
@@ -256,7 +261,12 @@ pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
 
 // log_mismatch provides the "Form Mismatch" diff when the returned payload Response does not match
 // the expected object structure of the Frame Response
-fn log_mismatch(frame_response: &Response, payload_response: &Response) -> Result<(), Error> {
+fn log_mismatch(
+    params: &Params,
+    frame_response: &Response,
+    payload_response: &Response,
+) -> Result<(), Error> {
+    params.error_timestamp();
     error!("{}\n", "Expected:".magenta());
     error!(
         "{}\n",
@@ -315,8 +325,9 @@ mod tests {
             status: 200,
         };
         let mut register = Register::default();
+        let params = Params::default();
         let processed_register =
-            process_response(&mut frame, &mut register, payload_response, None).unwrap();
+            process_response(params, &mut frame, &mut register, payload_response, None).unwrap();
         assert_eq!(*processed_register, register!({"USER_ID"=>"BIG_BEN"}));
     }
 }

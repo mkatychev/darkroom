@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use darkroom::{record::run_record, take::single_take, *};
 
 fn main() -> Result<(), Error> {
@@ -27,8 +27,10 @@ fn main() -> Result<(), Error> {
         }
         SubCommand::Record(cmd) => {
             cmd.validate()?;
-            run_record(cmd, base_params)?;
-            Ok(())
+            match run_record(cmd, base_params) {
+                Err(e) => Err(anyhow!("{}{}", params::fmt_timestamp(true), e)),
+                _ => Ok(()),
+            }
         }
     }
 }
