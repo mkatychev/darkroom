@@ -62,18 +62,21 @@ Options:
 
 <!-- dark record start -->
 ```
-Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>] [-r <range>]
+Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>] [-r <range>] [-t <timeout>] [-s]
 
 Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
 Options:
   -c, --cut         filepath of input cut file
   -b, --component   repeatable component reel pattern using an ampersand
-                    separator: `--component "<dir>&<reel_name>"`
+                    separator: --component "<dir>&<reel_name>"
   -o, --take-out    output directory for successful takes
   -r, --range       the range (inclusive) of frames that a record session will
-                    use, colon separated: `--range <start>:<end>` `--range
-                    <start>:`
+                    use, colon separated: --range <start>:<end> --range <start>:
+  -t, --timeout     HTTP/S client request timeout in seconds, --timeout 0
+                    disables request timeout [default: 30]
+  -s, --timestamp   return timestamp at execution start, error return, and reel
+                    completion
   --help            display usage information
 
 ```
@@ -156,7 +159,7 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 * 30 sec default timeout can now be overridden: `dark record record ./test_data post --timeout 2`
 
 <!--
-VERSION="0.5.0a"
+VERSION="0.5.0-a"
 DR_DIR=$PWD
 GRPCURL_DIR=${GRPCURL_DIR:-../grpcurl}
 cargo build --release && \
