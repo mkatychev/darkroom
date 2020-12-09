@@ -150,8 +150,13 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 
 * range is added to recordings: `dark record --range "<start_u32>:<end_u32>" ./dir/ my_reel_name`
 
+#### `0.5.0`:
+
+* timestamps are added to recordings: `dark record record ./test_data post --timestamp`
+* 30 sec default timeout can now be overridden: `dark record record ./test_data post --timeout 2`
+
 <!--
-VERSION="0.4.0"
+VERSION="0.5.0a"
 DR_DIR=$PWD
 GRPCURL_DIR=${GRPCURL_DIR:-../grpcurl}
 cargo build --release && \
