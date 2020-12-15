@@ -11,7 +11,10 @@ use std::{
 };
 
 /// run_record runs through a Reel sequence using the darkroom::Record struct
-pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
+pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error> {
+    base_params = base_params
+        .with_timeout(cmd.timeout)
+        .with_timestamp(cmd.timestamp);
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register: Register = Register::from(&cut_str)?;
     let frame_range = match cmd.range {
@@ -43,11 +46,10 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
             .as_ref()
             .map(|dir| take_output(&dir, &&meta_frame.path));
         warn!(
-            "{} {:?}",
+            "{}{} {:?}",
+            base_params.fmt_timestamp(),
             "File:".yellow(),
-            meta_frame
-                .get_filename()
-                .context("unable to unwrap MetaFrame.path")?
+            meta_frame.get_filename()
         );
         warn!("{}", "=======================".green());
 
@@ -61,6 +63,13 @@ pub fn run_record(cmd: Record, base_params: BaseParams) -> Result<(), Error> {
             return Err(e);
         }
     }
+    warn!(
+        "{}{}{}{}",
+        base_params.fmt_timestamp(),
+        "= ".green(),
+        "Success 🎉 ".yellow(),
+        "==========\n".green()
+    );
 
     write_cut(&base_params.cut_out, &cut_register, &cmd.reel_name, false)?;
 

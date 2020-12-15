@@ -1,6 +1,6 @@
 [package]
 name = "darkroom"
-version = "0.4.0"
+version = "0.5.0"
 description = "A contract testing tool built in Rust"
 authors = ["Matthew Planchard <msplanchard@gmail.com>", "Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
@@ -23,19 +23,20 @@ members = [
 [dependencies]
 anyhow = "1.0"
 argh = "0.1"
-colored = "1.9"
+colored = "2.0"
 colored-diff = "0.2"
 colored_json = "2"
-filmreel = { version = "0.3", path = "filmreel" }
+filmreel = { version = "0.4", path = "filmreel" }
 http = "0.2"
 lazy_static = "1.4"
 log = { version = "0.4", features = ["std"] }
 prettytable-rs = "^0.8"
 reqwest = { version = "0.10", features = ["blocking", "json"] }
-serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0.44"
-url = "2.1"
-which = "3.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+url = "2.2"
+which = "4.0"
+chrono = "0.4"
 
 [dev-dependencies]
-rstest = "0.5"
+rstest = "0.6"

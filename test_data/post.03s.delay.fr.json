@@ -1,0 +1,20 @@
+{
+  "cut": {
+    "from": [
+      "ADDRESS"
+    ],
+    "to": {
+      "body": "'response'.'body'"
+    }
+  },
+  "protocol": "HTTP",
+  "request": {
+    "body": "the exact body that is sent",
+    "uri": "POST /delay/3",
+    "entrypoint": "${ADDRESS}"
+  },
+  "response": {
+    "body": "${body}",
+    "status": 200
+  }
+}

@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use std::{
     collections::{BTreeMap, HashMap},
     convert::TryFrom,
+    time::Duration,
 };
 use url::Url;
 
@@ -23,6 +24,11 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error>
     let method: Method;
     let endpoint: Url;
 
+    let timeout = match prm.timeout {
+        0 => None,
+        _ => Some(Duration::from_secs(prm.timeout)),
+    };
+
     match &req
         .get_uri()
         .splitn(2, ' ')
@@ -31,14 +37,25 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error>
     {
         [method_str, tail_str] => {
             method = Method::from_bytes(method_str.as_bytes())?;
-            endpoint = Url::parse(prm.address.as_str())?.join(tail_str)?;
+            let entrypoint = prm.address;
+            endpoint = Url::parse(&entrypoint)
+                .context(format!("base url: {}", entrypoint))?
+                .join(tail_str)
+                .context(format!(
+                    "base url: {}, This is the case if the scheme and ':' delimiter are not followed by a '/',
+such as 'data:' mailto: URLs, and localhost without a leading http:// or https://",
+                    entrypoint
+                ))?;
         }
         _ => {
             return Err(anyhow!("unable to parse request uri field"));
         }
     };
 
-    let mut builder = Client::builder().build()?.request(method, endpoint);
+    let mut builder = Client::builder()
+        .timeout(timeout)
+        .build()?
+        .request(method, endpoint);
     match req.to_val_payload() {
         Ok(b) => {
             // TODO handle empty body better

@@ -1,5 +1,6 @@
 use anyhow::Error;
 use darkroom::{record::run_record, take::single_take, *};
+use std::io::{self, Write};
 
 fn main() -> Result<(), Error> {
     let args: Command = argh::from_env();
@@ -27,8 +28,16 @@ fn main() -> Result<(), Error> {
         }
         SubCommand::Record(cmd) => {
             cmd.validate()?;
-            run_record(cmd, base_params)?;
-            Ok(())
+            match run_record(cmd, base_params.clone()) {
+                Err(e) => {
+                    if base_params.use_timestamp {
+                        write!(io::stderr(), "[{}] ", chrono::Utc::now())
+                            .expect("write to stderr panic");
+                    }
+                    Err(e)
+                }
+                _ => Ok(()),
+            }
         }
     }
 }

@@ -47,6 +47,8 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
 
     let req_cmd = Command::new("grpcurl")
         .args(flags)
+        .arg("-connect-timeout")
+        .arg(format!("{:.1}", prm.timeout as f32))
         .arg("-d")
         .arg(req.to_payload()?)
         .arg(prm.address)
@@ -54,19 +56,21 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
         .output()
         .context("failed to execute grpcurl process")?;
 
-    if req_cmd.stderr.len() > 0 {
-        let grpcurl_err_msg = String::from_utf8(req_cmd.stderr.clone())?;
-        return Err(anyhow!(grpcurl_err_msg).context("grpcurl error"));
-    }
-
-    let response: Response = match req_cmd.status.code() {
+    let response = match req_cmd.status.code() {
         Some(0) => Response {
             body: serde_json::from_slice(&req_cmd.stdout)?,
             status: 0,
             etc: json!({}),
         },
         Some(_) => {
-            let err: ResponseError = serde_json::from_slice(&req_cmd.stderr)?;
+            let err: ResponseError = serde_json::from_slice(&req_cmd.stderr).map_err(|_| {
+                // if we fail to map to a serde struct, stringingfy stderr bytes and cast to anyhow error
+                String::from_utf8(req_cmd.stderr)
+                    .map_err(Error::from)
+                    .map(|v| anyhow!(v))
+                    .context("grpcurl error")
+                    .unwrap_or_else(|e| e)
+            })?;
             // create frame response from deserialized grpcurl error
             Response {
                 body: Some(serde_json::Value::String(err.message)),
@@ -74,7 +78,7 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
                 etc: json!({}),
             }
         }
-        None => return Err(anyhow!("grpcurl Response code was <None>")),
+        None => return Err(anyhow!("grpcurl response code was <None>")),
     };
     Ok(response)
 }
