@@ -45,6 +45,10 @@ pub struct Command {
     #[argh(switch)]
     tls: bool,
 
+    /// the path to a directory from which proto sources can be imported, for use with --proto flags.
+    #[argh(option)]
+    proto_path: Vec<PathBuf>,
+
     /// pass proto files used for payload forming
     #[argh(option, short = 'p')]
     proto: Vec<PathBuf>,
@@ -77,6 +81,7 @@ impl Command {
             tls: self.tls,
             header: self.header.clone(),
             address: self.address.clone(),
+            proto_path: self.proto_path.clone(),
             proto: self.proto.clone(),
             cut_out: self.cut_out.clone(),
             interactive: self.interactive,
@@ -182,9 +187,10 @@ pub struct Record {
     /// print timestamp at take start, error return, and reel completion
     #[argh(switch, short = 's')]
     timestamp: bool,
-    // forces shape mismatches to be diffed rather than return expected/actual statements
-    // #[argh(switch)]
-    // force_diff: bool,
+
+    /// print total time elapsed from record start to completion
+    #[argh(switch, short = 'd')]
+    duration: bool,
 }
 
 impl Take {

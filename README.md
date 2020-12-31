@@ -18,13 +18,15 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 <!-- dark start -->
 ```
-Usage: dark [<address>] [-v] [--tls] [-p <proto>] [-H <header>] [-C <cut-out>] [-i] <command> [<args>]
+Usage: dark [<address>] [-v] [--tls] [--proto-path <proto-path>] [-p <proto>] [-H <header>] [-C <cut-out>] [-i] <command> [<args>]
 
 Darkroom: A contract testing tool built in Rust using the filmReel format.
 
 Options:
   -v, --verbose     enable verbose output
   --tls             enable TLS (automatically inferred for HTTP/S)
+  --proto-path      the path to a directory from which proto sources can be
+                    imported, for use with --proto flags.
   -p, --proto       pass proto files used for payload forming
   -H, --header      fallback header passed to the specified protocol
   -C, --cut-out     output of final cut file
@@ -62,7 +64,7 @@ Options:
 
 <!-- dark record start -->
 ```
-Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>] [-r <range>] [-t <timeout>] [-s]
+Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>] [-r <range>] [-t <timeout>] [-s] [-d]
 
 Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
@@ -77,6 +79,7 @@ Options:
                     request timeout [default: 30]
   -s, --timestamp   print timestamp at take start, error return, and reel
                     completion
+  -d, --duration    print total time elapsed from record start to completion
   --help            display usage information
 
 ```
@@ -159,8 +162,12 @@ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_dat
 * 30 sec default timeout can now be overridden: `dark record record ./test_data post --timeout 2`
 * reel sequence numbers are now checked for duplicates
 
+#### `0.6.0`:
+* added `--import-path` for `dark --proto` arguments specifying paths for proto definition lookup
+* added `dark record --duration` to display total time elapsed in a record session
+
 <!--
-VERSION="0.5.0"
+VERSION="0.6.0"
 DR_DIR=$PWD
 GRPCURL_DIR=${GRPCURL_DIR:-../grpcurl}
 cargo build --release && \

@@ -8,6 +8,7 @@ use std::{
     fs,
     ops::Range,
     path::{Path, PathBuf},
+    time::Instant,
 };
 
 /// run_record runs through a Reel sequence using the darkroom::Record struct
@@ -39,6 +40,19 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
         .collect();
     cut_register.destructive_merge(merge_cuts?);
 
+    let mut duration = None;
+    if cmd.duration {
+        duration = Some(Instant::now())
+    }
+    let get_duration = || {
+        duration.map(|now| {
+            warn!(
+                "[Total record duration: {:.3}sec]",
+                now.elapsed().as_secs_f32(),
+            );
+        })
+    };
+
     for meta_frame in comp_reels.into_iter().flatten() {
         // if cmd.output is Some, provide a take PathBuf
         let output = cmd
@@ -59,6 +73,7 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
         let mut payload_frame = frame.clone();
 
         if let Err(e) = run_take(&mut payload_frame, &mut cut_register, &base_params, output) {
+            get_duration();
             write_cut(&base_params.cut_out, &cut_register, &cmd.reel_name, true)?;
             return Err(e);
         }
@@ -70,6 +85,7 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
         "Success 🎉 ".yellow(),
         "==========\n".green()
     );
+    get_duration();
 
     write_cut(&base_params.cut_out, &cut_register, &cmd.reel_name, false)?;
 
@@ -179,11 +195,11 @@ where
         [start, end] => {
             let start_parse = || start.parse::<u32>().context("start range parse error");
             let end_parse = || end.parse::<u32>().context("end range parse error");
-            if *start == "" {
+            if start.is_empty() {
                 // make end string range inclusive
                 return Ok(Some(0..end_parse()? + 1));
             }
-            if *end == "" {
+            if end.is_empty() {
                 return Ok(Some(start_parse()?..u32::MAX));
             }
             Ok(Some(start_parse()?..end_parse()? + 1))

@@ -2,7 +2,7 @@ use crate::params::{iter_path_args, Params};
 use anyhow::{anyhow, Context, Error};
 use filmreel::frame::{Request, Response};
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::{ffi::OsStr, path::PathBuf, process::Command};
 
@@ -27,11 +27,20 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
     if !prm.tls {
         flags.push(OsStr::new("-plaintext"));
     }
+
+    // prepend "-import-path" to every protos PathBuf provided
+    if let Some(proto_path) = prm.proto_path {
+        flags.extend(iter_path_args(
+            OsStr::new("-import-path"),
+            proto_path.iter().map(OsStr::new),
+        ));
+    }
+
     // prepend "-proto" to every protos PathBuf provided
     if let Some(protos) = prm.proto {
         flags.extend(iter_path_args(
             OsStr::new("-proto"),
-            protos.iter().map(|x| x.as_ref()),
+            protos.iter().map(OsStr::new),
         ));
     }
 
@@ -40,9 +49,9 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
         None => None,
     };
 
-    if let Some(h) = headers.as_ref() {
+    if let Some(h) = &headers {
         flags.push(OsStr::new("-H"));
-        flags.push(h.as_ref());
+        flags.push(OsStr::new(h));
     }
 
     let req_cmd = Command::new("grpcurl")
@@ -83,7 +92,7 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
     Ok(response)
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq)]
 struct ResponseError {
     code: u32,
     message: String,

@@ -49,7 +49,7 @@ pub fn process_response<'a>(
         .or_else(|e| {
             log_mismatch(&params, &frame.response, &payload_response)
                 .context("fn log_mismatch failure")?;
-            return Err(e);
+            Err(e)
         })?;
 
     // If there are valid matches for write operations

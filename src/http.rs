@@ -4,20 +4,9 @@ use filmreel::frame::{Request, Response};
 use http::header::HeaderMap;
 use log::warn;
 use reqwest::{blocking::*, Method};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{
-    collections::{BTreeMap, HashMap},
-    convert::TryFrom,
-    time::Duration,
-};
+use std::{collections::HashMap, convert::TryFrom, time::Duration};
 use url::Url;
-
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
-struct BuilderParam {
-    #[serde(flatten)]
-    form: BTreeMap<String, Value>,
-}
 
 /// build_request parses a Frame Request and a Params object to send a HTTP payload using reqwest
 pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error> {

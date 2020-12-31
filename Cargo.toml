@@ -1,6 +1,6 @@
 [package]
 name = "darkroom"
-version = "0.5.0"
+version = "0.6.0"
 description = "A contract testing tool built in Rust"
 authors = ["Matthew Planchard <msplanchard@gmail.com>", "Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"

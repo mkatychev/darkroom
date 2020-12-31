@@ -13,6 +13,7 @@ pub struct Params<'a> {
     pub tls: bool,
     pub header: Option<String>,
     pub address: String,
+    pub proto_path: Option<&'a Vec<PathBuf>>,
     pub proto: Option<&'a Vec<PathBuf>>,
     pub attempts: Option<Attempts>,
 }
@@ -53,6 +54,7 @@ pub struct BaseParams {
     pub tls: bool,
     pub header: Option<String>,
     pub address: Option<String>,
+    pub proto_path: Vec<PathBuf>,
     pub proto: Vec<PathBuf>,
     pub cut_out: Option<PathBuf>,
     pub interactive: bool,
@@ -73,6 +75,7 @@ impl From<&Command> for BaseParams {
             tls: cmd.tls,
             header: cmd.header.clone(),
             address: cmd.address.clone(),
+            proto_path: cmd.proto.clone(),
             proto: cmd.proto.clone(),
             cut_out: cmd.cut_out.clone(),
             interactive: cmd.interactive,
@@ -103,6 +106,10 @@ impl BaseParams {
             Some(v) => serde_json::from_value(v.clone())?,
             None => None,
         };
+        let proto_path = match self.proto_path.len() {
+            0 => None,
+            _ => Some(&self.proto_path),
+        };
 
         let proto = match self.proto.len() {
             0 => None,
@@ -115,6 +122,7 @@ impl BaseParams {
             tls: self.tls,
             header,
             address,
+            proto_path,
             proto,
             attempts,
         })
@@ -126,6 +134,7 @@ impl BaseParams {
             tls: self.tls,
             header: self.header.clone(),
             address: self.address.clone(),
+            proto_path: self.proto_path.clone(),
             proto: self.proto.clone(),
             cut_out: self.cut_out.clone(),
             interactive: self.interactive,
@@ -139,6 +148,7 @@ impl BaseParams {
             tls: self.tls,
             header: self.header.clone(),
             address: self.address.clone(),
+            proto_path: self.proto_path.clone(),
             proto: self.proto.clone(),
             cut_out: self.cut_out.clone(),
             interactive: self.interactive,
@@ -180,6 +190,7 @@ mod tests {
             tls: false,
             address: Some("www.initial_addr.com".to_string()),
             header: Some("initial_header".to_string()),
+            proto_path: vec![],
             proto: vec![],
             verbose: false,
             cut_out: None,
@@ -219,6 +230,7 @@ mod tests {
                 tls: false,
                 header: Some("\"Authorization: Bearer BIG_BEAR\"".to_string()),
                 address: "localhost:8000".to_string(),
+                proto_path: None,
                 proto: None,
                 attempts: Some(Attempts { times: 2, ms: 200 }),
             },
@@ -231,12 +243,20 @@ mod tests {
         let path_vec = vec![
             PathBuf::from("./first.file"),
             PathBuf::from("./second_file"),
+            PathBuf::from("../third_file"),
         ];
 
-        let expected: Vec<&OsStr> = ["prefix", "./first.file", "prefix", "./second_file"]
-            .iter()
-            .map(|x| OsStr::new(x))
-            .collect();
+        let expected: Vec<&OsStr> = [
+            "prefix",
+            "./first.file",
+            "prefix",
+            "./second_file",
+            "prefix",
+            "../third_file",
+        ]
+        .iter()
+        .map(|x| OsStr::new(x))
+        .collect();
         assert_eq!(
             expected,
             iter_path_args(OsStr::new("prefix"), path_vec.iter().map(|x| x.as_ref()))
