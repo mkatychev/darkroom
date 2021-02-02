@@ -87,6 +87,15 @@ Options:
 
 ## Examples:
 
+#### Simple example
+
+```sh
+# step through the httpbin test in [-i]nteractive mode
+dark -i record ./test_data post
+# to fail at the third httpbin frame, set a timeout of two seconds
+dark -i record ./test_data post --timeout 2
+```
+
 #### SOPS example:
 
 ```sh
