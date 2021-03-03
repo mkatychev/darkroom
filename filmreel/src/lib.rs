@@ -21,6 +21,10 @@ mod error;
 pub mod frame;
 pub mod reel;
 pub mod utils;
+pub mod value;
+
+#[cfg(test)]
+mod serde_tests;
 
 pub use error::FrError;
 pub use reel::Reel;
