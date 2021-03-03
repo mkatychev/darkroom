@@ -131,7 +131,7 @@ impl Register {
                 Some((k, v)) => {
                     // push valid match onto Match vec
                     matches.push(Match::Variable {
-                        name: k,
+                        name:  k,
                         value: v.clone(),
                         range: full_match.range(),
                     });
@@ -283,7 +283,7 @@ impl Register {
 pub enum Match<'a> {
     Escape(Range<usize>),
     Variable {
-        name: &'a str,
+        name:  &'a str,
         value: Value,
         range: Range<usize>,
     },

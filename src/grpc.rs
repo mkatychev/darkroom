@@ -67,9 +67,9 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
 
     let response = match req_cmd.status.code() {
         Some(0) => Response {
-            body: serde_json::from_slice(&req_cmd.stdout)?,
+            body:   serde_json::from_slice(&req_cmd.stdout)?,
             status: 0,
-            etc: json!({}),
+            etc:    json!({}),
         },
         Some(_) => {
             let err: ResponseError = serde_json::from_slice(&req_cmd.stderr).map_err(|_| {
@@ -82,9 +82,9 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
             })?;
             // create frame response from deserialized grpcurl error
             Response {
-                body: Some(serde_json::Value::String(err.message)),
+                body:   Some(serde_json::Value::String(err.message)),
                 status: err.code,
-                etc: json!({}),
+                etc:    json!({}),
             }
         }
         None => return Err(anyhow!("grpcurl response code was <None>")),
@@ -94,7 +94,7 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct ResponseError {
-    code: u32,
+    code:    u32,
     message: String,
 }
 
@@ -117,8 +117,8 @@ mod serde_tests {
         let json_struct: ResponseError = serde_json::from_str(INTERNAL_ERROR).unwrap();
         assert_eq!(
             ResponseError {
-                code: 13,
-                message: "input cannot be empty".to_owned()
+                code:    13,
+                message: "input cannot be empty".to_owned(),
             },
             json_struct
         );
@@ -130,8 +130,8 @@ mod serde_tests {
             serde_json::from_slice(&AUTH_ERROR.as_bytes().to_vec()).unwrap();
         assert_eq!(
             ResponseError {
-                code: 16,
-                message: "rpc error: code = Unauthenticated desc = Empty JWT token".to_owned()
+                code:    16,
+                message: "rpc error: code = Unauthenticated desc = Empty JWT token".to_owned(),
             },
             json_struct
         );

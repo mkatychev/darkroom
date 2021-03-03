@@ -75,7 +75,7 @@ pub fn process_response<'a>(
             "{}",
             PrettyDifference {
                 expected: &frame.response.to_string_pretty()?,
-                actual: &payload_response.to_string_pretty()?,
+                actual:   &payload_response.to_string_pretty()?,
             }
         );
         error!(
@@ -316,8 +316,8 @@ mod tests {
         )
         .unwrap();
         let payload_response = Response {
-            body: Some(json!("created user: BIG_BEN")),
-            etc: json!({}),
+            body:   Some(json!("created user: BIG_BEN")),
+            etc:    json!({}),
             status: 200,
         };
         let mut register = Register::default();

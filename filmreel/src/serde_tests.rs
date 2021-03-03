@@ -29,11 +29,11 @@ test_ser_de!(
     request_ser,
     request_de,
     Request {
-        body: json!({"email": "new_user@humanmail.com"}),
-        header: None,
+        body:       json!({"email": "new_user@humanmail.com"}),
+        header:     None,
         entrypoint: None,
-        etc: json!({}),
-        uri: json!("user_api.User/CreateUser"),
+        etc:        json!({}),
+        uri:        json!("user_api.User/CreateUser"),
     },
     REQUEST_JSON
 );
@@ -53,11 +53,11 @@ test_ser_de!(
     request_etc_ser,
     request_etc_de,
     Request {
-        body: json!({}),
-        header: Some(json!({"Authorization": "${USER_TOKEN}"})),
+        body:       json!({}),
+        header:     Some(json!({"Authorization": "${USER_TOKEN}"})),
         entrypoint: None,
-        etc: json!({"id": "007"}),
-        uri: json!("POST /logout/${USER_ID}"),
+        etc:        json!({"id": "007"}),
+        uri:        json!("POST /logout/${USER_ID}"),
     },
     REQUEST_ETC_JSON
 );
@@ -72,8 +72,8 @@ test_ser_de!(
     response_ser,
     response_de,
     Response {
-        body: Some(json!("created user: ${USER_ID}")),
-        etc: json!({}),
+        body:   Some(json!("created user: ${USER_ID}")),
+        etc:    json!({}),
         status: 0,
     },
     RESPONSE_JSON
@@ -90,8 +90,8 @@ test_ser_de!(
     response_etc_ser,
     response_etc_de,
     Response {
-        body: Some(json!("created user: ${USER_ID}")),
-        etc: json!({"user_level": "admin"}),
+        body:   Some(json!("created user: ${USER_ID}")),
+        etc:    json!({"user_level": "admin"}),
         status: 0,
     },
     RESPONSE_ETC_JSON
@@ -113,8 +113,8 @@ test_ser_de!(
     instruction_set_ser,
     instruction_set_de,
     InstructionSet {
-        reads: from!["USER_ID", "USER_TOKEN"],
-        writes: to!({
+        reads:          from!["USER_ID", "USER_TOKEN"],
+        writes:         to!({
             "SESSION_ID" => ".response.body.session_id",
             "DATETIME" => ".response.body.timestamp"
         }),
@@ -158,15 +158,15 @@ test_ser_de!(
     frame_de,
     Frame {
         protocol: Protocol::HTTP,
-        cut: InstructionSet {
-            reads: from!["USER_ID", "USER_TOKEN"],
-            writes: to!({
+        cut:      InstructionSet {
+            reads:          from!["USER_ID", "USER_TOKEN"],
+            writes:         to!({
                 "SESSION_ID" => ".response.body.session_id",
                 "DATETIME" => ".response.body.timestamp"
             }),
             hydrate_writes: false,
         },
-        request: Request {
+        request:  Request {
             body: json!({}),
             header: Some(json!({ "Authorization": "${USER_TOKEN}" })),
             uri: json!("POST /logout/${USER_ID}"),
@@ -175,12 +175,12 @@ test_ser_de!(
         },
 
         response: Response {
-            body: Some(json!({
+            body:   Some(json!({
               "message": "User ${USER_ID} logged out",
               "session_id": "${SESSION_ID}",
               "timestamp": "${DATETIME}"
             })),
-            etc: json!({}),
+            etc:    json!({}),
             status: 200,
         },
     },
@@ -203,8 +203,8 @@ test_ser_de!(
     simple_frame_de,
     Frame {
         protocol: Protocol::HTTP,
-        cut: InstructionSet::default(),
-        request: Request {
+        cut:      InstructionSet::default(),
+        request:  Request {
             body: json!({}),
             etc: json!({}),
             uri: json!("POST /logout/${USER_ID}"),
@@ -212,8 +212,8 @@ test_ser_de!(
         },
 
         response: Response {
-            body: None,
-            etc: json!({}),
+            body:   None,
+            etc:    json!({}),
             status: 200,
         },
     },

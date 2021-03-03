@@ -12,12 +12,12 @@ use std::collections::{HashMap, HashSet};
 /// [Frame spec](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame)
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Frame<'a> {
-    pub protocol: Protocol,
+    pub protocol:       Protocol,
     // Both the reads and writes can be optional
     #[serde(default, borrow, skip_serializing_if = "InstructionSet::is_empty")]
-    pub cut: InstructionSet<'a>,
+    pub cut:            InstructionSet<'a>,
     pub(crate) request: Request,
-    pub response: Response,
+    pub response:       Response,
 }
 
 const MISSING_VAR_ERR: &str = "Variable is not present in InstructionSet";
@@ -164,14 +164,14 @@ pub struct InstructionSet<'a> {
         serialize_with = "ordered_set",
         borrow
     )]
-    pub(crate) reads: HashSet<&'a str>,
+    pub(crate) reads:   HashSet<&'a str>,
     #[serde(rename(serialize = "to", deserialize = "to"))]
     #[serde(
         skip_serializing_if = "HashMap::is_empty",
         serialize_with = "ordered_str_map",
         borrow
     )]
-    pub(crate) writes: HashMap<&'a str, &'a str>,
+    pub(crate) writes:  HashMap<&'a str, &'a str>,
     #[serde(skip_serializing, default)]
     pub hydrate_writes: bool,
 }
@@ -205,14 +205,14 @@ impl<'a> InstructionSet<'a> {
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 pub struct Request {
-    pub(crate) body: Value,
+    pub(crate) body:       Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) header: Option<Value>,
+    pub(crate) header:     Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) entrypoint: Option<Value>,
     #[serde(flatten)]
-    pub(crate) etc: Value,
-    pub(crate) uri: Value,
+    pub(crate) etc:        Value,
+    pub(crate) uri:        Value,
 }
 
 impl Request {
@@ -253,9 +253,9 @@ impl Request {
 #[derive(Serialize, Clone, Deserialize, Debug, Default, PartialEq)]
 pub struct Response {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body: Option<Value>,
+    pub body:   Option<Value>,
     #[serde(flatten)]
-    pub etc: Value,
+    pub etc:    Value,
     pub status: u32,
 }
 
@@ -415,8 +415,8 @@ mod tests {
         assert_eq!(
             Frame {
                 protocol: Protocol::GRPC,
-                cut: InstructionSet {
-                    reads: from![
+                cut:      InstructionSet {
+                    reads:          from![
                         "EMAIL",
                         "FIRST",
                         "HOST",
@@ -426,24 +426,24 @@ mod tests {
                         "PORT",
                         "USER_TOKEN"
                     ],
-                    writes: HashMap::new(),
+                    writes:         HashMap::new(),
                     hydrate_writes: false,
                 },
-                request: Request {
-                    body: json!({
+                request:  Request {
+                    body:       json!({
                         "name": "Mario Rossi",
                         "email": "new_user@humanmail.com",
                         "object": json!({ "key": "value"})
                     }),
-                    header: Some(json!({"Authorization": "Bearer jWt"})),
+                    header:     Some(json!({"Authorization": "Bearer jWt"})),
                     entrypoint: Some(json!("localhost:8080")),
-                    etc: json!({}),
-                    uri: json!("user_api.User/CreateUser"),
+                    etc:        json!({}),
+                    uri:        json!("user_api.User/CreateUser"),
                 },
 
                 response: Response {
-                    body: Some(json!("${RESPONSE}")),
-                    etc: json!({}),
+                    body:   Some(json!("${RESPONSE}")),
+                    etc:    json!({}),
                     status: 0,
                 },
             },
@@ -455,36 +455,36 @@ mod tests {
     fn test_match_payload_response() {
         let frame = Frame {
             protocol: Protocol::GRPC,
-            cut: InstructionSet {
-                reads: from![],
-                writes: to! ({
+            cut:      InstructionSet {
+                reads:          from![],
+                writes:         to! ({
                     "USER_ID"=> "'response'.'body'.'id'",
                     "CREATED"=> "'response'.'body'.'created'",
                     "ignore"=> "'response'.'body'.'array'.[0].'ignore'"
                 }),
                 hydrate_writes: true,
             },
-            request: Request {
+            request:  Request {
                 ..Default::default()
             },
             response: Response {
-                body: Some(json!({
+                body:   Some(json!({
                     "id": "${USER_ID}",
                     "created": "${CREATED}",
                     "array": [{"ignore":"${ignore}"}]
                 })),
-                etc: json!({}),
+                etc:    json!({}),
                 status: 0,
             },
         };
 
         let payload_response = Response {
-            body: Some(json!({
+            body:   Some(json!({
                 "id": "ID_010101",
                 "created": 101010,
                 "array": [{"ignore": "value"}]
             })),
-            etc: json!({}),
+            etc:    json!({}),
             status: 0,
         };
         let mat = frame
@@ -501,8 +501,8 @@ mod tests {
     #[test]
     fn test_instruction_set_validate() {
         let set = InstructionSet {
-            reads: from!["USER_ID"],
-            writes: to! ({"USER_ID"=> "'response'.'body'.'id'"}),
+            reads:          from!["USER_ID"],
+            writes:         to! ({"USER_ID"=> "'response'.'body'.'id'"}),
             hydrate_writes: false,
         };
         assert!(set.validate().is_err());
