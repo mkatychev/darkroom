@@ -20,8 +20,8 @@ pub mod cut;
 mod error;
 pub mod frame;
 pub mod reel;
+pub mod response;
 pub mod utils;
-pub mod value;
 
 #[cfg(test)]
 mod serde_tests;
@@ -32,7 +32,10 @@ use serde::Serialize;
 use std::{fs, path::Path};
 
 // Convenience in converting a Path to a String
-pub fn file_to_string<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
+pub fn file_to_string<P>(path: P) -> std::io::Result<String>
+where
+    P: AsRef<Path>,
+{
     // https://github.com/serde-rs/json/issues/160
     let json_string: String = fs::read_to_string(path)?;
 

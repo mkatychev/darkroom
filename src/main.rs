@@ -30,7 +30,7 @@ fn main() -> Result<(), Error> {
             cmd.validate()?;
             match run_record(cmd, base_params.clone()) {
                 Err(e) => {
-                    if base_params.use_timestamp {
+                    if base_params.timestamp {
                         write!(io::stderr(), "[{}] ", chrono::Utc::now())
                             .expect("write to stderr panic");
                     }

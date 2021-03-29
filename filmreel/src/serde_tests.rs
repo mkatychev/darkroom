@@ -1,21 +1,46 @@
-use crate::{frame::*, from, test_ser_de, to};
+use crate::{frame::*, from, response::*, to};
 use serde_json::json;
 
+/// test_ser_de tests the serialization and deserialization of frame structs
+///
+/// ```edition2018
+///  test_ser_de!(
+///      protocol_grpc,      // test name
+///      Protocol::GRPC,     // struct/enum to test
+///      PROTOCOL_GRPC_JSON  // json string to test
+/// );
+/// ```
+#[macro_export]
+macro_rules! test_ser_de {
+    ($name:ident, $struct:expr, $json_str:expr) => {
+        paste::paste! {
+            #[test]
+            fn [<$name _ser>]() {
+                let val_from_str: serde_json::Value = serde_json::from_str($json_str).unwrap();
+                let val_from_struct = serde_json::value::to_value(&$struct).unwrap();
+                pretty_assertions::assert_eq!(val_from_str, val_from_struct);
+            }
+            #[test]
+            fn [<$name _de>]() {
+                crate::serde_tests::test_deserialize($struct, $json_str)
+            }
+        }
+    };
+}
+
+pub(crate) fn test_deserialize<'a, T>(de_json: T, json: &'a str)
+where
+    T: serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
+{
+    let actual = serde_json::from_str(json).unwrap();
+    pretty_assertions::assert_eq!(de_json, actual);
+}
+
 const PROTOCOL_GRPC_JSON: &str = r#""gRPC""#;
-test_ser_de!(
-    protocol_grpc_ser,
-    protocol_grpc_de,
-    Protocol::GRPC,
-    PROTOCOL_GRPC_JSON
-);
+test_ser_de!(protocol_grpc, Protocol::GRPC, PROTOCOL_GRPC_JSON);
 
 const PROTOCOL_HTTP_JSON: &str = r#""HTTP""#;
-test_ser_de!(
-    protocol_http_ser,
-    protocol_http_de,
-    Protocol::HTTP,
-    PROTOCOL_HTTP_JSON
-);
+test_ser_de!(protocol_http, Protocol::HTTP, PROTOCOL_HTTP_JSON);
 
 const REQUEST_JSON: &str = r#"
 {
@@ -26,14 +51,11 @@ const REQUEST_JSON: &str = r#"
 }
     "#;
 test_ser_de!(
-    request_ser,
-    request_de,
+    request,
     Request {
-        body:       json!({"email": "new_user@humanmail.com"}),
-        header:     None,
-        entrypoint: None,
-        etc:        json!({}),
-        uri:        json!("user_api.User/CreateUser"),
+        body: Some(json!({"email": "new_user@humanmail.com"})),
+        uri: json!("user_api.User/CreateUser"),
+        ..Default::default()
     },
     REQUEST_JSON
 );
@@ -50,13 +72,12 @@ const REQUEST_ETC_JSON: &str = r#"
     "#;
 
 test_ser_de!(
-    request_etc_ser,
-    request_etc_de,
+    request_etc,
     Request {
-        body:       json!({}),
+        body:       Some(json!({})),
         header:     Some(json!({"Authorization": "${USER_TOKEN}"})),
         entrypoint: None,
-        etc:        json!({"id": "007"}),
+        etc:        Some(json!({"id": "007"})),
         uri:        json!("POST /logout/${USER_ID}"),
     },
     REQUEST_ETC_JSON
@@ -69,12 +90,11 @@ const RESPONSE_JSON: &str = r#"
 }
     "#;
 test_ser_de!(
-    response_ser,
-    response_de,
+    response,
     Response {
-        body:   Some(json!("created user: ${USER_ID}")),
-        etc:    json!({}),
+        body: Some(json!("created user: ${USER_ID}")),
         status: 0,
+        ..Default::default()
     },
     RESPONSE_JSON
 );
@@ -87,12 +107,12 @@ const RESPONSE_ETC_JSON: &str = r#"
 }
     "#;
 test_ser_de!(
-    response_etc_ser,
-    response_etc_de,
+    response_etc,
     Response {
-        body:   Some(json!("created user: ${USER_ID}")),
-        etc:    json!({"user_level": "admin"}),
+        body: Some(json!("created user: ${USER_ID}")),
+        etc: Some(json!({"user_level": "admin"})),
         status: 0,
+        ..Default::default()
     },
     RESPONSE_ETC_JSON
 );
@@ -110,8 +130,7 @@ const INSTRUCTION_SET_JSON: &str = r#"
 }
     "#;
 test_ser_de!(
-    instruction_set_ser,
-    instruction_set_de,
+    instruction_set,
     InstructionSet {
         reads:          from!["USER_ID", "USER_TOKEN"],
         writes:         to!({
@@ -154,8 +173,7 @@ const FRAME_JSON: &str = r#"
 }
     "#;
 test_ser_de!(
-    frame_ser,
-    frame_de,
+    frame,
     Frame {
         protocol: Protocol::HTTP,
         cut:      InstructionSet {
@@ -167,21 +185,20 @@ test_ser_de!(
             hydrate_writes: false,
         },
         request:  Request {
-            body: json!({}),
+            body: Some(json!({})),
             header: Some(json!({ "Authorization": "${USER_TOKEN}" })),
             uri: json!("POST /logout/${USER_ID}"),
-            etc: json!({}),
             ..Default::default()
         },
 
         response: Response {
-            body:   Some(json!({
+            body: Some(json!({
               "message": "User ${USER_ID} logged out",
               "session_id": "${SESSION_ID}",
               "timestamp": "${DATETIME}"
             })),
-            etc:    json!({}),
             status: 200,
+            ..Default::default()
         },
     },
     FRAME_JSON
@@ -190,7 +207,6 @@ const SIMPLE_FRAME_JSON: &str = r#"
 {
   "protocol": "HTTP",
   "request": {
-    "body": {},
     "uri": "POST /logout/${USER_ID}"
   },
   "response": {
@@ -199,22 +215,18 @@ const SIMPLE_FRAME_JSON: &str = r#"
 }
     "#;
 test_ser_de!(
-    simple_frame_ser,
-    simple_frame_de,
+    simple_frame,
     Frame {
         protocol: Protocol::HTTP,
         cut:      InstructionSet::default(),
         request:  Request {
-            body: json!({}),
-            etc: json!({}),
             uri: json!("POST /logout/${USER_ID}"),
             ..Default::default()
         },
 
         response: Response {
-            body:   None,
-            etc:    json!({}),
             status: 200,
+            ..Default::default()
         },
     },
     SIMPLE_FRAME_JSON

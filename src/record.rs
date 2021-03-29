@@ -13,9 +13,9 @@ use std::{
 
 /// run_record runs through a Reel sequence using the darkroom::Record struct
 pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error> {
-    base_params = base_params
-        .with_timeout(cmd.timeout)
-        .with_timestamp(cmd.timestamp);
+    base_params.timeout = cmd.timeout;
+    base_params.timestamp = cmd.timestamp;
+
     let cut_str = fr::file_to_string(cmd.get_cut_file())?;
     let mut cut_register: Register = Register::from(&cut_str)?;
     let frame_range = match cmd.range {

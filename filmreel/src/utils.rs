@@ -30,42 +30,6 @@ where
     ordered.serialize(serializer)
 }
 
-/// test_ser_de tests the serialization and deserialization of frame structs
-///
-/// ```edition2018
-///  test_ser_de!(
-///      protocol_grpc_ser,  // serialization test name
-///      protocol_grpc_de,   // deserialization test name
-///      Protocol::GRPC,     // struct/enum to test
-///      PROTOCOL_GRPC_JSON  // json string to test
-/// );
-/// ```
-#[cfg(test)]
-#[macro_export]
-macro_rules! test_ser_de {
-    ($ser:ident, $de:ident, $struct:expr, $str_json:expr) => {
-        #[test]
-        fn $ser() {
-            let str_val: serde_json::Value = serde_json::from_str($str_json).unwrap();
-            let actual = serde_json::value::to_value(&$struct).unwrap();
-            assert_eq!(str_val, actual);
-        }
-        #[test]
-        fn $de() {
-            crate::utils::test_deserialize($struct, $str_json)
-        }
-    };
-}
-
-#[cfg(test)]
-pub fn test_deserialize<'a, T>(de_json: T, str_json: &'a str)
-where
-    T: serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
-{
-    let actual = serde_json::from_str(str_json).unwrap();
-    assert_eq!(de_json, actual);
-}
-
 pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
     let selectors = query.replace("'", "\"");
     match jql::walker(val, Some(&selectors)) {

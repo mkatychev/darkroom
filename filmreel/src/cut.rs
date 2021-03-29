@@ -592,8 +592,7 @@ mod serde_tests {
 }
     "#;
     test_ser_de!(
-        register_ser,
-        register_de,
+        register,
         register!({
             "FIRST_NAME"=> "Primus",
             "RESPONSE"=> "ALRIGHT"

@@ -40,3 +40,6 @@ chrono = "0.4"
 
 [dev-dependencies]
 rstest = "0.6"
+
+[profile.dev]
+split-debuginfo = "unpacked"

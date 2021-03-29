@@ -10,8 +10,9 @@ use colored_diff::PrettyDifference;
 use filmreel as fr;
 use filmreel::{
     cut::Register,
-    frame::{Frame, Protocol, Response},
+    frame::{Frame, Protocol},
     reel::MetaFrame,
+    response::Response,
 };
 use log::{debug, error, info, warn};
 use prettytable::*;
@@ -24,19 +25,19 @@ use std::{
 };
 
 // run_request decides which protocol to use for sending a hydrated Frame Request
-pub fn run_request<'a>(params: &Params, frame: &'a mut Frame) -> Result<Response, Error> {
+pub fn run_request<'a>(params: &'a Params, frame: Frame) -> Result<Response<'a>, Error> {
     let request_fn = match frame.protocol {
         Protocol::HTTP => http::request,
         Protocol::GRPC => grpc::request,
     };
-    request_fn(params.clone(), frame.get_request())
+    request_fn(params, frame.get_request())
 }
 
 // process_response grabs the expected Response from the given Frame and attempts to match the values
 // present in the payload Response printing a "Value Mismatch" diff to stdout and returning an
 // error if there is not a complete match
 pub fn process_response<'a>(
-    params: Params,
+    params: &Params,
     frame: &'a mut Frame,
     cut_register: &'a mut Register,
     payload_response: Response,
@@ -47,7 +48,7 @@ pub fn process_response<'a>(
         .match_payload_response(&frame.cut, &payload_response)
         .map_err(Error::from)
         .or_else(|e| {
-            log_mismatch(&params, &frame.response, &payload_response)
+            log_mismatch(params, &frame.response, &payload_response)
                 .context("fn log_mismatch failure")?;
             Err(e)
         })?;
@@ -66,7 +67,9 @@ pub fn process_response<'a>(
         if let Some(response_body) = &mut frame.response.body {
             Frame::hydrate_val(&frame.cut, response_body, &cut_register, false)?;
         }
-        Frame::hydrate_val(&frame.cut, &mut frame.response.etc, &cut_register, false)?;
+        if let Some(etc) = &mut frame.response.etc {
+            Frame::hydrate_val(&frame.cut, etc, &cut_register, false)?;
+        }
     }
 
     if frame.response != payload_response {
@@ -196,10 +199,8 @@ pub fn run_take(
                 attempts.ms.to_string().yellow(),
                 "ms",
             );
-            if let Ok(response) = run_request(&params, frame) {
-                if process_response(params.clone(), frame, register, response, output.clone())
-                    .is_ok()
-                {
+            if let Ok(response) = run_request(&params, frame.clone()) {
+                if process_response(&params, frame, register, response, output.clone()).is_ok() {
                     return Ok(());
                 }
             }
@@ -213,8 +214,8 @@ pub fn run_take(
         );
     }
 
-    let response = run_request(&params, frame)?;
-    match process_response(params, frame, register, response, output) {
+    let response = run_request(&params, frame.clone())?;
+    match process_response(&params, frame, register, response, output) {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
     }
@@ -289,7 +290,7 @@ fn log_mismatch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmreel::{cut::Register, frame::Response, register};
+    use filmreel::{cut::Register, register, response::Response};
     use serde_json::{self, json};
 
     #[test]
@@ -316,14 +317,15 @@ mod tests {
         )
         .unwrap();
         let payload_response = Response {
-            body:   Some(json!("created user: BIG_BEN")),
-            etc:    json!({}),
-            status: 200,
+            body:       Some(json!("created user: BIG_BEN")),
+            etc:        Some(json!({})),
+            validation: None,
+            status:     200,
         };
         let mut register = Register::default();
         let params = Params::default();
         let processed_register =
-            process_response(params, &mut frame, &mut register, payload_response, None).unwrap();
+            process_response(&params, &mut frame, &mut register, payload_response, None).unwrap();
         assert_eq!(*processed_register, register!({"USER_ID"=>"BIG_BEN"}));
     }
 }

@@ -1,6 +1,6 @@
 use crate::params::{iter_path_args, Params};
 use anyhow::{anyhow, Context, Error};
-use filmreel::frame::{Request, Response};
+use filmreel::{frame::Request, response::Response};
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde_json::json;
@@ -19,7 +19,7 @@ pub fn validate_grpcurl() -> Result<(), Error> {
 
 /// request parses a Frame Request and a Params object to send a gRPC payload using `grpcurl`
 /// the command line tool
-pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
+pub fn request<'a>(prm: &'a Params, req: Request) -> Result<Response<'a>, Error> {
     validate_grpcurl().context("grpcurl request failure")?;
 
     let mut flags: Vec<&OsStr> = vec![OsStr::new("-format-error")];
@@ -44,7 +44,7 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
         ));
     }
 
-    let headers = match prm.header {
+    let headers = match &prm.header {
         Some(h) => Some(h.replace("\"", "")),
         None => None,
     };
@@ -60,16 +60,17 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
         .arg(format!("{:.1}", prm.timeout as f32))
         .arg("-d")
         .arg(req.to_payload()?)
-        .arg(prm.address)
+        .arg(&prm.address)
         .arg(req.get_uri())
         .output()
         .context("failed to execute grpcurl process")?;
 
     let response = match req_cmd.status.code() {
         Some(0) => Response {
-            body:   serde_json::from_slice(&req_cmd.stdout)?,
-            status: 0,
-            etc:    json!({}),
+            body:       serde_json::from_slice(&req_cmd.stdout)?,
+            status:     0,
+            etc:        Some(json!({})),
+            validation: None,
         },
         Some(_) => {
             let err: ResponseError = serde_json::from_slice(&req_cmd.stderr).map_err(|_| {
@@ -82,9 +83,10 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
             })?;
             // create frame response from deserialized grpcurl error
             Response {
-                body:   Some(serde_json::Value::String(err.message)),
-                status: err.code,
-                etc:    json!({}),
+                body:       Some(serde_json::Value::String(err.message)),
+                status:     err.code,
+                etc:        Some(json!({})),
+                validation: None,
             }
         }
         None => return Err(anyhow!("grpcurl response code was <None>")),

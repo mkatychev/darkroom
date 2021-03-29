@@ -1,7 +1,8 @@
 use crate::{
     cut::Register,
     error::FrError,
-    utils::{get_jql_value, ordered_set, ordered_str_map},
+    response::Response,
+    utils::{ordered_set, ordered_str_map},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{error::Error as SerdeError, json, to_value, Value};
@@ -13,16 +14,13 @@ use std::collections::{HashMap, HashSet};
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Frame<'a> {
     pub protocol:       Protocol,
-    // Both the reads and writes can be optional
     #[serde(default, borrow, skip_serializing_if = "InstructionSet::is_empty")]
-    pub cut:            InstructionSet<'a>,
+    pub cut:            InstructionSet<'a>, // Both the reads and writes can be optional
     pub(crate) request: Request,
-    pub response:       Response,
+    pub response:       Response<'a>,
 }
 
 const MISSING_VAR_ERR: &str = "Variable is not present in InstructionSet";
-const INVALID_INSTRUCTION_TYPE_ERR: &str =
-    "Frame write instruction did not correspond to a string object";
 const DUPE_VAR_REFERENCE_ERR: &str =
     "Cut Variables cannot be referenced by both read and write instructions";
 
@@ -61,14 +59,17 @@ impl<'a> Frame<'a> {
     /// performs Register.read_operation on Strings with Cut Variables
     pub fn hydrate(&mut self, reg: &Register, hide: bool) -> Result<(), FrError> {
         let set = self.cut.clone();
-        Self::hydrate_val(&set, &mut self.request.body, reg, hide)?;
-        Self::hydrate_val(&set, &mut self.request.etc, reg, hide)?;
+        if let Some(request_body) = &mut self.request.body {
+            Self::hydrate_val(&set, request_body, reg, hide)?;
+        }
         if let Some(response_body) = &mut self.response.body {
             Self::hydrate_val(&set, response_body, reg, hide)?;
         }
-        Self::hydrate_val(&set, &mut self.response.etc, reg, hide)?;
         if let Some(header) = &mut self.request.header {
             Self::hydrate_val(&set, header, reg, hide)?;
+        }
+        if let Some(etc) = &mut self.request.etc {
+            Self::hydrate_val(&set, etc, reg, hide)?;
         }
 
         // URI and entrypoint is given an explicit read operation
@@ -147,7 +148,9 @@ impl<'a> Frame<'a> {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Protocol {
     #[serde(rename(serialize = "gRPC", deserialize = "gRPC"))]
+    #[allow(clippy::upper_case_acronyms)]
     GRPC,
+    #[allow(clippy::upper_case_acronyms)]
     HTTP,
 }
 
@@ -158,15 +161,15 @@ pub enum Protocol {
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 #[serde(default)]
 pub struct InstructionSet<'a> {
-    #[serde(rename(serialize = "from", deserialize = "from"))]
     #[serde(
+        rename(serialize = "from", deserialize = "from"),
         skip_serializing_if = "HashSet::is_empty",
         serialize_with = "ordered_set",
         borrow
     )]
     pub(crate) reads:   HashSet<&'a str>,
-    #[serde(rename(serialize = "to", deserialize = "to"))]
     #[serde(
+        rename(serialize = "to", deserialize = "to"),
         skip_serializing_if = "HashMap::is_empty",
         serialize_with = "ordered_str_map",
         borrow
@@ -203,16 +206,18 @@ impl<'a> InstructionSet<'a> {
 /// Encapsulates the request payload to be sent.
 ///
 /// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
-#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
+#[derive(Serialize, Clone, Deserialize, Debug, PartialEq)]
 pub struct Request {
-    pub(crate) body:       Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) body: Option<Value>,
+    pub(crate) uri:  Value,
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub(crate) etc:  Option<Value>,
+
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) header:     Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) entrypoint: Option<Value>,
-    #[serde(flatten)]
-    pub(crate) etc:        Value,
-    pub(crate) uri:        Value,
 }
 
 impl Request {
@@ -220,8 +225,8 @@ impl Request {
         serde_json::to_string_pretty(&self.body)
     }
 
-    pub fn to_val_payload(&self) -> Result<Value, SerdeError> {
-        serde_json::to_value(&self.body)
+    pub fn to_val_payload(&self) -> Result<Option<Value>, SerdeError> {
+        self.body.as_ref().map(serde_json::to_value).transpose()
     }
 
     pub fn get_uri(&self) -> String {
@@ -231,7 +236,7 @@ impl Request {
         "".to_string()
     }
 
-    pub fn get_etc(&self) -> Value {
+    pub fn get_etc(&self) -> Option<Value> {
         self.etc.clone()
     }
 
@@ -247,67 +252,15 @@ impl Request {
     }
 }
 
-/// Encapsulates the expected response payload.
-///
-/// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
-#[derive(Serialize, Clone, Deserialize, Debug, Default, PartialEq)]
-pub struct Response {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body:   Option<Value>,
-    #[serde(flatten)]
-    pub etc:    Value,
-    pub status: u32,
-}
-
-impl Response {
-    /// Cast to a serialized Frame as serde_json::Value object for consistency in jql object
-    /// traversal: `"response"."body"` should always traverse a serialized Frame struct
-    fn to_frame_value(&self) -> Result<Value, FrError> {
-        let mut frame_value = json!({"response":{}});
-        frame_value["response"] = to_value(self)?;
-        Ok(frame_value)
-    }
-
-    /// Using the write instructions found in the frame InstructionSet, look for matches to be
-    /// passed to write operations
-    pub fn match_payload_response<'a>(
-        &self,
-        set: &'a InstructionSet,
-        payload_response: &Response,
-    ) -> Result<Option<HashMap<&'a str, Value>>, FrError> {
-        let frame_response: Value = self.to_frame_value()?;
-        let payload_response: Value = payload_response.to_frame_value()?;
-
-        let mut write_matches: HashMap<&str, Value> = HashMap::new();
-        for (k, query) in set.writes.iter() {
-            // ensure frame jql query returns a string object
-            let frame_str = match get_jql_value(&frame_response, query) {
-                Ok(Value::String(v)) => Ok(v),
-                Ok(_) => Err(FrError::FrameParsef(
-                    INVALID_INSTRUCTION_TYPE_ERR,
-                    query.to_string(),
-                )),
-                Err(e) => Err(e),
-            }?;
-            let payload_val = get_jql_value(&payload_response, query)?;
-
-            if let Value::String(payload_str) = &payload_val {
-                let write_match = Register::write_match(k, &frame_str, payload_str)?;
-                if let Some(mat) = write_match {
-                    write_matches.insert(k, to_value(mat)?);
-                }
-                continue;
-            }
-            // handle non string payload values returned by the jql query
-            Register::expect_standalone_var(k, &frame_str)?;
-            write_matches.insert(k, payload_val);
+impl Default for Request {
+    fn default() -> Self {
+        Self {
+            body:       None,
+            uri:        Value::Null,
+            etc:        Some(json!({})),
+            header:     None,
+            entrypoint: None,
         }
-
-        if write_matches.iter().next().is_some() {
-            return Ok(Some(write_matches));
-        }
-
-        Ok(None)
     }
 }
 
@@ -360,7 +313,7 @@ macro_rules! from {
 mod tests {
     use super::*;
     use crate::register;
-    // use rstest::*;
+    use pretty_assertions::assert_eq;
     use serde_json::json;
 
     const FRAME_JSON: &str = r#"
@@ -430,72 +383,25 @@ mod tests {
                     hydrate_writes: false,
                 },
                 request:  Request {
-                    body:       json!({
+                    body:       Some(json!({
                         "name": "Mario Rossi",
                         "email": "new_user@humanmail.com",
                         "object": json!({ "key": "value"})
-                    }),
+                    })),
                     header:     Some(json!({"Authorization": "Bearer jWt"})),
                     entrypoint: Some(json!("localhost:8080")),
-                    etc:        json!({}),
                     uri:        json!("user_api.User/CreateUser"),
+                    etc:        Some(json!({})),
                 },
 
                 response: Response {
-                    body:   Some(json!("${RESPONSE}")),
-                    etc:    json!({}),
+                    body: Some(json!("${RESPONSE}")),
                     status: 0,
+                    ..Default::default()
                 },
             },
             frame
         );
-    }
-
-    #[test]
-    fn test_match_payload_response() {
-        let frame = Frame {
-            protocol: Protocol::GRPC,
-            cut:      InstructionSet {
-                reads:          from![],
-                writes:         to! ({
-                    "USER_ID"=> "'response'.'body'.'id'",
-                    "CREATED"=> "'response'.'body'.'created'",
-                    "ignore"=> "'response'.'body'.'array'.[0].'ignore'"
-                }),
-                hydrate_writes: true,
-            },
-            request:  Request {
-                ..Default::default()
-            },
-            response: Response {
-                body:   Some(json!({
-                    "id": "${USER_ID}",
-                    "created": "${CREATED}",
-                    "array": [{"ignore":"${ignore}"}]
-                })),
-                etc:    json!({}),
-                status: 0,
-            },
-        };
-
-        let payload_response = Response {
-            body:   Some(json!({
-                "id": "ID_010101",
-                "created": 101010,
-                "array": [{"ignore": "value"}]
-            })),
-            etc:    json!({}),
-            status: 0,
-        };
-        let mat = frame
-            .response
-            .match_payload_response(&frame.cut, &payload_response)
-            .unwrap();
-        let mut expected_match = HashMap::new();
-        expected_match.insert("USER_ID", to_value("ID_010101").unwrap());
-        expected_match.insert("CREATED", to_value(101010).unwrap());
-        expected_match.insert("ignore", to_value("value").unwrap());
-        assert_eq!(expected_match, mat.unwrap());
     }
 
     #[test]

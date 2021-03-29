@@ -1,6 +1,6 @@
 use crate::params::Params;
 use anyhow::{anyhow, Context, Error};
-use filmreel::frame::{Request, Response};
+use filmreel::{frame::Request, response::Response};
 use http::header::HeaderMap;
 use log::warn;
 use reqwest::{blocking::*, Method};
@@ -9,7 +9,7 @@ use std::{collections::HashMap, convert::TryFrom, time::Duration};
 use url::Url;
 
 /// build_request parses a Frame Request and a Params object to send a HTTP payload using reqwest
-pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error> {
+pub fn build_request(prm: &Params, req: Request) -> Result<RequestBuilder, Error> {
     let method: Method;
     let endpoint: Url;
 
@@ -26,8 +26,8 @@ pub fn build_request(prm: Params, req: Request) -> Result<RequestBuilder, Error>
     {
         [method_str, tail_str] => {
             method = Method::from_bytes(method_str.as_bytes())?;
-            let entrypoint = prm.address;
-            endpoint = Url::parse(&entrypoint)
+            let entrypoint = &prm.address;
+            endpoint = Url::parse(entrypoint)
                 .context(format!("base url: {}", entrypoint))?
                 .join(tail_str)
                 .context(format!(
@@ -45,29 +45,25 @@ such as 'data:' mailto: URLs, and localhost without a leading http:// or https:/
         .timeout(timeout)
         .build()?
         .request(method, endpoint);
-    match req.to_val_payload() {
-        Ok(b) => {
-            // TODO handle empty body better
-            if b != json!({}) {
-                builder = builder.body(b.to_string());
-            }
+    if let Some(b) = req.to_val_payload()? {
+        builder = builder.body(b.to_string());
+    }
+
+    if let Some(etc) = req.get_etc() {
+        match etc.get("form") {
+            Some(Value::Object(f)) => builder = builder.form(&f),
+            Some(Value::Null) | None => (),
+            _ => return Err(anyhow!("request[\"form\"] must be a key value map")),
         }
-        Err(e) => return Err(Error::from(e)),
+
+        match etc.get("query") {
+            Some(Value::Object(f)) => builder = builder.query(&f),
+            Some(Value::Null) | None => (),
+            _ => return Err(anyhow!("request[\"query\"] must be a key value map")),
+        }
     }
 
-    match req.get_etc().get("form") {
-        Some(Value::Object(f)) => builder = builder.form(&f),
-        Some(Value::Null) | None => {}
-        _ => return Err(anyhow!("request[\"form\"] must be a key value map")),
-    }
-
-    match req.get_etc().get("query") {
-        Some(Value::Object(f)) => builder = builder.query(&f),
-        Some(Value::Null) | None => {}
-        _ => return Err(anyhow!("request[\"query\"] must be a key value map")),
-    }
-
-    if let Some(h) = prm.header {
+    if let Some(h) = &prm.header {
         builder = builder.headers(build_header(&h)?);
     }
     Ok(builder)
@@ -84,7 +80,7 @@ fn build_header(header: &str) -> Result<HeaderMap, Error> {
 
 // request is used by run_request to send an http request and deserialize the returned data
 // into a Response struct
-pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
+pub fn request<'a>(prm: &'a Params, req: Request) -> Result<Response<'a>, Error> {
     let response = build_request(prm, req)?.send()?;
     let status = response.status().as_u16() as u32;
     // reqwest.Response is a private Option<Value> field so we rely on
@@ -103,7 +99,8 @@ pub fn request(prm: Params, req: Request) -> Result<Response, Error> {
     Ok(Response {
         // TODO add response headers
         body: response_body,
-        etc: json!({}),
+        etc: Some(json!({})),
+        validation: None,
         status,
     })
 }
