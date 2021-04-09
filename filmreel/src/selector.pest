@@ -1,0 +1,23 @@
+// Example: 'test'.[0] decomposes into the selector wrapper and one string + one int token
+// - selector
+//  - string: "test"
+//  - int: "0"
+
+// selector is a period delimited series of zero or more steps 
+selector = { "."? ~ (step ~ ".")* ~ (step ~ "."?)?  }
+
+// step represents either an array index selection or an object key
+step = _{ outer | index }
+
+// outer handles the quote delimited string
+outer = _{ "'" ~ string ~ "'" }
+string = { char* }
+
+char = _{
+    !("\\" | "'") ~ ANY // Any character that is not a backslash or single quote
+    | "\\" ~ "'"        // ... or an escaped backslash
+}
+
+// represents a square bracket delimited array index
+index = _{ "[" ~ int ~ "]" }
+int = { ASCII_DIGIT+ }
