@@ -165,7 +165,7 @@ mod tests {
             tls:         false,
             address:     Some("www.initial_addr.com".to_string()),
             header:      Some("initial_header".to_string()),
-            proto_path:  vec![],
+            proto_dir:   vec![],
             proto:       vec![],
             verbose:     false,
             cut_out:     None,

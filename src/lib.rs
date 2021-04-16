@@ -41,18 +41,6 @@ pub struct Command {
     #[argh(switch, short = 'v')]
     verbose: bool,
 
-    /// enable TLS (automatically inferred for HTTP/S)
-    #[argh(switch)]
-    tls: bool,
-
-    /// the path to a directory from which proto sources can be imported, for use with --proto flags.
-    #[argh(option)]
-    proto_path: Vec<PathBuf>,
-
-    /// pass proto files used for payload forming
-    #[argh(option, short = 'p')]
-    proto: Vec<PathBuf>,
-
     /// fallback address passed to the specified protocol
     #[argh(positional, short = 'a')]
     address: Option<String>,
@@ -62,12 +50,24 @@ pub struct Command {
     header: Option<String>,
 
     /// output of final cut file
-    #[argh(option, short = 'C')]
+    #[argh(option, arg_name = "file")]
     cut_out: Option<PathBuf>,
 
     /// interactive frame sequence transitions
     #[argh(switch, short = 'i')]
     interactive: bool,
+
+    /// enable TLS (automatically inferred for HTTP/S)
+    #[argh(switch)]
+    tls: bool,
+
+    /// the path to a directory from which proto sources can be imported, for use with --proto flags.
+    #[argh(option, arg_name = "dir")]
+    proto_dir: Vec<PathBuf>,
+
+    /// pass proto files used for payload forming
+    #[argh(option, short = 'p')]
+    proto: Vec<PathBuf>,
 
     #[argh(subcommand)]
     pub nested: SubCommand,
@@ -81,7 +81,7 @@ impl Command {
             tls:         self.tls,
             header:      self.header.clone(),
             address:     self.address.clone(),
-            proto_path:  self.proto_path.clone(),
+            proto_path:  self.proto_dir.clone(),
             proto:       self.proto.clone(),
             cut_out:     self.cut_out.clone(),
             interactive: self.interactive,
@@ -144,7 +144,7 @@ pub struct Take {
     cut: PathBuf,
 
     /// output of take file
-    #[argh(option, short = 'o')]
+    #[argh(option, short = 'o', arg_name = "file")]
     take_out: Option<PathBuf>,
 }
 
@@ -153,7 +153,7 @@ pub struct Take {
 #[argh(subcommand, name = "record")]
 pub struct Record {
     /// directory path where frames and (if no explicit cut is provided) the cut are to be found
-    #[argh(positional)]
+    #[argh(positional, arg_name = "dir")]
     reel_path: PathBuf,
 
     /// name of the reel, used to find corresponding frames for the path provided
@@ -169,7 +169,7 @@ pub struct Record {
     component: Vec<String>,
 
     /// filepath of merge cuts
-    #[argh(positional)]
+    #[argh(positional, arg_name = "file")]
     merge_cuts: Vec<PathBuf>,
 
     /// output directory for successful takes

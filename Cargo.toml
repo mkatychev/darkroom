@@ -22,7 +22,7 @@ members = [
 
 [dependencies]
 anyhow = "1.0"
-argh = "0.1"
+argh = { git = "https://github.com/google/argh" }
 colored = "2.0"
 colored-diff = "0.2"
 colored_json = "2"
