@@ -19,7 +19,7 @@ pub fn validate_grpcurl() -> Result<(), Error> {
 
 /// request parses a Frame Request and a Params object to send a gRPC payload using `grpcurl`
 /// the command line tool
-pub fn request<'a>(prm: &'a Params, req: Request) -> Result<Response<'a>, Error> {
+pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
     validate_grpcurl().context("grpcurl request failure")?;
 
     let mut flags: Vec<&OsStr> = vec![OsStr::new("-format-error")];

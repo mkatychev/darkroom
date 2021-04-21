@@ -25,7 +25,7 @@ use std::{
 };
 
 // run_request decides which protocol to use for sending a hydrated Frame Request
-pub fn run_request<'a>(params: &'a Params, frame: Frame) -> Result<Response<'a>, Error> {
+pub fn run_request<'a>(params: Params, frame: Frame) -> Result<Response<'a>, Error> {
     let request_fn = match frame.protocol {
         Protocol::HTTP => http::request,
         Protocol::GRPC => grpc::request,
@@ -36,13 +36,18 @@ pub fn run_request<'a>(params: &'a Params, frame: Frame) -> Result<Response<'a>,
 // process_response grabs the expected Response from the given Frame and attempts to match the values
 // present in the payload Response printing a "Value Mismatch" diff to stdout and returning an
 // error if there is not a complete match
-pub fn process_response<'a>(
+pub fn process_response<'a, 'b>(
     params: &Params,
-    frame: &'a mut Frame,
+    frame: &'a mut Frame<'b>,
     cut_register: &'a mut Register,
-    payload_response: Response,
+    mut payload_response: Response<'b>,
     output: Option<PathBuf>,
 ) -> Result<&'a Register, Error> {
+    // ----------------------------------------------------------------------------
+    // apply validation transformations before read and write operations are called
+    frame.response.apply_validation(&mut payload_response)?;
+    // ----------------------------------------------------------------------------
+
     let payload_matches = frame
         .response
         .match_payload_response(&frame.cut, &payload_response)
@@ -119,10 +124,10 @@ pub fn process_response<'a>(
 ///     expected structure
 ///    - Value Mismatch: output during process_response when the returned JSON values do not
 ///    match
-pub fn run_take(
-    frame: &mut Frame,
-    register: &mut Register,
-    base_params: &BaseParams,
+pub fn run_take<'a>(
+    frame: &'a mut Frame<'a>,
+    register: &'a mut Register,
+    base_params: &'a BaseParams,
     output: Option<PathBuf>,
 ) -> Result<(), Error> {
     let interactive = base_params.interactive;
@@ -158,10 +163,7 @@ pub fn run_take(
             format!("[{}] frame", "Hydrated".green()),
         ]);
 
-        let hidden = match hidden_frame {
-            Some(f) => f,
-            None => return Err(anyhow!("None for interactive hidden_frame")),
-        };
+        let hidden = hidden_frame.ok_or_else(|| anyhow!("None for interactive hidden_frame"))?;
         table.add_row(row![
             unhydrated_frame
                 .expect("None for unhydrated_frame")
@@ -181,10 +183,7 @@ pub fn run_take(
         // Read a single byte and discard
         let _ = stdin.read(&mut [0u8]).expect("read stdin panic");
     } else if verbose {
-        let hidden = match hidden_frame {
-            Some(f) => f,
-            None => return Err(anyhow!("None for interactive hidden_frame")),
-        };
+        let hidden = hidden_frame.ok_or_else(|| anyhow!("None for interactive hidden_frame"))?;
         info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
         info!("[{}] frame:", "Hydrated".green());
         info!("{}", hidden.to_coloured_tk_json()?);
@@ -199,7 +198,7 @@ pub fn run_take(
                 attempts.ms.to_string().yellow(),
                 "ms",
             );
-            if let Ok(response) = run_request(&params, frame.clone()) {
+            if let Ok(response) = run_request(params.clone(), frame.clone()) {
                 if process_response(&params, frame, register, response, output.clone()).is_ok() {
                     return Ok(());
                 }
@@ -214,7 +213,7 @@ pub fn run_take(
         );
     }
 
-    let response = run_request(&params, frame.clone())?;
+    let response = run_request(params.clone(), frame.clone())?;
     match process_response(&params, frame, register, response, output) {
         Ok(_) => Ok(()),
         Err(e) => Err(e),

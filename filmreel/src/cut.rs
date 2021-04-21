@@ -304,8 +304,7 @@ impl<'a> Match<'a> {
     // return name string slice of Match enum
     pub fn name(&self) -> Option<&'a str> {
         match self {
-            Match::Escape(_) => None,
-            Match::Hide => None,
+            Match::Escape(_) | Match::Hide => None,
             Match::Variable { name: n, .. } => Some(*n),
         }
     }

@@ -224,7 +224,7 @@ impl Record {
             }
         } else {
             // check existence of implicit cut file in the same directory
-            if !self.get_cut_file().is_file() || self.merge_cuts.len() == 0 {
+            if !self.get_cut_file().is_file() && self.merge_cuts.is_empty() {
                 return Err(anyhow!(
                     "unable to find a matching cut file in the given directory"
                 ));

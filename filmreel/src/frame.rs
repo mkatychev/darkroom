@@ -29,6 +29,7 @@ impl<'a> Frame<'a> {
     pub fn new(json_string: &str) -> Result<Frame, FrError> {
         let frame: Frame = serde_json::from_str(json_string)?;
         frame.cut.validate()?;
+        frame.response.validate()?;
         Ok(frame)
     }
 

@@ -1,8 +1,8 @@
 use crate::error::FrError;
-use pest::{error::Error, iterators::Pair, Parser};
+use pest::Parser;
 use pest_derive::*;
 use serde::{Serialize, Serializer};
-use serde_json::{value::Index, Value};
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
@@ -47,7 +47,7 @@ pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
 #[grammar = "selector.pest"]
 pub struct SelectorParser;
 
-type Selector = Box<dyn Fn(&'_ mut Value) -> Option<&'_ mut Value>>;
+pub type Selector = Box<dyn Fn(&'_ mut Value) -> Option<&'_ mut Value>>;
 
 pub fn new_selector(query: &str) -> Result<Selector, FrError> {
     let pairs = SelectorParser::parse(Rule::selector, query)?
@@ -56,9 +56,9 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
 
     // check for token string length to invalidate instances where selector_str is "" or "''", "''.''",
     // etc...
-    if pairs.as_str().len() == 0 {
+    if pairs.as_str().is_empty() {
         return Err(FrError::ReadInstruction(
-            "validation selector cannot have an empty query".into(),
+            "validation selector cannot have an empty query",
         ));
     }
 
@@ -67,7 +67,6 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
         match pair.as_rule() {
             Rule::string => {
                 let key = pair.as_str().replace("\\'", "'");
-                dbg!(&key);
                 let key_selector: Selector =
                     Box::new(move |x: &mut Value| x.get_mut(key.to_owned()));
                 generator.push(key_selector);
@@ -151,7 +150,7 @@ mod tests {
             // should panic: acessing index 1 of empty array
             7 => (ARR_JSON, "[2].[1]", vec![Box::new(2), Box::new(1)]),
             8 => (OBJ_JSON, r#"'\'\''"#, vec![Box::new("\\'\\'")]),
-            _ => unreachable!(),
+            _ => panic!(),
         }
     }
 

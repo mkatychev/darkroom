@@ -80,8 +80,8 @@ fn build_header(header: &str) -> Result<HeaderMap, Error> {
 
 // request is used by run_request to send an http request and deserialize the returned data
 // into a Response struct
-pub fn request<'a>(prm: &'a Params, req: Request) -> Result<Response<'a>, Error> {
-    let response = build_request(prm, req)?.send()?;
+pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
+    let response = build_request(&prm, req)?.send()?;
     let status = response.status().as_u16() as u32;
     // reqwest.Response is a private Option<Value> field so we rely on
     // the Response.content_length() method to get the exact body byte size
