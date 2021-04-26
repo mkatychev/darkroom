@@ -107,6 +107,7 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
 mod tests {
     use super::*;
     use rstest::*;
+    use serde_json::value::Index;
 
     const OBJ_JSON: &str = r#"
 {

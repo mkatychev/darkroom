@@ -105,7 +105,7 @@ impl<'a> Response<'a> {
             let selector = new_selector(strip_query(k))?;
             match (v.partial, v.unordered) {
                 (false, false) => {
-                    continue;
+                    unreachable!();
                 }
                 (true, false) => {
                     v.apply_partial(
@@ -124,7 +124,9 @@ impl<'a> Response<'a> {
                     //     )?;
                     // }
                 }
-                _ => unreachable!(),
+                (true, true) => {
+                    unimplemented!();
+                }
             }
         }
         Ok(())
