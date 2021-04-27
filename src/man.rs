@@ -37,8 +37,9 @@ impl Man {
         let settings = &Settings {
             resource_access:       ResourceAccess::LocalOnly,
             syntax_set:            SyntaxSet::default(),
-            terminal_capabilities: TerminalCapabilities::none(),
-            terminal_size:         TerminalSize::default(),
+            terminal_capabilities: TerminalCapabilities::detect(),
+            terminal_size:         TerminalSize::from_terminal()
+                .map_or_else(|| Err(anyhow!("termsize is none")), |v| Ok(v))?,
         };
         let mut stdout = io::stdout();
 
