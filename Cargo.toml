@@ -38,8 +38,13 @@ url = "2.2"
 which = "4.0"
 chrono = "0.4"
 
+mdcat = { version = "0.22", optional = true }
+syntect = { version = "4.4", optional = true }
+pulldown-cmark = { version = "0.8", optional = true }
+
 [dev-dependencies]
 rstest = "0.6"
 
-[profile.dev]
-split-debuginfo = "unpacked"
+[features]
+default = ["man"]
+man = ["mdcat", "syntect", "pulldown-cmark"]
