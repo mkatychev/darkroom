@@ -5,11 +5,17 @@ use colored_json::{prelude::*, Colour, Styler};
 use serde::Serialize;
 use std::path::PathBuf;
 
+#[cfg(feature = "man")]
+use crate::man::Man;
+
 pub mod grpc;
 pub mod http;
 pub mod params;
 pub mod record;
 pub mod take;
+
+#[cfg(feature = "man")]
+mod man;
 
 pub use filmreel::{
     cut::Register,
@@ -113,6 +119,8 @@ pub enum SubCommand {
     Version(Version),
     Take(Take),
     Record(Record),
+    #[cfg(feature = "man")]
+    Man(Man),
 }
 
 /// Returns CARGO_PKG_VERSION

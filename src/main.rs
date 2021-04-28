@@ -21,6 +21,11 @@ fn main() -> Result<(), Error> {
             println!("{}", crate::version());
             Ok(())
         }
+        #[cfg(feature = "man")]
+        SubCommand::Man(cmd) => {
+            cmd.output_entry()?;
+            Ok(())
+        }
         SubCommand::Take(cmd) => {
             cmd.validate()?;
             single_take(cmd, base_params)?;
