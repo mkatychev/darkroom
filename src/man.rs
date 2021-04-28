@@ -1,10 +1,9 @@
 use anyhow::{anyhow, Error};
 use argh::FromArgs;
 use mdcat::{push_tty, Environment, ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
-use pulldown_cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
+use pulldown_cmark::{Event, Options, Parser};
 use std::{io, str};
 use syntect::parsing::SyntaxSet;
-use url::Url;
 
 const fn readme() -> &'static [u8] {
     include_bytes!("../filmreel_md/README.md")
@@ -80,7 +79,7 @@ impl Man {
             syntax_set:            SyntaxSet::default(),
             terminal_capabilities: TerminalCapabilities::detect(),
             terminal_size:         TerminalSize::from_terminal()
-                .map_or_else(|| Err(anyhow!("termsize is None")), |v| Ok(v))?,
+                .map_or_else(|| Err(anyhow!("termsize is None")), Ok)?,
         };
 
         push_tty(settings, &env, &mut io::stdout(), parser)?;
