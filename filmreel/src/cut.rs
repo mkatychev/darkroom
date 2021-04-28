@@ -95,7 +95,7 @@ impl Register {
     /// use in cut operations.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/master/cut.md#read-operation)
-    pub fn read_match(&self, json_string: &str) -> Result<Vec<Match>, FrError> {
+    pub fn read_match<T: AsRef<str>>(&self, json_string: T) -> Result<Vec<Match>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
@@ -110,7 +110,7 @@ impl Register {
 
         let mut matches: Vec<Match> = Vec::new();
 
-        for mat in VAR_MATCH.captures_iter(json_string) {
+        for mat in VAR_MATCH.captures_iter(json_string.as_ref()) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(esc_char) = mat.name("esc_char") {
                 matches.push(Match::Escape(esc_char.range().clone()));

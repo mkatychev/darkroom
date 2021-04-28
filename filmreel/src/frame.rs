@@ -60,24 +60,22 @@ impl<'a> Frame<'a> {
     /// performs Register.read_operation on Strings with Cut Variables
     pub fn hydrate(&mut self, reg: &Register, hide: bool) -> Result<(), FrError> {
         let set = self.cut.clone();
-        if let Some(request_body) = &mut self.request.body {
-            Self::hydrate_val(&set, request_body, reg, hide)?;
-        }
-        if let Some(response_body) = &mut self.response.body {
-            Self::hydrate_val(&set, response_body, reg, hide)?;
-        }
-        if let Some(header) = &mut self.request.header {
-            Self::hydrate_val(&set, header, reg, hide)?;
-        }
-        if let Some(etc) = &mut self.request.etc {
-            Self::hydrate_val(&set, etc, reg, hide)?;
-        }
 
-        // URI and entrypoint is given an explicit read operation
+        // call Frame::hydrate_val on all properties that are Option::Some
+        vec![
+            &mut self.request.body,
+            &mut self.response.body,
+            &mut self.request.header,
+            &mut self.request.etc,
+            &mut self.request.entrypoint,
+        ]
+        .into_iter()
+        .filter_map(|val| val.as_mut())
+        .map(|val| Self::hydrate_val(&set, val, reg, hide))
+        .collect::<Result<(), FrError>>()?;
+
         Self::hydrate_str(&set, &mut self.request.uri, reg, hide)?;
-        if let Some(entrypoint) = &mut self.request.entrypoint {
-            Self::hydrate_str(&set, entrypoint, reg, hide)?;
-        }
+
         Ok(())
     }
 
@@ -118,7 +116,11 @@ impl<'a> Frame<'a> {
         hide: bool,
     ) -> Result<(), FrError> {
         {
-            let matches = reg.read_match(&string.as_str().expect("hydrate_str None found"))?;
+            let matches = reg.read_match(
+                &string
+                    .as_str()
+                    .ok_or_else(|| FrError::ReadInstruction("hydrate_str None found"))?,
+            )?;
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {
                 if let Some(n) = mat.name() {
