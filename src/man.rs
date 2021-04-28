@@ -87,27 +87,3 @@ impl Man {
         Ok(())
     }
 }
-
-#[derive(FromArgs, PartialEq, Debug)]
-#[argh(subcommand)]
-pub enum SubCommand {
-    Frame(Frame),
-    Cut(Cut),
-    Reel(Reel),
-}
-
-// TODO derive ManEntry
-#[derive(PartialEq, Debug, FromArgs)]
-#[argh(subcommand, name = "frame")]
-/// frame documentation
-pub struct Frame {}
-
-#[derive(PartialEq, Debug, FromArgs)]
-#[argh(subcommand, name = "cut")]
-/// cut documentation
-pub struct Cut {}
-
-#[derive(PartialEq, Debug, FromArgs)]
-#[argh(subcommand, name = "reel")]
-/// reel documentation
-pub struct Reel {}
