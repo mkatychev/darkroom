@@ -38,17 +38,27 @@ const fn retry_attempts() -> &'static [u8] {
     include_bytes!("../filmreel_md/extra_concepts/retry_attempts.md")
 }
 
-/// <entry>:
-/// readme,
-/// frame,
-/// cut,
-/// reel,
-/// hidden-variables,
-/// ignored-variables,
-/// merge-cuts,
-/// retry-attempts
+const ENTRY_DOCSTRING: &str = r#"<entry>:
+    readme
+    frame
+    cut
+    reel
+    hidden-variables
+    ignored-variables
+    merge-cuts
+    retry-attempts"#;
+
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "man")]
+#[argh(description = r#"<entry>:
+    readme
+    frame
+    cut
+    reel
+    hidden-variables
+    ignored-variables
+    merge-cuts
+    retry-attempts"#)]
 pub struct Man {
     /// the manual entry to specify
     #[argh(positional, default = "String::from(\"readme\")")]
@@ -68,7 +78,7 @@ impl Man {
             "ignored-variables" => ignored_variables(),
             "hidden-variables" => hidden_variables(),
             _ => {
-                return Err(anyhow!("invalid man argument: {}", &self.entry));
+                return Err(anyhow!("invalid entry argument\n{}", ENTRY_DOCSTRING));
             }
         };
 
