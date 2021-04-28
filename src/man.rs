@@ -38,9 +38,7 @@ const fn retry_attempts() -> &'static [u8] {
     include_bytes!("../filmreel_md/extra_concepts/retry_attempts.md")
 }
 
-/// Returns manual entries
-/// valid arguments are:
-///
+/// <entry>:
 /// readme,
 /// frame,
 /// cut,
