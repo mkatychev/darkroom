@@ -23,7 +23,6 @@ fn main() -> Result<(), Error> {
         }
         #[cfg(feature = "man")]
         SubCommand::Man(cmd) => {
-            dbg!(&cmd);
             cmd.output_entry()?;
             Ok(())
         }
