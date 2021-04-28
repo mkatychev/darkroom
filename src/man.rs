@@ -3,7 +3,7 @@ use argh::FromArgs;
 use mdcat::{push_tty, Environment, ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
 use minus::{page_all, Pager};
 use pulldown_cmark::{Event, Options, Parser};
-use std::{fmt::Write, io, str};
+use std::str;
 use syntect::parsing::SyntaxSet;
 
 const fn readme() -> &'static [u8] {
