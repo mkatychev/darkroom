@@ -18,19 +18,19 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 <!-- dark start -->
 ```
-Usage: dark [<address>] [-v] [--tls] [--proto-path <proto-path>] [-p <proto>] [-H <header>] [-C <cut-out>] [-i] <command> [<args>]
+Usage: dark [<address>] [-v] [-H <header>] [--cut-out <file>] [-i] [--tls] [--proto-dir <dir...>] [-p <proto...>] <command> [<args>]
 
 Darkroom: A contract testing tool built in Rust using the filmReel format.
 
 Options:
   -v, --verbose     enable verbose output
+  -H, --header      fallback header passed to the specified protocol
+  --cut-out         output of final cut file
+  -i, --interactive interactive frame sequence transitions
   --tls             enable TLS (automatically inferred for HTTP/S)
-  --proto-path      the path to a directory from which proto sources can be
+  --proto-dir       the path to a directory from which proto sources can be
                     imported, for use with --proto flags.
   -p, --proto       pass proto files used for payload forming
-  -H, --header      fallback header passed to the specified protocol
-  -C, --cut-out     output of final cut file
-  -i, --interactive interactive frame sequence transitions
   --help            display usage information
 
 Commands:
@@ -48,7 +48,7 @@ Commands:
 
 <!-- dark take start -->
 ```
-Usage: dark take <frame> -c <cut> [-o <take-out>]
+Usage: dark take <frame> -c <cut> [-o <file>]
 
 Takes a single frame, emitting the request then validating the returned response
 
@@ -64,7 +64,7 @@ Options:
 
 <!-- dark record start -->
 ```
-Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>] [-r <range>] [-t <timeout>] [-s] [-d]
+Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component...>] [-o <take-out>] [-r <range>] [-t <timeout>] [-s] [-d]
 
 Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
