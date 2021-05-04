@@ -98,29 +98,14 @@ Options:
 
 ## Examples:
 
-#### Simple example
-
 ```sh
 # step through the httpbin test in [-i]nteractive mode
 dark -i record ./test_data post
 # to fail at the third httpbin frame, set a timeout of two seconds
 dark -i record ./test_data post --timeout 2
-```
-
-#### SOPS example:
-
-```sh
-# destructively merge FIFO sops "KEY_NAME" value into the in-memory cut register
-dark record ./reel_path reel_name --cut ./reel_name.cut.json \
-    <(sops -d --extract '["KEY_NAME"]' path/to/myfile.enc.json)
-
 # multiple merge cuts can be used, with values being overridden left to right (right will have newer values)
 dark -v --interactive record ./test_data post --cut ./test_data/post.cut.json \
     <(echo '{"new":"value"}') <(echo '{"newer": "value", "new":"overridden"}')
-```
-#### Cut output example:
-
-```sh
 # echo the origin "${IP}" that gets written to the cut register from the httpbin.org POST request
 dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
 ```
