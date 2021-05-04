@@ -45,7 +45,7 @@ pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
 }
 
 #[cfg(not(feature = "full_jql"))]
-pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
+pub fn select_value(val: &Value, query: &str) -> Result<Value, FrError> {
     let selector = new_selector(query)?;
     match selector(val) {
         Some(v) => match v {
