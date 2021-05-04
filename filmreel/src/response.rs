@@ -2,7 +2,7 @@ use crate::{
     cut::Register,
     error::FrError,
     frame::*,
-    utils::{get_jql_value, new_selector, Selector},
+    utils::{get_jql_value, new_mut_selector, MutSelector},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_value, Value};
@@ -102,7 +102,7 @@ impl<'a> Response<'a> {
                 continue;
             }
 
-            let selector = new_selector(strip_query(k))?;
+            let selector = new_mut_selector(strip_query(k))?;
             match (v.partial, v.unordered) {
                 (false, false) => {
                     unreachable!();
@@ -186,7 +186,7 @@ impl Validator {
     // partial validation?
     fn apply_partial(
         &self,
-        selector: Selector,
+        selector: MutSelector,
         self_body: &mut Value,
         other_body: &mut Value,
     ) -> Result<(), FrError> {
