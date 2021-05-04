@@ -1,0 +1,36 @@
+{
+  "cut": {
+    "from": [
+      "STRIPE_API",
+      "_STRIPE_KEY"
+    ],
+    "to": {
+      "STRIPE_TOKEN": "'response'.'body'.'id'"
+    }
+  },
+  "protocol": "HTTP",
+  "request": {
+    "header": {
+      "Authorization": "Bearer ${_STRIPE_KEY}"
+    },
+    "uri": "POST /v1/tokens",
+    "query": {
+      "card[number]": 4242424242424242,
+      "card[exp_month]": 4,
+      "card[exp_year]": 2025,
+      "card[cvc]": 314
+    },
+    "entrypoint": "${STRIPE_API}"
+  },
+  "response": {
+    "validation": {
+      "'response'.'body'": {
+        "partial": true
+      }
+    },
+    "body": {
+      "id": "${STRIPE_TOKEN}"
+    },
+    "status": 200
+  }
+}

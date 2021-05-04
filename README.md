@@ -108,6 +108,10 @@ dark -v --interactive record ./test_data post --cut ./test_data/post.cut.json \
     <(echo '{"new":"value"}') <(echo '{"newer": "value", "new":"overridden"}')
 # echo the origin "${IP}" that gets written to the cut register from the httpbin.org POST request
 dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
+# create a stripe token using public API key
+dark --cut-out >(jq) record ./test_data stripe_token
+# create a stripe subscription using the stripoe_token component
+dark --cut-out >(jq) record ./test_data stripe_subscription --component './test_data&stripe_token'
 ```
 
 

@@ -1,0 +1,37 @@
+{
+  "cut": {
+    "from": [
+      "CUSTOMER_DESCRIPTION",
+      "STRIPE_API",
+      "_STRIPE_KEY",
+      "STRIPE_TOKEN"
+    ],
+    "to": {
+      "STRIPE_CUS_ID": "'response'.'body'.'id'"
+    }
+  },
+  "protocol": "HTTP",
+  "request": {
+    "header": {
+      "Authorization": "Bearer ${_STRIPE_KEY}"
+    },
+    "uri": "POST /v1/customers",
+    "query": {
+      "description": "${CUSTOMER_DESCRIPTION}",
+      "source": "${STRIPE_TOKEN}"
+    },
+    "entrypoint": "${STRIPE_API}"
+  },
+  "response": {
+    "validation": {
+      "'response'.'body'": {
+        "partial": true
+      }
+    },
+    "body": {
+      "id": "${STRIPE_CUS_ID}",
+      "description": "${CUSTOMER_DESCRIPTION}"
+    },
+    "status": 200
+  }
+}
