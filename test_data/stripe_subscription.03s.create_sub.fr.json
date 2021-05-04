@@ -1,0 +1,44 @@
+{
+  "cut": {
+    "from": [
+      "STRIPE_API",
+      "STRIPE_CUS_ID",
+      "_STRIPE_KEY",
+      "description",
+      "CUSTOMER_DESCRIPTION",
+      "SUB_DESCRIPTION"
+    ],
+    "to": {
+      "STRIPE_SUB_ID": "'response'.'body'.'id'"
+    }
+  },
+  "protocol": "HTTP",
+  "request": {
+    "header": {
+      "Authorization": "Bearer ${_STRIPE_KEY}"
+    },
+    "uri": "POST /v1/subscriptions",
+    "query": {
+      "customer": "${STRIPE_CUS_ID}",
+      "items[0][plan]": "monthly",
+      "items[0][quantity]": 2000,
+      "metadata[sub_description]": "${SUB_DESCRIPTION}"
+    },
+    "entrypoint": "${STRIPE_API}"
+  },
+  "response": {
+    "validation": {
+      "'response'.'body'": {
+        "partial": true
+      }
+    },
+    "body": {
+      "id": "${STRIPE_SUB_ID}",
+      "customer": "${STRIPE_CUS_ID}",
+      "metadata": {
+        "sub_description": "${SUB_DESCRIPTION}"
+      }
+    },
+    "status": 200
+  }
+}

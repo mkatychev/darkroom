@@ -1,0 +1,5 @@
+{
+  "SUB_DESCRIPTION": "darkroom stripe subscription",
+  "STRIPE_API": "https://api.stripe.com",
+  "_STRIPE_KEY": "sk_test_4eC39HqLyjWDarjtT1zdp7dc"
+}

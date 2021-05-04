@@ -18,19 +18,19 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 <!-- dark start -->
 ```
-Usage: dark [<address>] [-v] [--tls] [--proto-path <proto-path>] [-p <proto>] [-H <header>] [-C <cut-out>] [-i] <command> [<args>]
+Usage: dark [<address>] [-v] [-H <header>] [--cut-out <file>] [-i] [--tls] [--proto-dir <dir...>] [-p <proto...>] <command> [<args>]
 
 Darkroom: A contract testing tool built in Rust using the filmReel format.
 
 Options:
   -v, --verbose     enable verbose output
+  -H, --header      fallback header passed to the specified protocol
+  --cut-out         output of final cut file
+  -i, --interactive interactive frame sequence transitions
   --tls             enable TLS (automatically inferred for HTTP/S)
-  --proto-path      the path to a directory from which proto sources can be
+  --proto-dir       the path to a directory from which proto sources can be
                     imported, for use with --proto flags.
   -p, --proto       pass proto files used for payload forming
-  -H, --header      fallback header passed to the specified protocol
-  -C, --cut-out     output of final cut file
-  -i, --interactive interactive frame sequence transitions
   --help            display usage information
 
 Commands:
@@ -39,6 +39,17 @@ Commands:
                     the returned response
   record            Attempts to play through an entire Reel sequence running a
                     take for every frame in the sequence
+  man               return a given manual entry
+
+Examples:
+  Step through the httpbin test in [-i]nteractive mode:
+  $ dark -i record ./test_data post
+  
+  Echo the origin `${IP}` that gets written to the cut register from the httpbin.org POST request:
+  $ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
+
+Notes:
+  Use `dark man` for details on filmReel, the JSON format.
 
 ```
 <!-- dark stop -->
@@ -48,7 +59,7 @@ Commands:
 
 <!-- dark take start -->
 ```
-Usage: dark take <frame> -c <cut> [-o <take-out>]
+Usage: dark take <frame> -c <cut> [-o <file>]
 
 Takes a single frame, emitting the request then validating the returned response
 
@@ -64,7 +75,7 @@ Options:
 
 <!-- dark record start -->
 ```
-Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component>] [-o <take-out>] [-r <range>] [-t <timeout>] [-s] [-d]
+Usage: dark record <reel_path> <reel_name> [<merge_cuts...>] [-c <cut>] [-b <component...>] [-o <take-out>] [-r <range>] [-t <timeout>] [-s] [-d]
 
 Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 
@@ -87,31 +98,20 @@ Options:
 
 ## Examples:
 
-#### Simple example
-
 ```sh
 # step through the httpbin test in [-i]nteractive mode
 dark -i record ./test_data post
 # to fail at the third httpbin frame, set a timeout of two seconds
 dark -i record ./test_data post --timeout 2
-```
-
-#### SOPS example:
-
-```sh
-# destructively merge FIFO sops "KEY_NAME" value into the in-memory cut register
-dark record ./reel_path reel_name --cut ./reel_name.cut.json \
-    <(sops -d --extract '["KEY_NAME"]' path/to/myfile.enc.json)
-
 # multiple merge cuts can be used, with values being overridden left to right (right will have newer values)
 dark -v --interactive record ./test_data post --cut ./test_data/post.cut.json \
     <(echo '{"new":"value"}') <(echo '{"newer": "value", "new":"overridden"}')
-```
-#### Cut output example:
-
-```sh
 # echo the origin "${IP}" that gets written to the cut register from the httpbin.org POST request
 dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
+# create a stripe token using public API key
+dark --cut-out >(jq) record ./test_data stripe_token
+# create a stripe subscription using the stripoe_token component
+dark --cut-out >(jq) record ./test_data stripe_subscription --component './test_data&stripe_token'
 ```
 
 

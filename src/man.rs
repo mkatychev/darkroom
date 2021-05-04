@@ -2,9 +2,10 @@ use anyhow::{anyhow, Error};
 use argh::FromArgs;
 use mdcat::{push_tty, Environment, ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
 use minus::{page_all, Pager};
-use pulldown_cmark::{Event, Options, Parser};
+use pulldown_cmark::{Event, Options, Parser, Tag};
 use std::str;
 use syntect::parsing::SyntaxSet;
+use url::Url;
 
 const fn readme() -> &'static [u8] {
     include_bytes!("../filmreel_md/README.md")
@@ -19,7 +20,7 @@ const fn cut() -> &'static [u8] {
 }
 
 const fn reel() -> &'static [u8] {
-    include_bytes!("../filmreel_md/reel.md")
+    include_bytes!("../filmreel_md/Reel.md")
 }
 
 const fn hidden_variables() -> &'static [u8] {
@@ -48,17 +49,20 @@ const ENTRY_DOCSTRING: &str = r#"<entry>:
     merge-cuts
     retry-attempts"#;
 
+const FILMREEL_REPO: &str = "https://github.com/Bestowinc/filmReel/blob/master/";
+
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "man")]
-#[argh(description = r#"<entry>:
-    readme
-    frame
-    cut
-    reel
-    hidden-variables
-    ignored-variables
-    merge-cuts
-    retry-attempts"#)]
+#[argh(note = r#"<entry>:
+readme
+frame
+cut
+reel
+hidden-variables
+ignored-variables
+merge-cuts
+retry-attempts"#)]
+/// return a given manual entry
 pub struct Man {
     /// the manual entry to specify
     #[argh(positional, default = "String::from(\"readme\")")]
@@ -68,42 +72,38 @@ pub struct Man {
 impl Man {
     // output_entry renders markdown for various filmreel and darkroom concepts
     pub fn output_entry(&self) -> Result<(), Error> {
-        let md = match &self.entry as &str {
-            "readme" => readme(),
-            "cut" => cut(),
-            "reel" => reel(),
-            "frame" => frame(),
-            "retry-attempts" => retry_attempts(),
-            "merge-cuts" => merge_cuts(),
-            "ignored-variables" => ignored_variables(),
-            "hidden-variables" => hidden_variables(),
+        let md = match &self.entry[..3] as &str {
+            "rea" => readme(),                 // "readme"
+            "cut" => cut(),                    // "cut"
+            "ree" => reel(),                   // "reel"
+            "fra" => frame(),                  // "frame"
+            "ret" | "att" => retry_attempts(), // "retry-attempts" | "attempts"
+            "mer" => merge_cuts(),             // "merge-cuts"
+            "ign" => ignored_variables(),      // "ignored-variables" | "ignore" | "ignored"
+            "hid" => hidden_variables(),       // "hidden-variables" | "hidden"
             _ => {
                 return Err(anyhow!("invalid entry argument\n{}", ENTRY_DOCSTRING));
             }
         };
 
-        let parser = Parser::new_ext(str::from_utf8(md)?, Options::empty()).filter(|event| {
-            if let Event::Html(_) = event {
-                return false;
-            }
-            true
-        });
+        let repo = Url::parse(FILMREEL_REPO)?;
+        let parser = Parser::new_ext(str::from_utf8(md)?, Options::empty())
+            .filter(|event| {
+                if let Event::Html(_) = event {
+                    return false;
+                }
+                true
+            })
+            .map(|event| match event {
+                Event::End(Tag::Link(link, dest, title))
+                    if !dest.starts_with("http") && dest.contains(".md") =>
+                {
+                    let new_str = repo.join(&dest).unwrap().to_string();
 
-        // TODO replace relative paths with absolute URLs
-        // let repo = Url::parse("https://github.com/Bestowinc/filmReel")?;
-        // .map(|event| match event {
-        //     Event::Start(Tag::Link(link @ LinkType::Inline, dest, title))
-        //         if dest.ends_with(".md") =>
-        //     {
-        //         // dbg!(&s);
-        //         // let new_str: String = repo.join(&dest).unwrap().clone().as_str().into();
-        //         // dbg!(&new_str);
-
-        //         Event::Start(Tag::Link(link, dest.replace("md", "nope").into(), title))
-        //     }
-        //     _ => event,
-        // });
-        // });
+                    Event::End(Tag::Link(link, new_str.into(), title))
+                }
+                _ => event,
+            });
 
         // NOTE this does not do anything since markdown is pulled from constant functions
         let env = &Environment::for_local_directory(&"/")?;

@@ -1,0 +1,58 @@
+name: build
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - dev
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with: # use nightly rustfmt rules
+          toolchain: nightly
+          override: true
+          profile: minimal
+          components: rustfmt
+      # from stable toolchain:
+      # cargo +nightly fmt --all
+      - run: cargo fmt --all -- --check
+  test:
+    name: test
+    env:
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - run: cargo test --verbose --workspace
+  examples:
+    name: examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: httpbin post
+        run: cargo run -- record ./test_data post
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          profile: minimal
+          components: clippy
+      - run: cargo clippy --all

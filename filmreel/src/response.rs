@@ -203,11 +203,25 @@ impl Validator {
                     _ => return Ok(()),
                 };
 
+                let mut has_mutual_keys = false;
+
                 let other_keys: Vec<String> = other_selection
                     .keys()
-                    .filter(|k| !preserve_keys.contains(k)) // retain keys that are not found in preserve_keys
+                    .filter(|k| {
+                        let contains = preserve_keys.contains(k);
+
+                        if contains {
+                            has_mutual_keys = true;
+                        }
+                        !contains
+                    }) // retain keys that are not found in preserve_keys
                     .cloned()
                     .collect();
+
+                // if there are no mutual keys at all, then do not mutate other_selection
+                if !has_mutual_keys {
+                    return Ok(());
+                }
 
                 for k in other_keys.iter() {
                     other_selection.remove(k);
