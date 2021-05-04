@@ -18,11 +18,11 @@ fn main() -> Result<(), Error> {
     log::set_boxed_logger(Box::new(Logger)).map(|()| log::set_max_level(log_level))?;
 
     match nested_arg {
-        #[cfg(feature = "man")]
         SubCommand::Version(_) => {
             println!("{}", crate::version());
             Ok(())
         }
+        #[cfg(feature = "man")]
         SubCommand::Man(cmd) => {
             cmd.output_entry()?;
             Ok(())
