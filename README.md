@@ -39,6 +39,17 @@ Commands:
                     the returned response
   record            Attempts to play through an entire Reel sequence running a
                     take for every frame in the sequence
+  man               return a given manual entry
+
+Examples:
+  Step through the httpbin test in [-i]nteractive mode:
+  $ dark -i record ./test_data post
+  
+  Echo the origin `${IP}` that gets written to the cut register from the httpbin.org POST request:
+  $ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
+
+Notes:
+  Use `dark man` for details on filmReel, the JSON format.
 
 ```
 <!-- dark stop -->

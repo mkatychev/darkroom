@@ -20,7 +20,7 @@ jobs:
           profile: minimal
           components: rustfmt
       # from stable toolchain:
-      # cargo +nightly fmt --all 
+      # cargo +nightly fmt --all
       - run: cargo fmt --all -- --check
   test:
     name: test
@@ -30,12 +30,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: cargo test --verbose --all
+        with:
+          submodules: recursive
+      - run: cargo test --verbose --workspace
   examples:
     name: examples
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: httpbin post
         run: cargo run -- record ./test_data post
   lint:
@@ -43,6 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
