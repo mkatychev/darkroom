@@ -26,7 +26,7 @@ argh = { git = "https://github.com/google/argh" }
 colored = "2.0.0"
 colored-diff = "0.2.2"
 colored_json = "2.1.0"
-filmreel = { version = "0.5", path = "filmreel" }
+filmreel = { version = "0.5.1", path = "filmreel" }
 http = "0.2.4"
 lazy_static = "1.4.0"
 log = { version = "0.4.14", features = ["std"] }
