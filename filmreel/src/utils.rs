@@ -32,7 +32,8 @@ where
     ordered.serialize(serializer)
 }
 
-pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
+#[cfg(feature = "full_jql")]
+pub fn select_value(val: &Value, query: &str) -> Result<Value, FrError> {
     let selectors = query.replace("'", "\"");
     match jql::walker(val, Some(&selectors)) {
         Ok(v) => match v {
@@ -43,11 +44,81 @@ pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
     }
 }
 
+#[cfg(not(feature = "full_jql"))]
+pub fn select_value(val: &Value, query: &str) -> Result<Value, FrError> {
+    let selector = new_selector(query)?;
+    match selector(val) {
+        Some(v) => match v {
+            Value::String(_) => Ok(v.clone()),
+            v => Ok(v.clone()),
+        },
+        None => Err(FrError::ReadInstructionf(
+            "get_jql_value did not return a selection: {}",
+            query.to_string(),
+        )),
+    }
+}
+
 #[derive(Parser)]
 #[grammar = "selector.pest"]
 pub struct SelectorParser;
 
-pub type Selector = Box<dyn Fn(&'_ mut Value) -> Option<&'_ mut Value>>;
+pub type Selector = Box<dyn Fn(&'_ Value) -> Option<&'_ Value>>;
+pub type MutSelector = Box<dyn Fn(&'_ mut Value) -> Option<&'_ mut Value>>;
+
+pub fn new_mut_selector(query: &str) -> Result<MutSelector, FrError> {
+    let pairs = SelectorParser::parse(Rule::selector, query)?
+        .next()
+        .unwrap();
+
+    // check for token string length to invalidate instances where selector_str is "" or "''", "''.''",
+    // etc...
+    if pairs.as_str().is_empty() {
+        return Err(FrError::ReadInstruction(
+            "validation selector cannot have an empty query",
+        ));
+    }
+
+    let mut generator: Vec<MutSelector> = vec![];
+    for pair in pairs.into_inner() {
+        match pair.as_rule() {
+            Rule::string => {
+                let key = pair.as_str().replace("\\'", "'");
+                let key_selector: MutSelector =
+                    Box::new(move |x: &mut Value| x.get_mut(key.to_owned()));
+                generator.push(key_selector);
+            }
+            Rule::int => {
+                let index = pair
+                    .as_str()
+                    .parse::<usize>()
+                    .map_err(|x| FrError::Parse(x.to_string()))?;
+                let index_selector: MutSelector = Box::new(move |x: &mut Value| x.get_mut(index));
+                generator.push(index_selector);
+            }
+            // selector will always be the only pair at the top level of the genreated AST
+            // all other rules are "silent" and never tokenized, this is represented by the leading
+            // underscore in pest:
+            //
+            // step = _{ outer | index }
+            //
+            // Therefore all other rules should be unreachable
+            Rule::selector | Rule::step | Rule::outer | Rule::char | Rule::index => {
+                unreachable!()
+            }
+        }
+    }
+
+    let selector_fn: MutSelector = Box::new(move |x: &mut Value| -> Option<&mut Value> {
+        let mut drilled_value = x;
+        for sel in generator.iter() {
+            drilled_value = sel(drilled_value)?;
+        }
+        Some(drilled_value)
+    });
+
+    Ok(selector_fn)
+}
 
 pub fn new_selector(query: &str) -> Result<Selector, FrError> {
     let pairs = SelectorParser::parse(Rule::selector, query)?
@@ -67,8 +138,7 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
         match pair.as_rule() {
             Rule::string => {
                 let key = pair.as_str().replace("\\'", "'");
-                let key_selector: Selector =
-                    Box::new(move |x: &mut Value| x.get_mut(key.to_owned()));
+                let key_selector: Selector = Box::new(move |x: &Value| x.get(key.to_owned()));
                 generator.push(key_selector);
             }
             Rule::int => {
@@ -76,7 +146,7 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
                     .as_str()
                     .parse::<usize>()
                     .map_err(|x| FrError::Parse(x.to_string()))?;
-                let index_selector: Selector = Box::new(move |x: &mut Value| x.get_mut(index));
+                let index_selector: Selector = Box::new(move |x: &Value| x.get(index));
                 generator.push(index_selector);
             }
             // selector will always be the only pair at the top level of the genreated AST
@@ -92,7 +162,7 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
         }
     }
 
-    let selector_fn: Selector = Box::new(move |x: &mut Value| -> Option<&mut Value> {
+    let selector_fn: Selector = Box::new(move |x: &Value| -> Option<&Value> {
         let mut drilled_value = x;
         for sel in generator.iter() {
             drilled_value = sel(drilled_value)?;
@@ -173,7 +243,7 @@ mod tests {
         let mut actual_value: Value = serde_json::from_str(json_str).expect("from_str error");
         let expected_value: Value = serde_json::from_str(json_str).expect("from_str error");
         // 2, create our selector closure;
-        let selector = new_selector(query).unwrap();
+        let selector = new_mut_selector(query).unwrap();
 
         // 3. loop through a list of array and object indices to simulate successive
         // indices so that       | value[a][b][c]
