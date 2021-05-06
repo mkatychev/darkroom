@@ -33,7 +33,7 @@ where
 }
 
 #[cfg(feature = "full_jql")]
-pub fn get_jql_value(val: &Value, query: &str) -> Result<Value, FrError> {
+pub fn select_value(val: &Value, query: &str) -> Result<Value, FrError> {
     let selectors = query.replace("'", "\"");
     match jql::walker(val, Some(&selectors)) {
         Ok(v) => match v {
@@ -172,6 +172,24 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
 
     Ok(selector_fn)
 }
+
+pub(crate) struct MatchSelector {
+    pub(crate) query: String,
+    pub(crate) get:   MutSelector,
+    // kind: crate::cut::Match<'a>,
+}
+
+struct MatchIndex(String);
+
+impl From<usize> for MatchIndex {
+    fn from(i: usize) -> Self {
+        Self(format!("[{}]", i.to_string()))
+    }
+}
+
+// impl MatchSelector {
+//     pub(crate) fn append(
+// }
 
 #[cfg(test)]
 mod tests {
