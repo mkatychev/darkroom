@@ -11,16 +11,25 @@ const fn readme() -> &'static [u8] {
     include_bytes!("../filmreel_md/README.md")
 }
 
-const fn frame() -> &'static [u8] {
+const fn frame(quick: bool) -> &'static [u8] {
+    if quick {
+        return include_bytes!("../filmreel_md/quickref/frame.md");
+    }
     include_bytes!("../filmreel_md/frame.md")
 }
 
-const fn cut() -> &'static [u8] {
+const fn cut(quick: bool) -> &'static [u8] {
+    if quick {
+        return include_bytes!("../filmreel_md/quickref/cut.md");
+    }
     include_bytes!("../filmreel_md/cut.md")
 }
 
-const fn reel() -> &'static [u8] {
-    include_bytes!("../filmreel_md/Reel.md")
+const fn reel(quick: bool) -> &'static [u8] {
+    if quick {
+        return include_bytes!("../filmreel_md/quickref/reel.md");
+    }
+    include_bytes!("../filmreel_md/reel.md")
 }
 
 const fn hidden_variables() -> &'static [u8] {
@@ -38,16 +47,35 @@ const fn merge_cuts() -> &'static [u8] {
 const fn retry_attempts() -> &'static [u8] {
     include_bytes!("../filmreel_md/extra_concepts/retry_attempts.md")
 }
+const fn mismatch() -> &'static [u8] {
+    include_bytes!("../filmreel_md/extra_concepts/mismatch.md")
+}
+const fn component() -> &'static [u8] {
+    include_bytes!("../filmreel_md/extra_concepts/component.md")
+}
+
+const fn filename() -> &'static [u8] {
+    include_bytes!("../filmreel_md/quickref/frame_type.md")
+}
+
+const fn storage() -> &'static [u8] {
+    include_bytes!("../filmreel_md/extra_concepts/cut_storage.md")
+}
 
 const ENTRY_DOCSTRING: &str = r#"<entry>:
     readme
     frame
     cut
     reel
+    component
+    filename
     hidden-variables
     ignored-variables
     merge-cuts
-    retry-attempts"#;
+    mismatch
+    retry-attempts
+    storage
+    "#;
 
 const FILMREEL_REPO: &str = "https://github.com/Bestowinc/filmReel/blob/master/";
 
@@ -58,15 +86,22 @@ readme
 frame
 cut
 reel
+component
+filename
 hidden-variables
 ignored-variables
 merge-cuts
-retry-attempts"#)]
+mismatch
+retry-attempts
+storage"#)]
 /// return a given manual entry
 pub struct Man {
     /// the manual entry to specify
     #[argh(positional, default = "String::from(\"readme\")")]
     pub entry: String,
+    /// return the TLDR variant of: reel, frame, and cut
+    #[argh(switch, short = 'q')]
+    pub quick: bool,
 }
 
 impl Man {
@@ -74,13 +109,17 @@ impl Man {
     pub fn output_entry(&self) -> Result<(), Error> {
         let md = match &self.entry[..3] as &str {
             "rea" => readme(),                 // "readme"
-            "cut" => cut(),                    // "cut"
-            "ree" => reel(),                   // "reel"
-            "fra" => frame(),                  // "frame"
-            "ret" | "att" => retry_attempts(), // "retry-attempts" | "attempts"
-            "mer" => merge_cuts(),             // "merge-cuts"
-            "ign" => ignored_variables(),      // "ignored-variables" | "ignore" | "ignored"
+            "cut" => cut(self.quick),          // "cut"
+            "ree" => reel(self.quick),         // "reel"
+            "fra" => frame(self.quick),        // "frame"
+            "com" => component(),              // "component"
+            "fil" => filename(),               // "filename"
             "hid" => hidden_variables(),       // "hidden-variables" | "hidden"
+            "ign" => ignored_variables(),      // "ignored-variables" | "ignore" | "ignored"
+            "mer" => merge_cuts(),             // "merge-cuts"
+            "mis" => mismatch(),               // "mismatch"
+            "ret" | "att" => retry_attempts(), // "retry-attempts" | "attempts"
+            "sto" => storage(),                // "storage"
             _ => {
                 return Err(anyhow!("invalid entry argument\n{}", ENTRY_DOCSTRING));
             }

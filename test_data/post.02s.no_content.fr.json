@@ -1,13 +1,14 @@
 {
   "cut": {
     "from": [
-      "ADDRESS"
+      "ADDRESS",
+      "URI_METHOD"
     ]
   },
   "protocol": "HTTP",
   "request": {
     "body": "the exact body that is sent",
-    "uri": "POST /status/204",
+    "uri": "${URI_METHOD} /status/204",
     "entrypoint": "${ADDRESS}"
   },
   "response": {

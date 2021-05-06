@@ -1,7 +1,8 @@
 {
   "cut": {
     "from": [
-      "ADDRESS"
+      "ADDRESS",
+      "URI_METHOD"
     ],
     "to": {
       "body": "'response'.'body'"
@@ -10,7 +11,7 @@
   "protocol": "HTTP",
   "request": {
     "body": "the exact body that is sent",
-    "uri": "POST /delay/3",
+    "uri": "${URI_METHOD} /delay/3",
     "entrypoint": "${ADDRESS}"
   },
   "response": {
