@@ -119,7 +119,7 @@ impl<'a> Frame<'a> {
             let matches = reg.read_match(
                 &string
                     .as_str()
-                    .ok_or_else(|| FrError::ReadInstruction("hydrate_str None found"))?,
+                    .ok_or(FrError::ReadInstruction("hydrate_str None found"))?,
             )?;
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {

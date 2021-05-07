@@ -5,6 +5,7 @@ use crate::{
     utils::{new_mut_selector, select_value, MutSelector},
 };
 use serde::{Deserialize, Serialize};
+use serde_hashkey::{to_key, Key};
 use serde_json::{json, to_value, Value};
 use std::collections::{BTreeMap, HashMap};
 
@@ -115,14 +116,11 @@ impl<'a> Response<'a> {
                     )?;
                 }
                 (false, true) => {
-                    unimplemented!();
-                    // TODO
-                    //     v.apply_unordered(
-                    //         selector,
-                    //         self.body.as_mut().unwrap(),
-                    //         other.body.as_mut().unwrap(),
-                    //     )?;
-                    // }
+                    v.apply_unordered(
+                        selector,
+                        self.body.as_mut().unwrap(),
+                        other.body.as_mut().unwrap(),
+                    )?;
                 }
                 (true, true) => {
                     unimplemented!();
@@ -272,6 +270,73 @@ impl Validator {
         }
         Ok(())
     }
+
+    fn apply_unordered(
+        &self,
+        selector: MutSelector,
+        self_body: &mut Value,
+        other_body: &mut Value,
+    ) -> Result<(), FrError> {
+        let selection = selector(self_body).ok_or(FrError::ReadInstruction(
+            "selection missing from Frame body",
+        ))?;
+        match selection {
+            Value::Object(_) => Ok(()),
+            Value::Array(self_selection) => {
+                let other_selection = match selector(other_body) {
+                    Some(Value::Array(o)) => o,
+                    _ => return Ok(()),
+                };
+
+                // Create a lookup hashmap for self_selection.
+                let mut self_selection_hash: HashMap<Key, bool> = HashMap::new();
+                self_selection.iter().for_each(|s| {
+                    if let Ok(k) = to_key(&s) {
+                        self_selection_hash.insert(k, true);
+                    };
+                });
+                // Create a lookup hashmap for other_selection.
+                let mut other_selection_hash: HashMap<Key, bool> = HashMap::new();
+                other_selection.iter().for_each(|s| {
+                    if let Ok(k) = to_key(&s) {
+                        other_selection_hash.insert(k, true);
+                    };
+                });
+
+                // Create a new array containing the ordered elements from self_selection that are
+                // also in other_selection.
+                let self_selection_clone = self_selection.clone();
+                let mut new_other_selection: Vec<Value> = self_selection_clone
+                    .iter()
+                    .filter(|&s| {
+                        let key = to_key(&s);
+                        match key {
+                            Ok(k) => other_selection_hash.contains_key(&k),
+                            Err(_) => false,
+                        }
+                    })
+                    .cloned()
+                    .collect();
+
+                // Append to this new array the elements from other_selection that are not in
+                // self_selection.
+                for s in other_selection.clone().iter() {
+                    if let Ok(k) = to_key(&s) {
+                        if !self_selection_hash.contains_key(&k) {
+                            new_other_selection.push(s.clone());
+                        }
+                    };
+                }
+
+                *other_selection = new_other_selection;
+
+                Ok(())
+            }
+            _ => Err(FrError::ReadInstruction(
+                "validation selectors must point to a JSON object or array",
+            )),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -401,6 +466,7 @@ mod tests {
             _ => panic!(),
         }
     }
+
     #[rstest(
         t_case,
         case(partial_case(1)),
@@ -412,6 +478,118 @@ mod tests {
         case(partial_case(7))
     )]
     fn test_partial_validation(t_case: (&str, &str, bool)) {
+        let mut frame: Response = serde_json::from_str(t_case.0).unwrap();
+        let mut actual: Response = serde_json::from_str(t_case.1).unwrap();
+        let should_match = t_case.2;
+        frame.apply_validation(&mut actual).unwrap();
+        if should_match {
+            pretty_assertions::assert_eq!(frame, actual);
+        } else {
+            pretty_assertions::assert_ne!(frame, actual);
+        }
+    }
+
+    fn unordered_case(case: u32) -> (&'static str, &'static str, bool) {
+        let frame_obj_response = r#"
+{
+  "validation": {
+    "'response'.'body'": {
+      "unordered": true
+    }
+  },
+  "body": {
+    "A": true,
+    "B": true,
+    "C": true
+  },
+  "status": 200
+}
+    "#;
+        let frame_arr_response = r#"
+{
+  "validation": {
+    "'response'.'body'": {
+      "unordered": true
+    }
+  },
+  "body": [
+    "A",
+    "B",
+    "C"
+  ],
+  "status": 200
+}
+    "#;
+
+        match case {
+            1 => (
+                frame_obj_response,
+                r#"{"body":{"A":true,"B":true,"C":true},"status":200}"#,
+                true,
+            ),
+            2 => (
+                frame_obj_response,
+                r#"{"body":{"A":true,"B":false,"C":true},"status":200}"#,
+                false,
+            ),
+            3 => (
+                frame_obj_response,
+                r#"{"body":{"A":true,"B":true,"C":true,"D":true},"status":200}"#,
+                false,
+            ),
+            4 => (
+                frame_obj_response,
+                r#"{"body":{"A":true,"B":true},"status":200}"#,
+                false,
+            ),
+            5 => (
+                frame_obj_response,
+                r#"{"body":{"B":true,"C":true,"A":true},"status":200}"#,
+                true,
+            ),
+            6 => (
+                frame_arr_response,
+                r#"{"body":["A","B","C"],"status":200}"#,
+                true,
+            ),
+            7 => (
+                frame_arr_response,
+                r#"{"body":["other_value",false,"A","B","C"],"status":200}"#,
+                false,
+            ),
+            8 => (
+                frame_arr_response,
+                r#"{"body":[false,false,"A","B","C"],"status":200}"#,
+                false,
+            ),
+            9 => (
+                frame_arr_response,
+                r#"{"body":["B","A","C"],"status":200}"#,
+                true,
+            ),
+            10 => (
+                frame_arr_response,
+                r#"{"body":["B","A","D","C"],"status":200}"#,
+                false,
+            ),
+            _ => panic!(),
+        }
+    }
+
+    #[rstest(
+        t_case,
+        case(unordered_case(1)),
+        case(unordered_case(2)),
+        case(unordered_case(3)),
+        case(unordered_case(4)),
+        case(unordered_case(5)),
+        case(unordered_case(6)),
+        case(unordered_case(7)),
+        case(unordered_case(8)),
+        case(unordered_case(9)),
+        case(unordered_case(10))
+    )]
+    fn test_unordered_validation(t_case: (&str, &str, bool)) {
         let mut frame: Response = serde_json::from_str(t_case.0).unwrap();
         let mut actual: Response = serde_json::from_str(t_case.1).unwrap();
         let should_match = t_case.2;

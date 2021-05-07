@@ -1,4 +1,5 @@
 {
+  "URI_METHOD": "POST",
   "ADDRESS": "https://httpbin.org",
   "BODY": "the exact body that is sent"
 }
