@@ -1,6 +1,7 @@
 use crate::utils::Rule;
 use colored::*;
 use pest::error::Error as PestError;
+use serde_hashkey::Error as HashKeyError;
 use serde_json::error::{Category, Error as SerdeError};
 use std::{error::Error, fmt};
 
@@ -47,6 +48,12 @@ impl From<SerdeError> for FrError {
 impl From<PestError<Rule>> for FrError {
     fn from(err: PestError<Rule>) -> FrError {
         Self::Pest(err)
+    }
+}
+
+impl From<HashKeyError> for FrError {
+    fn from(err: HashKeyError) -> FrError {
+        Self::Parse(err.to_string())
     }
 }
 
