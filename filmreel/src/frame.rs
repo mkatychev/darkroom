@@ -2,7 +2,7 @@ use crate::{
     cut::Register,
     error::FrError,
     response::Response,
-    utils::{ordered_set, ordered_str_map},
+    utils::{ordered_set, ordered_str_map, MatchQuery},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{error::Error as SerdeError, json, to_value, Value};
@@ -44,10 +44,8 @@ impl<'a> Frame<'a> {
     }
 
     /// Serialized payload
-    pub fn get_request_uri(&self) -> Result<String, FrError> {
-        let unst = serde_json::to_string(&self.request.uri)?;
-
-        Ok(unst.replace("\"", ""))
+    pub fn get_request_uri(&self) -> String {
+        self.request.get_uri()
     }
 
     /// Returns a Value object from the response body, used for response comparisons and writing to
@@ -58,25 +56,31 @@ impl<'a> Frame<'a> {
 
     /// Traverses Frame properties where Read Operations are permitted and
     /// performs Register.read_operation on Strings with Cut Variables
-    pub fn hydrate(&mut self, reg: &Register, hide: bool) -> Result<(), FrError> {
+    pub fn hydrate(&mut self, reg: &Register, hide: bool) -> Result<Vec<MatchQuery>, FrError> {
         let set = self.cut.clone();
 
         // call Frame::hydrate_val on all properties that are Option::Some
-        vec![
+        let match_selectors: Vec<MatchQuery> = vec![
             &mut self.request.body,
-            &mut self.response.body,
             &mut self.request.header,
             &mut self.request.etc,
             &mut self.request.entrypoint,
+            &mut self.response.body,
+            &mut self.response.etc,
         ]
         .into_iter()
         .filter_map(|val| val.as_mut())
-        .map(|val| Self::hydrate_val(&set, val, reg, hide))
-        .collect::<Result<(), FrError>>()?;
+        .map(|val| Self::hydrate_val(&set, val, reg, hide, MatchQuery::new()))
+        .collect::<Result<Vec<_>, FrError>>()?;
 
-        Self::hydrate_str(&set, &mut self.request.uri, reg, hide)?;
+        // cast uri to serde_json::Value so that we can use it in hydrate_str
+        let mut value_uri = Value::String(self.request.uri.to_owned());
+        Self::hydrate_str(&set, &mut value_uri, reg, hide, MatchQuery::new())?;
+        if let Value::String(s) = value_uri {
+            self.request.uri = s;
+        }
 
-        Ok(())
+        Ok(match_selectors)
     }
 
     /// Traverses a given serde::Value enum attempting to modify found Strings
@@ -86,26 +90,29 @@ impl<'a> Frame<'a> {
         val: &mut Value,
         reg: &Register,
         hide: bool,
-    ) -> Result<(), FrError> {
-        match val {
-            Value::Object(map) => {
-                for (_, val) in map.iter_mut() {
-                    Self::hydrate_val(set, val, reg, hide)?;
-                }
-                Ok(())
-            }
-            Value::Array(vec) => {
-                for val in vec.iter_mut() {
-                    Self::hydrate_val(set, val, reg, hide)?;
-                }
-                Ok(())
-            }
-            Value::String(_) => {
-                Self::hydrate_str(set, val, reg, hide)?;
-                Ok(())
-            }
-            _ => Ok(()),
+        match_selector: MatchQuery,
+    ) -> Result<Vec<MatchQuery>, FrError> {
+        let selectors = match val {
+            Value::Object(map) => map
+                .iter_mut()
+                .map(|(k, val)| {
+                    let k_query = match_selector.clone();
+                    k_query.append(k);
+                    Self::hydrate_val(set, val, reg, hide, k_query)
+                })
+                .collect(),
+            Value::Array(vec) => vec.iter_mut().enumerate().map(|(i, val)| {
+                let i_query = match_selector.clone();
+                i_query.append(i);
+                Self::hydrate_val(set, val, reg, hide, match_selector)
+            }),
+            Value::String(_) => Self::hydrate_str(set, val, reg, hide, match_selector)?,
+            _ => None,
         }
+        .filter(Option::is_some)
+        .collect();
+
+        Ok(selectors)
     }
 
     /// Performs a Register.read_operation on the entire String
@@ -114,12 +121,13 @@ impl<'a> Frame<'a> {
         string: &mut Value,
         reg: &Register,
         hide: bool,
-    ) -> Result<(), FrError> {
+        match_selector: MatchQuery,
+    ) -> Result<Option<MatchQuery>, FrError> {
         {
             let matches = reg.read_match(
                 &string
                     .as_str()
-                    .ok_or(FrError::ReadInstruction("hydrate_str None found"))?,
+                    .ok_or_else(|| FrError::ReadInstruction("hydrate_str None found"))?,
             )?;
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {
@@ -140,7 +148,7 @@ impl<'a> Frame<'a> {
                     }
                 }
             }
-            Ok(())
+            Ok(None)
         }
     }
 }
@@ -213,7 +221,7 @@ impl<'a> InstructionSet<'a> {
 pub struct Request {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) body: Option<Value>,
-    pub(crate) uri:  Value,
+    pub(crate) uri:  String,
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
     pub(crate) etc:  Option<Value>,
 
@@ -233,10 +241,7 @@ impl Request {
     }
 
     pub fn get_uri(&self) -> String {
-        if let Value::String(string) = &self.uri {
-            return string.to_string();
-        }
-        "".to_string()
+        self.uri.clone()
     }
 
     pub fn get_etc(&self) -> Option<Value> {
@@ -259,7 +264,7 @@ impl Default for Request {
     fn default() -> Self {
         Self {
             body:       None,
-            uri:        Value::Null,
+            uri:        String::new(),
             etc:        Some(json!({})),
             header:     None,
             entrypoint: None,
@@ -393,7 +398,7 @@ mod tests {
                     })),
                     header:     Some(json!({"Authorization": "Bearer jWt"})),
                     entrypoint: Some(json!("localhost:8080")),
-                    uri:        json!("user_api.User/CreateUser"),
+                    uri:        "user_api.User/CreateUser".to_string(),
                     etc:        Some(json!({})),
                 },
 

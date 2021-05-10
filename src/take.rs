@@ -184,7 +184,7 @@ pub fn run_take<'a>(
         let _ = stdin.read(&mut [0u8]).expect("read stdin panic");
     } else if verbose {
         let hidden = hidden_frame.ok_or_else(|| anyhow!("None for interactive hidden_frame"))?;
-        info!("{} {}", "Request URI:".yellow(), frame.get_request_uri()?);
+        info!("{} {}", "Request URI:".yellow(), frame.get_request_uri());
         info!("[{}] frame:", "Hydrated".green());
         info!("{}", hidden.to_coloured_tk_json()?);
     }

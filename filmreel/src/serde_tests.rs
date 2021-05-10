@@ -54,7 +54,7 @@ test_ser_de!(
     request,
     Request {
         body: Some(json!({"email": "new_user@humanmail.com"})),
-        uri: json!("user_api.User/CreateUser"),
+        uri: "user_api.User/CreateUser".to_string(),
         ..Default::default()
     },
     REQUEST_JSON
@@ -78,7 +78,7 @@ test_ser_de!(
         header:     Some(json!({"Authorization": "${USER_TOKEN}"})),
         entrypoint: None,
         etc:        Some(json!({"id": "007"})),
-        uri:        json!("POST /logout/${USER_ID}"),
+        uri:        "POST /logout/${USER_ID}".to_string(),
     },
     REQUEST_ETC_JSON
 );
@@ -187,7 +187,7 @@ test_ser_de!(
         request:  Request {
             body: Some(json!({})),
             header: Some(json!({ "Authorization": "${USER_TOKEN}" })),
-            uri: json!("POST /logout/${USER_ID}"),
+            uri: "POST /logout/${USER_ID}".to_string(),
             ..Default::default()
         },
 
@@ -220,7 +220,7 @@ test_ser_de!(
         protocol: Protocol::HTTP,
         cut:      InstructionSet::default(),
         request:  Request {
-            uri: json!("POST /logout/${USER_ID}"),
+            uri: "POST /logout/${USER_ID}".to_string(),
             ..Default::default()
         },
 
