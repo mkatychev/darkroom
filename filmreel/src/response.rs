@@ -14,6 +14,8 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 const INVALID_INSTRUCTION_TYPE_ERR: &str =
     "Frame write instruction did not correspond to a string object";
 
+const MISSING_SELECTION_ERR: &str = "selection missing from Frame body";
+
 ///
 /// Encapsulates the expected response payload.
 ///
@@ -108,6 +110,7 @@ impl<'a> Response<'a> {
             let selector = new_mut_selector(strip_query(k))?;
             if v.unordered {
                 v.apply_unordered(
+                    k,
                     &selector,
                     self.body.as_mut().unwrap(),
                     other.body.as_mut().unwrap(),
@@ -115,6 +118,7 @@ impl<'a> Response<'a> {
             }
             if v.partial {
                 v.apply_partial(
+                    k,
                     &selector,
                     self.body.as_mut().unwrap(),
                     other.body.as_mut().unwrap(),
@@ -182,12 +186,14 @@ impl Validator {
     // partial validation?
     fn apply_partial(
         &self,
+        query: &str,
         selector: &MutSelector,
         self_body: &mut Value,
         other_body: &mut Value,
     ) -> Result<(), FrError> {
-        let selection = selector(self_body).ok_or(FrError::ReadInstruction(
-            "selection missing from Frame body",
+        let selection = selector(self_body).ok_or(FrError::ReadInstructionf(
+            MISSING_SELECTION_ERR,
+            query.to_string(),
         ))?;
         match selection {
             Value::Object(o) => {
@@ -271,12 +277,14 @@ impl Validator {
 
     fn apply_unordered(
         &self,
+        query: &str,
         selector: &MutSelector,
         self_body: &mut Value,
         other_body: &mut Value,
     ) -> Result<(), FrError> {
-        let selection = selector(self_body).ok_or(FrError::ReadInstruction(
-            "selection missing from Frame body",
+        let selection = selector(self_body).ok_or(FrError::ReadInstructionf(
+            MISSING_SELECTION_ERR,
+            query.to_string(),
         ))?;
         match selection {
             Value::Object(_) => Ok(()),
