@@ -1,5 +1,5 @@
 use anyhow::Error;
-use darkroom::{record::run_record, take::single_take, *};
+use darkroom::{record::run_record, take::take_cmd, *};
 use std::io::{self, Write};
 
 fn main() -> Result<(), Error> {
@@ -29,7 +29,7 @@ fn main() -> Result<(), Error> {
         }
         SubCommand::Take(cmd) => {
             cmd.validate()?;
-            single_take(cmd, base_params)?;
+            take_cmd(cmd, base_params)?;
             Ok(())
         }
         SubCommand::Record(cmd) => {

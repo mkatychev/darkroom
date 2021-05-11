@@ -220,16 +220,26 @@ pub fn run_take<'a>(
     }
 }
 
-/// single_take runs a single take using the darkroom::Take struct
-pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
+/// take_cmd runs a single take using the darkroom::Take struct
+pub fn take_cmd(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     let frame_str = fr::file_to_string(&cmd.frame)?;
-    let cut_str = fr::file_to_string(&cmd.cut)?;
-    let get_metaframe = || MetaFrame::try_from(cmd.frame.clone());
+    let metaframe = MetaFrame::try_from(cmd.frame.clone())?;
+
+    // set up cut register
+    let mut cut_register: Register;
+
+    let cut_file = cmd.get_cut_file()?;
+    if cmd.no_cut || !cut_file.exists() && !cmd.merge_cuts.is_empty() {
+        cut_register = Register::new();
+    } else {
+        let cut_str = fr::file_to_string(cut_file)?;
+        cut_register = Register::from(&cut_str)?;
+    }
 
     // Frame to be mutably borrowed
-    let frame = Frame::new(&frame_str).context(get_metaframe()?.get_filename())?;
+    let frame = Frame::new(&frame_str).context(metaframe.get_filename())?;
     let mut payload_frame = frame.clone();
-    let mut cut_register = Register::from(&cut_str)?;
+    crate::record::merge_into(&mut cut_register, cmd.merge_cuts)?;
     if let Err(e) = run_take(
         &mut payload_frame,
         &mut cut_register,
@@ -239,7 +249,7 @@ pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
         write_cut(
             &base_params.cut_out,
             &cut_register,
-            get_metaframe()?.reel_name,
+            metaframe.reel_name,
             true,
         )?;
         return Err(e);
@@ -248,9 +258,16 @@ pub fn single_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     write_cut(
         &base_params.cut_out,
         &cut_register,
-        get_metaframe()?.reel_name,
+        metaframe.reel_name,
         false,
     )?;
+
+    warn!(
+        "{}{}{}",
+        "= ".green(),
+        "Success 🎉 ".yellow(),
+        "==========\n".green()
+    );
 
     Ok(())
 }

@@ -57,7 +57,8 @@ def main():
     parser.add_argument(
         "filename", nargs="?", default="README.md", help="markdown output file"
     )
-    current_slugs = ["dark", "dark record", "dark take"]
+    current_slugs = ["dark"]
+    # current_slugs = ["dark", "dark record", "dark take"]
 
     args = parser.parse_args()
 

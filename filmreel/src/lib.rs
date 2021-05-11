@@ -81,3 +81,14 @@ where
         Ok(str_val)
     }
 }
+
+// https://stackoverflow.com/questions/26368288/how-do-i-stop-iteration-and-return-an-error-when-iteratormap-returns-a-result
+pub fn until_err<T, E>(err: &mut &mut Result<(), E>, item: Result<T, E>) -> Option<T> {
+    match item {
+        Ok(item) => Some(item),
+        Err(e) => {
+            **err = Err(e);
+            None
+        }
+    }
+}

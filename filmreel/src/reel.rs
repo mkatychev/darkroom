@@ -197,6 +197,15 @@ impl MetaFrame {
     pub fn get_filename(&self) -> String {
         return format!("{}.{}.{}.fr.json", self.reel_name, self.step, self.name);
     }
+
+    // get_cut_file retuns the default cut file location
+    pub fn get_cut_file<P: AsRef<Path>>(&self, dir: P) -> PathBuf {
+        if !dir.as_ref().is_dir() {
+            panic!("\"{}\" is not a directory!", dir.as_ref().to_string_lossy());
+        }
+
+        dir.as_ref().join(format!("{}.cut.json", self.reel_name))
+    }
 }
 
 fn parse_sequence(seq: &str) -> Result<(f32, FrameType), FrError> {

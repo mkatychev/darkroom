@@ -53,7 +53,7 @@ pub const fn version() -> &'static str {
 $ {command_name} -i record ./test_data post
 ",
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
-$ {command_name} --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json"
+$ {command_name} --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json"
 )]
 pub struct Command {
     /// enable verbose output
@@ -61,7 +61,7 @@ pub struct Command {
     verbose: bool,
 
     /// fallback address passed to the specified protocol
-    #[argh(positional, short = 'a')]
+    #[argh(positional)]
     address: Option<String>,
 
     /// fallback header passed to the specified protocol
@@ -85,7 +85,7 @@ pub struct Command {
     proto_dir: Vec<PathBuf>,
 
     /// pass proto files used for payload forming
-    #[argh(option, short = 'p')]
+    #[argh(option, short = 'p', arg_name = "file")]
     proto: Vec<PathBuf>,
 
     #[argh(subcommand)]
@@ -148,6 +148,10 @@ pub struct Version {
 /// Takes a single frame, emitting the request then validating the returned response
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "take")]
+#[argh(
+    example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
+$ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json"
+)]
 pub struct Take {
     /// path of the frame to process
     #[argh(positional)]
@@ -155,11 +159,19 @@ pub struct Take {
 
     /// filepath of input cut file
     #[argh(option, short = 'c')]
-    cut: PathBuf,
+    cut: Option<PathBuf>,
+
+    /// ignore looking for a cut file when running take
+    #[argh(switch, short = 'n')]
+    no_cut: bool,
 
     /// output of take file
     #[argh(option, short = 'o', arg_name = "file")]
     take_out: Option<PathBuf>,
+
+    /// filepath of merge cuts
+    #[argh(positional, arg_name = "file")]
+    merge_cuts: Vec<String>,
 }
 
 /// Attempts to play through an entire Reel sequence running a take for every frame in the sequence
@@ -184,7 +196,7 @@ pub struct Record {
 
     /// filepath of merge cuts
     #[argh(positional, arg_name = "file")]
-    merge_cuts: Vec<PathBuf>,
+    merge_cuts: Vec<String>,
 
     /// output directory for successful takes
     #[argh(option, short = 'o')]
@@ -214,16 +226,37 @@ impl Take {
             return Err(anyhow!("<frame> must be a valid file"));
         }
 
-        // TODO for now remove file requirement
-        //
-        // this permits describable zsh `=(thing)` or basic `<(thing)` FIFO syntax
-        // https://superuser.com/questions/1059781/what-exactly-is-in-bash-and-in-zsh
-        // if !self.cut.is_file() {
-        //     return Err("<cut> must be a valid file");
-        // }
+        // if there are merge cuts to use or --no-cut was specified
+        // return early
+        if !self.merge_cuts.is_empty() || self.no_cut {
+            return Ok(());
+        }
+
+        let cut_file = self.get_cut_file()?;
+        if !cut_file.is_file() {
+            return Err(anyhow!(
+                "{} must be a valid file",
+                cut_file.to_string_lossy()
+            ));
+        }
+
         Ok(())
     }
+
+    /// Returns expected cut filename in the given directory with the reel name derived from
+    /// the provided frame file
+    pub fn get_cut_file(&self) -> Result<PathBuf, Error> {
+        use std::convert::TryFrom;
+
+        if let Some(cut) = &self.cut {
+            return Ok(cut.clone());
+        }
+        let metaframe = filmreel::reel::MetaFrame::try_from(self.frame.clone())?;
+        let dir = std::fs::canonicalize(&self.frame)?;
+        Ok(metaframe.get_cut_file(dir.parent().unwrap()))
+    }
 }
+
 impl Record {
     /// validate ensures the reels is a valid directory and ensures that the corresponding cut file
     /// exists
@@ -309,4 +342,19 @@ where
             .to_string_hidden()?
             .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
     }
+}
+
+// try to see if a given string *might* be json
+pub fn guess_json_obj<T: AsRef<str>>(obj: T) -> bool {
+    let trimmed_obj = obj
+        .as_ref()
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>();
+
+    if trimmed_obj.starts_with("{\"") && trimmed_obj.contains("\":") && trimmed_obj.ends_with('}') {
+        return true;
+    }
+
+    false
 }

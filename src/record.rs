@@ -30,15 +30,8 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
     comp_reels.push(reel);
     cut_register = comp_reg;
 
-    // #### Merge init
-    // Merge any found PathBufs into the cut register destructively
-    let merge_cuts: Result<Vec<Register>, _> = cmd
-        .merge_cuts
-        .iter()
-        .flat_map(fr::file_to_string)
-        .map(Register::from)
-        .collect();
-    cut_register.destructive_merge(merge_cuts?);
+    // add merge_cuts destructively
+    merge_into(&mut cut_register, cmd.merge_cuts)?;
 
     let mut duration = None;
     if cmd.duration {
@@ -88,6 +81,30 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
     get_duration();
 
     write_cut(&base_params.cut_out, &cut_register, &cmd.reel_name, false)?;
+
+    Ok(())
+}
+
+// merge any found PathBufs into the cut register destructively
+pub fn merge_into(base_register: &mut Register, merge_cuts: Vec<String>) -> Result<(), Error> {
+    let mut err = Ok(());
+    // Merge any found PathBufs into the cut register destructively
+    let merge_registers: Vec<Register> = merge_cuts
+        .into_iter()
+        .map(|c| {
+            // if we're passing a json string such as '{"key": "value"}'
+            if crate::guess_json_obj(&c) {
+                return Ok(c);
+            }
+            fr::file_to_string(&c).map_err(|e| anyhow!("{} - {}", c, e))
+        })
+        .scan(&mut err, filmreel::until_err)
+        .map(|c| Register::from(c))
+        .collect::<Result<Vec<Register>, _>>()?;
+    // TODO tidy up scan calling only on file_to_string errors
+    err?;
+
+    base_register.destructive_merge(merge_registers);
 
     Ok(())
 }

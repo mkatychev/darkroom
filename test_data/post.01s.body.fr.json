@@ -6,31 +6,26 @@
       "URI_METHOD"
     ],
     "to": {
-      "trace": "'response'.'body'.'headers'.'X-Amzn-Trace-Id'",
       "IP": "'response'.'body'.'origin'"
     }
   },
   "protocol": "HTTP",
   "request": {
-    "body": "the exact body that is sent",
+    "body": "${BODY}",
     "uri": "${URI_METHOD} post",
     "entrypoint": "${ADDRESS}"
   },
   "response": {
+    "validation": {
+      "'response'.'body'": {
+        "partial": true
+      }
+    },
     "body": {
       "args": {},
       "data": "\"${BODY}\"",
-      "files": {},
-      "form": {},
-      "headers": {
-        "Accept": "*/*",
-        "Content-Length": "29",
-        "Host": "httpbin.org",
-        "X-Amzn-Trace-Id": "${trace}"
-      },
       "json": "${BODY}",
-      "origin": "${IP}",
-      "url": "https://httpbin.org/post"
+      "origin": "${IP}"
     },
     "status": 200
   }
