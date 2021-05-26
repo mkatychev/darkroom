@@ -6,7 +6,12 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{error::Error as SerdeError, json, to_value, Value};
-use std::collections::{HashMap, HashSet};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+    path::PathBuf,
+};
 
 /// Represents the entire deserialized frame file.
 ///
@@ -14,7 +19,7 @@ use std::collections::{HashMap, HashSet};
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Frame<'a> {
     pub protocol:       Protocol,
-    #[serde(default, borrow, skip_serializing_if = "InstructionSet::is_empty")]
+    #[serde(default, skip_serializing_if = "InstructionSet::is_empty")]
     pub cut:            InstructionSet<'a>, // Both the reads and writes can be optional
     pub(crate) request: Request,
     pub response:       Response<'a>,
@@ -143,6 +148,17 @@ impl<'a> Frame<'a> {
     }
 }
 
+impl<'a> TryFrom<PathBuf> for Frame<'a> {
+    type Error = FrError;
+
+    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
+        let buf = crate::file_to_reader(&path)?;
+
+        let frame: Frame = serde_json::from_reader(buf)?;
+        Ok(frame)
+    }
+}
+
 /// Represents the protocol used to send the frame payload.
 ///
 /// [Protocol example](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame-nomenclature)
@@ -155,8 +171,8 @@ pub enum Protocol {
     HTTP,
 }
 
-/// Contains read and write instructions for the [Cut Register](::Cut::Register),
-/// `InstructionSet` should be immutable once initialized.
+/// Contains read and write instructions for the [`crate::Register`],
+/// [`InstructionSet`] should be immutable once initialized.
 ///
 /// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/master/frame.md#cut-instruction-set)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
@@ -165,17 +181,15 @@ pub struct InstructionSet<'a> {
     #[serde(
         rename(serialize = "from", deserialize = "from"),
         skip_serializing_if = "HashSet::is_empty",
-        serialize_with = "ordered_set",
-        borrow
+        serialize_with = "ordered_set"
     )]
-    pub(crate) reads:   HashSet<&'a str>,
+    pub(crate) reads:   HashSet<Cow<'a, str>>,
     #[serde(
         rename(serialize = "to", deserialize = "to"),
         skip_serializing_if = "HashMap::is_empty",
-        serialize_with = "ordered_str_map",
-        borrow
+        serialize_with = "ordered_str_map"
     )]
-    pub(crate) writes:  HashMap<&'a str, &'a str>,
+    pub(crate) writes:  HashMap<Cow<'a, str>, Cow<'a, str>>,
     #[serde(skip_serializing, default)]
     pub hydrate_writes: bool,
 }
@@ -191,7 +205,7 @@ impl<'a> InstructionSet<'a> {
 
     /// Ensures no Cut Variables are present in both read and write instructions
     fn validate(&self) -> Result<(), FrError> {
-        let writes_set: HashSet<&str> = self.writes.keys().cloned().collect();
+        let writes_set: HashSet<Cow<str>> = self.writes.keys().cloned().collect();
         let intersection = self.reads.intersection(&writes_set).next();
 
         if intersection.is_some() {
@@ -281,9 +295,10 @@ impl Default for Request {
 macro_rules! to {
     ({$( $key: expr => $val: expr ),*}) => {{
         use ::std::collections::HashMap;
+        use ::std::borrow::Cow;
 
-        let mut map: HashMap<&str, &str> = HashMap::new();
-        $(map.insert($key, $val);)*
+        let mut map: HashMap<Cow<str>, Cow<str>> = HashMap::new();
+        $(map.insert($key.into(), $val.into());)*
         map
     }}
 }
@@ -303,10 +318,11 @@ macro_rules! to {
 macro_rules! from {
     ($( $cut_var: expr ),*) => {{
         use ::std::collections::HashSet;
+        use ::std::borrow::Cow;
 
         #[allow(unused_mut)]
-        let mut set:HashSet<&str> = HashSet::new();
-        $( set.insert($cut_var); )*
+        let mut set:HashSet<Cow<str>> = HashSet::new();
+        $( set.insert($cut_var.into()); )*
         set
     }}
 }

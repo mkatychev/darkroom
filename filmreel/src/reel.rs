@@ -110,7 +110,7 @@ impl Reel {
             .filter_map(|r| r.ok())
             .filter(|path| path.is_file())
         {
-            let frame = MetaFrame::try_from(entry)?;
+            let frame = MetaFrame::try_from(&entry)?;
             if permit_frame(frame.step_f32.trunc() as u32) {
                 frames.push(frame);
             }
@@ -147,16 +147,17 @@ impl IntoIterator for Reel {
 pub struct MetaFrame {
     pub reel_name:  String,
     pub frame_type: FrameType,
+    pub alt_name:   Option<String>,
     pub name:       String,
     pub path:       PathBuf,
     pub step_f32:   f32,
     step:           String,
 }
 
-impl TryFrom<PathBuf> for MetaFrame {
+impl TryFrom<&PathBuf> for MetaFrame {
     type Error = FrError;
 
-    fn try_from(p: PathBuf) -> Result<Self, Self::Error> {
+    fn try_from(p: &PathBuf) -> Result<Self, Self::Error> {
         let mut reel_parts: Vec<&str> = match p
             .file_name()
             .and_then(|s| s.to_str())
@@ -179,6 +180,7 @@ impl TryFrom<PathBuf> for MetaFrame {
 
         Ok(Self {
             path: p.clone(),
+            alt_name: None,
             name: name.to_string(),
             reel_name,
             step_f32: seq,
@@ -293,12 +295,13 @@ mod tests {
 
     #[test]
     fn test_metaframe_try_from() {
-        let try_path = MetaFrame::try_from(PathBuf::from("./reel_name.01s.frame_name.fr.json"))
+        let try_path = MetaFrame::try_from(&PathBuf::from("./reel_name.01s.frame_name.fr.json"))
             .expect("test_metaframe_try_from failed try_from");
         assert_eq!(
             MetaFrame {
                 frame_type: FrameType::Success,
                 name:       "frame_name".to_string(),
+                alt_name:   None,
                 path:       PathBuf::from("./reel_name.01s.frame_name.fr.json"),
                 reel_name:  "reel_name".to_string(),
                 step:       "01s".to_string(),
@@ -313,8 +316,8 @@ mod tests {
         let reel = Reel {
             dir:    ".".into(),
             frames: vec![
-                MetaFrame::try_from(PathBuf::from("./reel.01s.frame1.fr.json")).unwrap(),
-                MetaFrame::try_from(PathBuf::from("./reel.01e.frame2.fr.json")).unwrap(),
+                MetaFrame::try_from(&PathBuf::from("./reel.01s.frame1.fr.json")).unwrap(),
+                MetaFrame::try_from(&PathBuf::from("./reel.01e.frame2.fr.json")).unwrap(),
             ],
         };
         assert!(reel.validate().is_ok());
@@ -324,8 +327,8 @@ mod tests {
         let reel = Reel {
             dir:    ".".into(),
             frames: vec![
-                MetaFrame::try_from(PathBuf::from("./reel.01s.frame1.fr.json")).unwrap(),
-                MetaFrame::try_from(PathBuf::from("./reel.01s.frame2.fr.json")).unwrap(),
+                MetaFrame::try_from(&PathBuf::from("./reel.01s.frame1.fr.json")).unwrap(),
+                MetaFrame::try_from(&PathBuf::from("./reel.01s.frame2.fr.json")).unwrap(),
             ],
         };
         assert_eq!(

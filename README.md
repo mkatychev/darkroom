@@ -9,6 +9,7 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 ---
 
 * Darkroom `0.3` or greater requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for making gRPC requests.
+* Cloning with submodules: `git clone --recurse-submodules -j8 git://github.com/foo/bar.git`
 
 
 ## Usage:
@@ -18,7 +19,7 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 <!-- dark start -->
 ```
-Usage: dark [<address>] [-v] [-H <header>] [--cut-out <file>] [-i] [--tls] [--proto-dir <dir...>] [-p <proto...>] <command> [<args>]
+Usage: dark [<address>] [-v] [-H <header>] [--cut-out <file>] [-i] [--tls] [--proto-dir <dir...>] [-p <file...>] <command> [<args>]
 
 Darkroom: A contract testing tool built in Rust using the filmReel format.
 
@@ -40,6 +41,8 @@ Commands:
   record            Attempts to play through an entire Reel sequence running a
                     take for every frame in the sequence
   man               return a given manual entry
+  vrecord           Attempts to play through an entire VirtualReel sequence
+                    running a take for every frame in the sequence
 
 Examples:
   Step through the httpbin test in [-i]nteractive mode:

@@ -1,0 +1,14 @@
+{
+  "name": "post_vreel",
+  "path": "./test_data",
+  "frames": [
+    "post.01s.body.fr.json",
+    "post.03s.delay.fr.json",
+    "post.02s.no_content.fr.json"
+  ],
+  "cut": {
+    "URI_METHOD": "POST",
+    "ADDRESS": "https://httpbin.org",
+    "BODY": "the exact body that is sent"
+  }
+}

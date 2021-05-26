@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use argh::FromArgs;
 use colored_json::{prelude::*, Colour, Styler};
 use serde::Serialize;
-use std::path::PathBuf;
+use std::{convert::TryFrom, fs, path::PathBuf};
 
 #[cfg(feature = "man")]
 use crate::man::Man;
@@ -18,10 +18,7 @@ pub mod take;
 mod man;
 
 pub use filmreel::{
-    cut::Register,
-    frame::*,
-    reel::{MetaFrame, Reel},
-    FrError, ToStringHidden, ToStringPretty,
+    FrError, Frame, MetaFrame, Reel, Register, ToStringHidden, ToStringPretty, VirtualReel,
 };
 
 pub struct Logger;
@@ -134,6 +131,7 @@ pub enum SubCommand {
     Record(Record),
     #[cfg(feature = "man")]
     Man(Man),
+    VirtualRecord(VirtualRecord),
 }
 
 /// Returns CARGO_PKG_VERSION
@@ -170,16 +168,23 @@ pub struct Take {
     take_out: Option<PathBuf>,
 
     /// filepath of merge cuts
-    #[argh(positional, arg_name = "file")]
+    #[argh(positional)]
     merge_cuts: Vec<String>,
 }
 
 /// Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "record")]
+#[argh(
+    example = "Step through the httpbin test in [-i]nteractive mode:
+$ dark -i record ./test_data post
+",
+    example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
+$ dark --cut-out >(jq .IP) record ./test_data post"
+)]
 pub struct Record {
     /// directory path where frames and (if no explicit cut is provided) the cut are to be found
-    #[argh(positional, arg_name = "dir")]
+    #[argh(positional)]
     reel_path: PathBuf,
 
     /// name of the reel, used to find corresponding frames for the path provided
@@ -195,7 +200,7 @@ pub struct Record {
     component: Vec<String>,
 
     /// filepath of merge cuts
-    #[argh(positional, arg_name = "file")]
+    #[argh(positional)]
     merge_cuts: Vec<String>,
 
     /// output directory for successful takes
@@ -205,6 +210,34 @@ pub struct Record {
     /// the range (inclusive) of frames that a record session will use, colon separated: --range <start>:<end> --range <start>:
     #[argh(option, short = 'r')]
     range: Option<String>,
+
+    /// client request timeout in seconds, --timeout 0 disables request timeout [default: 30]
+    #[argh(option, short = 't', default = "30")]
+    timeout: u64,
+
+    /// print timestamp at take start, error return, and reel completion
+    #[argh(switch, short = 's')]
+    timestamp: bool,
+
+    /// print total time elapsed from record start to completion
+    #[argh(switch, short = 'd')]
+    duration: bool,
+}
+
+/// Attempts to play through an entire VirtualReel sequence running a take for every frame in the sequence
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "vrecord")]
+#[argh(example = "Run the post reel in a v-reel setup:
+$ {command_name} ./test_data/post.vr.json
+$ {command_name} ./test_data/alt_post.vr.json")]
+pub struct VirtualRecord {
+    /// filepath or json string of VirtualReel
+    #[argh(positional)]
+    vreel: String,
+
+    /// output directory for successful takes
+    #[argh(option, short = 'o')]
+    take_out: Option<PathBuf>,
 
     /// client request timeout in seconds, --timeout 0 disables request timeout [default: 30]
     #[argh(option, short = 't', default = "30")]
@@ -246,13 +279,11 @@ impl Take {
     /// Returns expected cut filename in the given directory with the reel name derived from
     /// the provided frame file
     pub fn get_cut_file(&self) -> Result<PathBuf, Error> {
-        use std::convert::TryFrom;
-
         if let Some(cut) = &self.cut {
             return Ok(cut.clone());
         }
-        let metaframe = filmreel::reel::MetaFrame::try_from(self.frame.clone())?;
-        let dir = std::fs::canonicalize(&self.frame)?;
+        let metaframe = filmreel::reel::MetaFrame::try_from(&self.frame)?;
+        let dir = fs::canonicalize(&self.frame)?;
         Ok(metaframe.get_cut_file(dir.parent().unwrap()))
     }
 }
@@ -302,6 +333,26 @@ impl Record {
     }
 }
 
+impl VirtualRecord {
+    pub fn init(&self) -> Result<VirtualReel, Error> {
+        let mut vreel = if guess_json_obj(&self.vreel) {
+            serde_json::from_str(&self.vreel)?
+        } else {
+            let vreel_path = PathBuf::from(&self.vreel);
+            let mut vreel_file = VirtualReel::try_from(vreel_path.clone())?;
+            // default to parent directory of vreel file if path is not specified
+            if vreel_file.path.is_none() {
+                let parent_dir = fs::canonicalize(vreel_path.parent().unwrap().to_path_buf())?;
+                vreel_file.path = Some(parent_dir);
+            }
+            vreel_file
+        };
+        vreel.join_path();
+
+        Ok(vreel)
+    }
+}
+
 /// get_styler returns the custom syntax values for stdout json
 fn get_styler() -> Styler {
     Styler {
@@ -345,16 +396,12 @@ where
 }
 
 // try to see if a given string *might* be json
-pub fn guess_json_obj<T: AsRef<str>>(obj: T) -> bool {
-    let trimmed_obj = obj
+pub fn guess_json_obj<T: AsRef<str>>(input: T) -> bool {
+    let obj = input
         .as_ref()
         .chars()
         .filter(|c| !c.is_whitespace())
         .collect::<String>();
 
-    if trimmed_obj.starts_with("{\"") && trimmed_obj.contains("\":") && trimmed_obj.ends_with('}') {
-        return true;
-    }
-
-    false
+    obj.starts_with("{\"") && obj[2..].contains("\":") && obj.ends_with('}')
 }

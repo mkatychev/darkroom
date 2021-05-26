@@ -12,7 +12,7 @@
   "protocol": "HTTP",
   "request": {
     "body": "${BODY}",
-    "uri": "${URI_METHOD} post",
+    "uri": "${URI_METHOD} /post",
     "entrypoint": "${ADDRESS}"
   },
   "response": {
