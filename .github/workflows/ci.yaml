@@ -51,6 +51,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: httpbin post
         run: cargo run -- record ./test_data post
+      - name: httpbin take
+        run: cargo run -- take ./test_data/post.01s.body.fr.json
       - name: httpbin vrecord
         run: cargo run -- vrecord ./test_data/post.vr.json
       - name: httpbin vrecord alt

@@ -12,6 +12,10 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 * Cloning with submodules: `git clone --recurse-submodules -j8 git://github.com/foo/bar.git`
 
 
+## CHANGELOG
+
+Please see the [CHANGELOG](CHANGELOG.md) for a release history.
+
 ## Usage:
 
 
@@ -46,10 +50,11 @@ Commands:
 
 Examples:
   Step through the httpbin test in [-i]nteractive mode:
-  $ dark -i record ./test_data post
-  
+      $ dark -i record ./test_data post
   Echo the origin `${IP}` that gets written to the cut register from the httpbin.org POST request:
-  $ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json
+      $ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json
+  Run the post reel in a v-reel setup:
+      $ dark vrecord ./test_data/post.vr.json
 
 Notes:
   Use `dark man` for details on filmReel, the JSON format.

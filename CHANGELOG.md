@@ -1,5 +1,7 @@
 #### `0.7.0`:
 * added `dark man` command for additional documentation, can be excluded from build with the `--no-default-features` flag
+* added `dark vreel` command to support virtual reels to support mixing arbitrary cuts and frames in a given order:
+  `dark vrecord ./test_data/post.vr.json`
 * added partial and unordered response validations to filmreel
 * implemented subset of `jql` for mutable selections of the resposne json
   the `jql` library can be included with the `--features=filmreel/full_jql` flag

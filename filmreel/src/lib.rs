@@ -1,6 +1,8 @@
 /*!
 
-A [filmReel](https://github.com/Bestowinc/filmReel) implementation for Rust.
+# filmReel <img src="https://raw.githubusercontent.com/Bestowinc/filmReel/master/images/filmreel.svg" width="65"/>
+
+A [VCR specification](https://github.com/Bestowinc/filmReel) implemented in Rust.
 
 The `filmreel` crate is a pure Rust implementation of the declarative contract testing spec enjoying the memory safety
 property and other benefits from the Rust language.
@@ -11,7 +13,7 @@ Add the following to the Cargo.toml of your project:
 
 ```toml
 [dependencies]
-filmreel = "0.3"
+filmreel = "0.6"
 ```
 
 */

@@ -47,10 +47,11 @@ pub const fn version() -> &'static str {
 #[argh(
     note = "Use `{command_name} man` for details on filmReel, the JSON format.",
     example = "Step through the httpbin test in [-i]nteractive mode:
-$ {command_name} -i record ./test_data post
-",
+    $ {command_name} -i record ./test_data post",
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
-$ {command_name} --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json"
+    $ {command_name} --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json",
+    example = "Run the post reel in a v-reel setup:
+    $ {command_name} vrecord ./test_data/post.vr.json"
 )]
 pub struct Command {
     /// enable verbose output
@@ -148,7 +149,7 @@ pub struct Version {
 #[argh(subcommand, name = "take")]
 #[argh(
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
-$ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json"
+    $ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json"
 )]
 pub struct Take {
     /// path of the frame to process
@@ -177,10 +178,9 @@ pub struct Take {
 #[argh(subcommand, name = "record")]
 #[argh(
     example = "Step through the httpbin test in [-i]nteractive mode:
-$ dark -i record ./test_data post
-",
+    $ dark -i record ./test_data post",
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
-$ dark --cut-out >(jq .IP) record ./test_data post"
+    $ dark --cut-out >(jq .IP) record ./test_data post"
 )]
 pub struct Record {
     /// directory path where frames and (if no explicit cut is provided) the cut are to be found
