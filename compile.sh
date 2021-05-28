@@ -10,11 +10,11 @@ VERSION="$(git describe --tags --abbrev=8)"
 TARGETS=(aarch64-apple-darwin x86_64-apple-darwin)
 
 build_cross() {
-  for target in $TARGETS; do
-    cross build --target $target --release
+  for target in "${TARGETS[@]}"; do
+    cross build --target "$target" --release
     tar czf "darkroom-${VERSION}-${target}.tar.gz" -C "./target/${target}/release" dark
-    cross build --target $target --release --no-default-features
-    tar czf "darkroom-${VERSION}-${target}-no-default-features.tar.gz" -C "./target/${target}/release" dark
+    cross build --target "$target" --release --no-default-features
+    tar czf "darkroom-${VERSION}-no-default-features-${target}.tar.gz" -C "./target/${target}/release" dark
   done
 }
 
@@ -23,7 +23,7 @@ build_linux() {
   docker run --platform linux/amd64 --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
   tar czf "darkroom-${VERSION}-${target}.tar.gz" -C "./target/${target}/release" dark
   docker run --platform linux/amd64 --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release --no-default-features
-  tar czf "darkroom-${VERSION}-${target}-no-default-features.tar.gz" -C "./target/${target}/release" dark
+  tar czf "darkroom-${VERSION}-no-default-features-${target}.tar.gz" -C "./target/${target}/release" dark
 }
 
-build_linux
+$1
