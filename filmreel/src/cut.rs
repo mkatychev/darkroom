@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{collections::HashMap, ops::Range};
+use std::{collections::HashMap, convert::TryFrom, ops::Range, path::PathBuf};
 
 /// Holds Cut Variables and their corresponding values stored in a series of
 /// key/value pairs.
@@ -72,22 +72,46 @@ impl Register {
         self.vars.iter()
     }
 
-    /// Returns a boolean indicating whether Register.vars contains a given key.
+    /// Returns a boolean indicating whether [`Register.vars`] contains a given key.
     ///
     /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
     pub fn contains_key(&self, key: &str) -> bool {
         self.vars.contains_key(key)
     }
 
-    /// Merges a foreign Cut register into the caller, overriding any values in self with other
+    /// Merges foreign [`Register`] structs into the caller,
+    /// overriding any values in `self` with the current `others.next()` item.
+    ///
+    /// 1. if the primary key of an incoming record matches with the key of an existing record:
+    ///     - update the matching target record.
+    /// 2. if the incoming key does not exist in any existing record:
+    ///     - add the incoming record to the target.
     pub fn destructive_merge<I>(&mut self, others: I)
     where
         I: IntoIterator<Item = Register>,
     {
         for other in others.into_iter() {
-            for (k, v) in other.iter() {
-                self.insert(k.to_string(), v.clone());
-            }
+            self.single_merge(other);
+        }
+    }
+
+    /// Merges an iterable collection of registers together, left to right
+    pub fn iter_merge<I>(registers: I) -> Register
+    where
+        I: IntoIterator<Item = Register>,
+    {
+        let mut output = Register::new();
+        for reg in registers.into_iter() {
+            output.single_merge(reg);
+        }
+
+        output
+    }
+
+    /// Merges a single [`Register`] into the caller, overriding any values in `self` with `other`
+    pub fn single_merge(&mut self, other: Self) {
+        for (k, v) in other.iter() {
+            self.insert(k.to_string(), v.clone());
         }
     }
 
@@ -192,7 +216,7 @@ impl Register {
         Ok(())
     }
 
-    /// Takes a frame string value and compares it against a payload string value
+    /// Takes a [`crate::Frame`] string value and compares it against a payload string value
     /// returning any declared cut variables found
     pub fn write_match(
         var_name: &str,
@@ -248,7 +272,7 @@ impl Register {
 
     /// Inserts a Value entry into the Register's Cut Variables
     ///
-    /// Returns an Err if the key value is does not consist solely of characters, dashes, and underscores.
+    /// Returns an [`Err`] if the key value is does not consist solely of characters, dashes, and underscores.
     pub fn write_operation(&mut self, key: &str, val: Value) -> Result<Option<Value>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
@@ -278,6 +302,29 @@ impl Register {
     }
 }
 
+impl TryFrom<PathBuf> for Register {
+    type Error = FrError;
+
+    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
+        let buf = crate::file_to_reader(&path)?;
+
+        let register = serde_json::from_reader(buf)?;
+        Ok(register)
+    }
+}
+
+impl TryFrom<Vec<PathBuf>> for Register {
+    type Error = FrError;
+
+    fn try_from(paths: Vec<PathBuf>) -> Result<Self, Self::Error> {
+        let regs = paths
+            .into_iter()
+            .map(Self::try_from)
+            .collect::<Result<Vec<Register>, _>>()?;
+
+        Ok(Self::iter_merge(regs))
+    }
+}
 /// Describes the types of matches during a read operation.
 #[derive(Debug)]
 pub enum Match<'a> {

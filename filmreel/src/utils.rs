@@ -3,10 +3,16 @@ use pest::Parser;
 use pest_derive::*;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+};
 
 /// Serializes a HashMap into a BTreeMap, sorting key order for serialization.
-pub fn ordered_str_map<S>(map: &HashMap<&str, &str>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn ordered_str_map<S>(
+    map: &HashMap<Cow<str>, Cow<str>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -15,7 +21,7 @@ where
 }
 
 /// Serializes a HashSet into a BTreeSet, sorting entry order for serialization.
-pub fn ordered_set<S>(set: &HashSet<&str>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn ordered_set<S>(set: &HashSet<Cow<str>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {

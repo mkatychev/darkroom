@@ -1,0 +1,9 @@
+{
+  "name": "post_vreel",
+  "frames": {
+    "1new_body": "post.01s.body.fr.json",
+    "3new_no_content": "post.02s.no_content.fr.json",
+    "2new_delay": "post.03s.delay.fr.json"
+  },
+  "cut": ["post.cut.json", "stripe_token.cut.json"]
+}

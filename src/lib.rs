@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use argh::FromArgs;
 use colored_json::{prelude::*, Colour, Styler};
 use serde::Serialize;
-use std::path::PathBuf;
+use std::{convert::TryFrom, fs, path::PathBuf};
 
 #[cfg(feature = "man")]
 use crate::man::Man;
@@ -18,10 +18,7 @@ pub mod take;
 mod man;
 
 pub use filmreel::{
-    cut::Register,
-    frame::*,
-    reel::{MetaFrame, Reel},
-    FrError, ToStringHidden, ToStringPretty,
+    FrError, Frame, MetaFrame, Reel, Register, ToStringHidden, ToStringPretty, VirtualReel,
 };
 
 pub struct Logger;
@@ -50,10 +47,11 @@ pub const fn version() -> &'static str {
 #[argh(
     note = "Use `{command_name} man` for details on filmReel, the JSON format.",
     example = "Step through the httpbin test in [-i]nteractive mode:
-$ {command_name} -i record ./test_data post
-",
+    $ {command_name} -i record ./test_data post",
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
-$ {command_name} --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json"
+    $ {command_name} --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json",
+    example = "Run the post reel in a v-reel setup:
+    $ {command_name} vrecord ./test_data/post.vr.json"
 )]
 pub struct Command {
     /// enable verbose output
@@ -61,7 +59,7 @@ pub struct Command {
     verbose: bool,
 
     /// fallback address passed to the specified protocol
-    #[argh(positional, short = 'a')]
+    #[argh(positional)]
     address: Option<String>,
 
     /// fallback header passed to the specified protocol
@@ -85,7 +83,7 @@ pub struct Command {
     proto_dir: Vec<PathBuf>,
 
     /// pass proto files used for payload forming
-    #[argh(option, short = 'p')]
+    #[argh(option, short = 'p', arg_name = "file")]
     proto: Vec<PathBuf>,
 
     #[argh(subcommand)]
@@ -134,6 +132,7 @@ pub enum SubCommand {
     Record(Record),
     #[cfg(feature = "man")]
     Man(Man),
+    VirtualRecord(VirtualRecord),
 }
 
 /// Returns CARGO_PKG_VERSION
@@ -148,6 +147,10 @@ pub struct Version {
 /// Takes a single frame, emitting the request then validating the returned response
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "take")]
+#[argh(
+    example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
+    $ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json"
+)]
 pub struct Take {
     /// path of the frame to process
     #[argh(positional)]
@@ -155,19 +158,33 @@ pub struct Take {
 
     /// filepath of input cut file
     #[argh(option, short = 'c')]
-    cut: PathBuf,
+    cut: Option<PathBuf>,
+
+    /// ignore looking for a cut file when running take
+    #[argh(switch, short = 'n')]
+    no_cut: bool,
 
     /// output of take file
     #[argh(option, short = 'o', arg_name = "file")]
     take_out: Option<PathBuf>,
+
+    /// filepath of merge cuts
+    #[argh(positional)]
+    merge_cuts: Vec<String>,
 }
 
 /// Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "record")]
+#[argh(
+    example = "Step through the httpbin test in [-i]nteractive mode:
+    $ dark -i record ./test_data post",
+    example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
+    $ dark --cut-out >(jq .IP) record ./test_data post"
+)]
 pub struct Record {
     /// directory path where frames and (if no explicit cut is provided) the cut are to be found
-    #[argh(positional, arg_name = "dir")]
+    #[argh(positional)]
     reel_path: PathBuf,
 
     /// name of the reel, used to find corresponding frames for the path provided
@@ -183,8 +200,8 @@ pub struct Record {
     component: Vec<String>,
 
     /// filepath of merge cuts
-    #[argh(positional, arg_name = "file")]
-    merge_cuts: Vec<PathBuf>,
+    #[argh(positional)]
+    merge_cuts: Vec<String>,
 
     /// output directory for successful takes
     #[argh(option, short = 'o')]
@@ -207,6 +224,34 @@ pub struct Record {
     duration: bool,
 }
 
+/// Attempts to play through an entire VirtualReel sequence running a take for every frame in the sequence
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "vrecord")]
+#[argh(example = "Run the post reel in a v-reel setup:
+$ {command_name} ./test_data/post.vr.json
+$ {command_name} ./test_data/alt_post.vr.json")]
+pub struct VirtualRecord {
+    /// filepath or json string of VirtualReel
+    #[argh(positional)]
+    vreel: String,
+
+    /// output directory for successful takes
+    #[argh(option, short = 'o')]
+    take_out: Option<PathBuf>,
+
+    /// client request timeout in seconds, --timeout 0 disables request timeout [default: 30]
+    #[argh(option, short = 't', default = "30")]
+    timeout: u64,
+
+    /// print timestamp at take start, error return, and reel completion
+    #[argh(switch, short = 's')]
+    timestamp: bool,
+
+    /// print total time elapsed from record start to completion
+    #[argh(switch, short = 'd')]
+    duration: bool,
+}
+
 impl Take {
     /// validate ensures the frame and cut filepaths provided point to valid files
     pub fn validate(&self) -> Result<(), Error> {
@@ -214,16 +259,35 @@ impl Take {
             return Err(anyhow!("<frame> must be a valid file"));
         }
 
-        // TODO for now remove file requirement
-        //
-        // this permits describable zsh `=(thing)` or basic `<(thing)` FIFO syntax
-        // https://superuser.com/questions/1059781/what-exactly-is-in-bash-and-in-zsh
-        // if !self.cut.is_file() {
-        //     return Err("<cut> must be a valid file");
-        // }
+        // if there are merge cuts to use or --no-cut was specified
+        // return early
+        if !self.merge_cuts.is_empty() || self.no_cut {
+            return Ok(());
+        }
+
+        let cut_file = self.get_cut_file()?;
+        if !cut_file.is_file() {
+            return Err(anyhow!(
+                "{} must be a valid file",
+                cut_file.to_string_lossy()
+            ));
+        }
+
         Ok(())
     }
+
+    /// Returns expected cut filename in the given directory with the reel name derived from
+    /// the provided frame file
+    pub fn get_cut_file(&self) -> Result<PathBuf, Error> {
+        if let Some(cut) = &self.cut {
+            return Ok(cut.clone());
+        }
+        let metaframe = filmreel::reel::MetaFrame::try_from(&self.frame)?;
+        let dir = fs::canonicalize(&self.frame)?;
+        Ok(metaframe.get_cut_file(dir.parent().unwrap()))
+    }
 }
+
 impl Record {
     /// validate ensures the reels is a valid directory and ensures that the corresponding cut file
     /// exists
@@ -269,6 +333,26 @@ impl Record {
     }
 }
 
+impl VirtualRecord {
+    pub fn init(&self) -> Result<VirtualReel, Error> {
+        let mut vreel = if guess_json_obj(&self.vreel) {
+            serde_json::from_str(&self.vreel)?
+        } else {
+            let vreel_path = PathBuf::from(&self.vreel);
+            let mut vreel_file = VirtualReel::try_from(vreel_path.clone())?;
+            // default to parent directory of vreel file if path is not specified
+            if vreel_file.path.is_none() {
+                let parent_dir = fs::canonicalize(vreel_path.parent().unwrap().to_path_buf())?;
+                vreel_file.path = Some(parent_dir);
+            }
+            vreel_file
+        };
+        vreel.join_path();
+
+        Ok(vreel)
+    }
+}
+
 /// get_styler returns the custom syntax values for stdout json
 fn get_styler() -> Styler {
     Styler {
@@ -309,4 +393,15 @@ where
             .to_string_hidden()?
             .to_colored_json_with_styler(ColorMode::default().eval(), get_styler())?)
     }
+}
+
+// try to see if a given string *might* be json
+pub fn guess_json_obj<T: AsRef<str>>(input: T) -> bool {
+    let obj = input
+        .as_ref()
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>();
+
+    obj.starts_with("{\"") && obj[2..].contains("\":") && obj.ends_with('}')
 }

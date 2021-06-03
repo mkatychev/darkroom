@@ -44,10 +44,7 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
         ));
     }
 
-    let headers = match &prm.header {
-        Some(h) => Some(h.replace("\"", "")),
-        None => None,
-    };
+    let headers = prm.header.as_ref().map(|h| h.replace("\"", ""));
 
     if let Some(h) = &headers {
         flags.push(OsStr::new("-H"));

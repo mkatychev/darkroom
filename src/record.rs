@@ -1,23 +1,30 @@
-use crate::{params::BaseParams, take::*, Record};
+use crate::{guess_json_obj, params::BaseParams, take::*, Record, VirtualRecord};
 use anyhow::{anyhow, Context, Error};
 use colored::*;
 use filmreel as fr;
 use fr::{cut::Register, frame::Frame, reel::*, ToStringHidden};
 use log::{debug, error, warn};
 use std::{
+    convert::TryFrom,
     fs,
     ops::Range,
     path::{Path, PathBuf},
     time::Instant,
 };
 
-/// run_record runs through a Reel sequence using the darkroom::Record struct
-pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error> {
+pub struct RecordRunner {
+    duration:   bool,
+    reel_name:  String,
+    take_out:   Option<PathBuf>,
+    register:   Register,
+    pub frames: Vec<MetaFrame>,
+}
+
+pub fn cmd_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error> {
     base_params.timeout = cmd.timeout;
     base_params.timestamp = cmd.timestamp;
 
-    let cut_str = fr::file_to_string(cmd.get_cut_file())?;
-    let mut cut_register: Register = Register::from(&cut_str)?;
+    let mut cut_register = Register::try_from(cmd.get_cut_file())?;
     let frame_range = match cmd.range {
         Some(r) => parse_range(r)?,
         None => None,
@@ -26,55 +33,110 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
 
     // #### Component init
     let (mut comp_reels, mut comp_reg) = init_components(cmd.component)?;
-    comp_reg.destructive_merge(vec![cut_register]);
+    comp_reg.single_merge(cut_register);
     comp_reels.push(reel);
     cut_register = comp_reg;
 
-    // #### Merge init
-    // Merge any found PathBufs into the cut register destructively
-    let merge_cuts: Result<Vec<Register>, _> = cmd
-        .merge_cuts
-        .iter()
-        .flat_map(fr::file_to_string)
-        .map(Register::from)
-        .collect();
-    cut_register.destructive_merge(merge_cuts?);
+    // add merge_cuts destructively
+    read_into(&mut cut_register, cmd.merge_cuts)?;
 
-    let mut duration = None;
-    if cmd.duration {
-        duration = Some(Instant::now())
-    }
-    let get_duration = || {
-        duration.map(|now| {
-            warn!(
-                "[Total record duration: {:.3}sec]",
-                now.elapsed().as_secs_f32(),
-            );
-        })
+    run_record(
+        RecordRunner {
+            duration:  cmd.duration,
+            reel_name: cmd.reel_name,
+            take_out:  cmd.take_out,
+            register:  cut_register,
+            frames:    comp_reels.into_iter().flatten().collect(),
+        },
+        base_params,
+    )
+}
+
+pub fn cmd_vrecord(cmd: VirtualRecord, mut base_params: BaseParams) -> Result<(), Error> {
+    use fr::vreel::*;
+
+    base_params.timeout = cmd.timeout;
+    base_params.timestamp = cmd.timestamp;
+
+    let vreel = cmd.init()?;
+    let register = match vreel.cut {
+        VirtualCut::Register(r) => r,
+        VirtualCut::MergeCuts(cuts) if cuts.is_empty() => Register::new(),
+        VirtualCut::MergeCuts(cuts) => Register::try_from(cuts)?,
+        VirtualCut::Cut(cut) => Register::try_from(cut)?,
     };
 
-    for meta_frame in comp_reels.into_iter().flatten() {
+    let frames = match vreel.frames {
+        VirtualFrames::List(list) => list
+            .iter()
+            .map(MetaFrame::try_from)
+            .collect::<Result<Vec<MetaFrame>, _>>()?,
+        VirtualFrames::RenamedList(map) => map
+            .iter()
+            .map(|(k, v)| -> Result<MetaFrame, Error> {
+                let mut frame = MetaFrame::try_from(v)?;
+                frame.alt_name = Some(k.to_string());
+                Ok(frame)
+            })
+            .collect::<Result<Vec<MetaFrame>, _>>()?,
+    };
+
+    run_record(
+        RecordRunner {
+            duration: false,
+            reel_name: vreel.name.into(),
+            take_out: cmd.take_out,
+            register,
+            frames,
+        },
+        base_params,
+    )
+}
+
+/// run_record runs through a Reel sequence using the darkroom::Record or darkroom::VirtualRecord structs
+pub fn run_record(mut runner: RecordRunner, base_params: BaseParams) -> Result<(), Error> {
+    let start = Instant::now();
+    let duration = runner.duration;
+    let get_duration = || {
+        if duration {
+            warn!(
+                "[Total record duration: {:.3}sec]",
+                start.elapsed().as_secs_f32(),
+            );
+        }
+    };
+
+    for meta_frame in runner.frames.into_iter() {
         // if cmd.output is Some, provide a take PathBuf
-        let output = cmd
+        let output = runner
             .take_out
             .as_ref()
             .map(|dir| take_output(&dir, &&meta_frame.path));
-        warn!(
-            "{}{} {:?}",
-            base_params.fmt_timestamp(),
-            "File:".yellow(),
-            meta_frame.get_filename()
-        );
+
+        let mut info_str = format!("{} {:?}", "File:".yellow(), meta_frame.get_filename());
+        if let Some(alt_name) = meta_frame.alt_name {
+            info_str = format!("{:45} | {} {}", info_str, "Name:".yellow(), alt_name);
+        }
+        warn!("{}{}", base_params.fmt_timestamp(), info_str,);
         warn!("{}", "=======================".green());
 
-        let frame_str = fr::file_to_string(&meta_frame.path)?;
-        let frame = Frame::new(&frame_str)?;
+        let frame = Frame::try_from(meta_frame.path)?;
         // Frame to be mutably borrowed
         let mut payload_frame = frame.clone();
 
-        if let Err(e) = run_take(&mut payload_frame, &mut cut_register, &base_params, output) {
+        if let Err(e) = run_take(
+            &mut payload_frame,
+            &mut runner.register,
+            &base_params,
+            output,
+        ) {
             get_duration();
-            write_cut(&base_params.cut_out, &cut_register, &cmd.reel_name, true)?;
+            write_cut(
+                &base_params.cut_out,
+                &runner.register,
+                &runner.reel_name,
+                true,
+            )?;
             return Err(e);
         }
     }
@@ -87,7 +149,36 @@ pub fn run_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
     );
     get_duration();
 
-    write_cut(&base_params.cut_out, &cut_register, &cmd.reel_name, false)?;
+    write_cut(
+        &base_params.cut_out,
+        &runner.register,
+        &runner.reel_name,
+        false,
+    )?;
+
+    Ok(())
+}
+
+// merge any found PathBufs into the cut register destructively
+pub fn read_into(base_register: &mut Register, merge_cuts: Vec<String>) -> Result<(), Error> {
+    let mut err = Ok(());
+    // Merge any found PathBufs into the cut register destructively
+    let merge_registers: Vec<Register> = merge_cuts
+        .into_iter()
+        .map(|c| {
+            // if we're passing a json string such as '{"key": "value"}'
+            if guess_json_obj(&c) {
+                return Ok(c);
+            }
+            fr::file_to_string(&c).map_err(|e| anyhow!("{} - {}", c, e))
+        })
+        .scan(&mut err, filmreel::until_err)
+        .map(Register::from)
+        .collect::<Result<Vec<Register>, _>>()?;
+    // TODO tidy up scan calling only on file_to_string errors
+    err?;
+
+    base_register.destructive_merge(merge_registers);
 
     Ok(())
 }
@@ -140,7 +231,7 @@ pub fn init_components(components: Vec<String>) -> Result<(Vec<Reel>, Register),
     for comp in components {
         let (reel, register) = parse_component(comp)?;
         // TODO implement single merge
-        comp_reg.destructive_merge(vec![register]);
+        comp_reg.single_merge(register);
         reels.push(reel);
     }
 
@@ -172,7 +263,7 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
     }
     Ok((
         reel,
-        Register::from(fr::file_to_string(cut_path.to_str().unwrap())?).context(format!(
+        Register::try_from(cut_path.clone()).context(format!(
             "component Register::from failure => {:?}",
             cut_path
         ))?,
