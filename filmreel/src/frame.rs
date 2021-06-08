@@ -15,7 +15,7 @@ use std::{
 
 /// Represents the entire deserialized frame file.
 ///
-/// [Frame spec](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame)
+/// [Frame spec](https://github.com/mkatychev/filmReel/blob/master/frame.md#frame)
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Frame<'a> {
     pub protocol:       Protocol,
@@ -161,7 +161,7 @@ impl<'a> TryFrom<PathBuf> for Frame<'a> {
 
 /// Represents the protocol used to send the frame payload.
 ///
-/// [Protocol example](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame-nomenclature)
+/// [Protocol example](https://github.com/mkatychev/filmReel/blob/master/frame.md#frame-nomenclature)
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Protocol {
     #[serde(rename(serialize = "gRPC", deserialize = "gRPC"))]
@@ -174,7 +174,7 @@ pub enum Protocol {
 /// Contains read and write instructions for the [`crate::Register`],
 /// [`InstructionSet`] should be immutable once initialized.
 ///
-/// [Cut Instruction Set](https://github.com/Bestowinc/filmReel/blob/master/frame.md#cut-instruction-set)
+/// [Cut Instruction Set](https://github.com/mkatychev/filmReel/blob/master/frame.md#cut-instruction-set)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 #[serde(default)]
 pub struct InstructionSet<'a> {
@@ -220,7 +220,7 @@ impl<'a> InstructionSet<'a> {
 
 /// Encapsulates the request payload to be sent.
 ///
-/// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
+/// [Request Object](https://github.com/mkatychev/filmReel/blob/master/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Debug, PartialEq)]
 pub struct Request {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -290,7 +290,7 @@ impl Default for Request {
 ///     "DATETIME" => ".response.body.timestamp"});
 /// ```
 ///
-/// [`"from"` key](https://github.com/Bestowinc/filmReel/blob/master/cut.md#from-to)
+/// [`"from"` key](https://github.com/mkatychev/filmReel/blob/master/cut.md#from-to)
 #[macro_export]
 macro_rules! to {
     ({$( $key: expr => $val: expr ),*}) => {{
@@ -312,7 +312,7 @@ macro_rules! to {
 /// let read_instructions = from!["USER_ID", "USER_TOKEN"];
 /// ```
 ///
-/// [`"to"` key](https://github.com/Bestowinc/filmReel/blob/master/cut.md#from-to)
+/// [`"to"` key](https://github.com/mkatychev/filmReel/blob/master/cut.md#from-to)
 // TODO check Cut Register during macro call
 #[macro_export]
 macro_rules! from {

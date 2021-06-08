@@ -12,7 +12,7 @@ use std::{
 
 /// Represents the sequence of Frames to execute.
 ///
-/// [Reel spec](https://github.com/Bestowinc/filmReel/blob/master/Reel.md#reel)
+/// [Reel spec](https://github.com/mkatychev/filmReel/blob/master/Reel.md#reel)
 #[derive(Debug)]
 pub struct Reel {
     dir:    PathBuf,
@@ -255,7 +255,7 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), FrError> {
     Ok((seq_f32, frame_type))
 }
 
-/// [Frame Types](https://github.com/Bestowinc/filmReel/blob/master/Reel.md#frame-type)
+/// [Frame Types](https://github.com/mkatychev/filmReel/blob/master/Reel.md#frame-type)
 #[derive(Clone, PartialEq, Debug)]
 pub enum FrameType {
     Error,

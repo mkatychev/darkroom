@@ -9,7 +9,7 @@ readme = "README.md"
 
 documentation = "https://docs.rs/crate/filmreel/"
 homepage = "https://crates.io/crates/filmreel"
-repository = "https://github.com/Bestowinc/darkroom"
+repository = "https://github.com/mkatychev/darkroom"
 
 [lib]
 name = "filmreel"

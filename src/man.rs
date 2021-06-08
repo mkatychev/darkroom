@@ -62,6 +62,10 @@ const fn storage() -> &'static [u8] {
     include_bytes!("../filmreel_md/extra_concepts/cut_storage.md")
 }
 
+const fn validation() -> &'static [u8] {
+    include_bytes!("../filmreel_md/extra_concepts/validation.md")
+}
+
 const ENTRY_DOCSTRING: &str = r#"<entry>:
     readme
     frame
@@ -75,9 +79,10 @@ const ENTRY_DOCSTRING: &str = r#"<entry>:
     mismatch
     retry-attempts
     storage
+    validation
     "#;
 
-const FILMREEL_REPO: &str = "https://github.com/Bestowinc/filmReel/blob/master/";
+const FILMREEL_REPO: &str = "https://github.com/mkatychev/filmReel/blob/master/";
 
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "man")]
@@ -93,7 +98,8 @@ ignored-variables
 merge-cuts
 mismatch
 retry-attempts
-storage"#)]
+storage
+validation"#)]
 /// return a given manual entry
 pub struct Man {
     /// the manual entry to specify
@@ -120,6 +126,7 @@ impl Man {
             "mis" => mismatch(),               // "mismatch"
             "ret" | "att" => retry_attempts(), // "retry-attempts" | "attempts"
             "sto" => storage(),                // "storage"
+            "par" | "uno" | "val" => validation(),
             _ => {
                 return Err(anyhow!("invalid entry argument\n{}", ENTRY_DOCSTRING));
             }

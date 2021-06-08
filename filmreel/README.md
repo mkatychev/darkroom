@@ -1,6 +1,6 @@
 # filmreel-rust
 
-A [filmReel](https://github.com/Bestowinc/filmReel) implementation for Rust.
+A [filmReel](https://github.com/mkatychev/filmReel) implementation for Rust.
 
 `filmreel` is a pure Rust implementation of the declarative contract testing spec enjoying the memory safety
 property and other benefits from the Rust language.

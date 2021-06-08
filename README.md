@@ -11,6 +11,10 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 * Darkroom `0.3` or greater requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for making gRPC requests.
 * Cloning with submodules: `git clone --recurse-submodules -j8 git://github.com/foo/bar.git`
 
+## Installation
+
+`cargo install --git https://github.com/mkatychev/darkroom`
+
 
 ## CHANGELOG
 

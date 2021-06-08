@@ -1,6 +1,6 @@
 [package]
 name = "darkroom"
-version = "0.7.0"
+version = "0.7.1"
 description = "A contract testing tool built in Rust"
 authors = ["Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
@@ -9,7 +9,7 @@ readme = "README.md"
 
 documentation = "https://docs.rs/crate/darkroom/"
 homepage = "https://crates.io/crates/darkroom"
-repository = "https://github.com/Bestowinc/darkroom/"
+repository = "https://github.com/mkatychev/darkroom/"
 
 [[bin]]
 name = "dark"
