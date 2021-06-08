@@ -1,10 +1,10 @@
-# Darkroom  <img src="https://raw.githubusercontent.com/Bestowinc/darkroom/master/darkroomlogo_mini.svg" width="149" align="right"/>
+# Darkroom  <img src="https://raw.githubusercontent.com/mkatychev/darkroom/master/darkroomlogo_mini.svg" width="149" align="right"/>
 
 [![Crates.io](https://img.shields.io/crates/v/darkroom.svg)](https://crates.io/crates/darkroom) [![Docs.rs](https://docs.rs/darkroom/badge.svg)](https://docs.rs/darkroom/)
 
 
 
-A contract testing tool built in Rust using the [filmReel format](https://github.com/Bestowinc/filmReel).
+A contract testing tool built in Rust using the [filmReel format](https://github.com/mkatychev/filmReel).
 
 ---
 
