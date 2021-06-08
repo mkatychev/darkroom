@@ -72,14 +72,14 @@ Notes:
 # step through the httpbin test in [-i]nteractive mode
 dark -i record ./test_data post
 # to fail at the third httpbin frame, set a timeout of two seconds
-dark -i record ./test_data post --timeout 2
+dark --interactive record ./test_data post --timeout 2
 # multiple merge cuts can be used, with values being overridden left to right (right will have newer values)
 dark --interactive record ./test_data post --cut ./test_data/post.cut.json '{"NEW":"value"}' '{"NEWER": "value", "NEW":"overridden"}'
-# echo the origin "${IP}" that gets written to the cut register from the httpbin.org POST request
+# echo the origin "${IP}" that gets written to the cut register from the httpbin.org POST response
 dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
-# create a stripe token using public API key
-dark --cut-out >(jq) record ./test_data stripe_token
-# create a stripe subscription using the stripoe_token component
+# create a stripe token using the public Stripe API key
+dark --verbose --cut-out >(jq) record ./test_data stripe_token
+# create a stripe subscription preceding it with the stripe_token flow
 dark --cut-out >(jq) record ./test_data stripe_subscription --component './test_data&stripe_token'
 ```
 
