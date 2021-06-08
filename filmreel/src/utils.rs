@@ -179,6 +179,44 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
     Ok(selector_fn)
 }
 
+#[derive(Clone)]
+pub(crate) struct MatchQuery {
+    pub(crate) query: String,
+    // kind: crate::cut::Match<'a>,
+}
+
+impl MatchQuery {
+    pub(crate) fn new() -> Self {
+        Self {
+            query: String::new(),
+        }
+    }
+    pub(crate) fn append<T: Into<MatchIndex>>(&mut self, i: T) {
+        self.query.push('.');
+        self.query.push_str(i.into().to_str());
+    }
+}
+
+pub struct MatchIndex(String);
+
+impl MatchIndex {
+    fn to_str(&self) -> &str {
+        self.to_str()
+    }
+}
+
+impl From<&String> for MatchIndex {
+    fn from(i: &String) -> Self {
+        MatchIndex(format!("'{}'", i.to_string()))
+    }
+}
+
+impl From<usize> for MatchIndex {
+    fn from(i: usize) -> Self {
+        MatchIndex(format!("[{}]", i.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

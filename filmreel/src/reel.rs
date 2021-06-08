@@ -54,7 +54,11 @@ impl Reel {
     pub fn success_only(self) -> Self {
         Self {
             dir:    self.dir,
-            frames: self.frames.into_iter().filter(|x| x.is_success()).collect(),
+            frames: self
+                .frames
+                .into_iter()
+                .filter(MetaFrame::is_success)
+                .collect(),
         }
     }
 
@@ -107,7 +111,7 @@ impl Reel {
 
         for entry in glob(dir_glob.as_ref().to_str().unwrap())
             .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))?
-            .filter_map(|r| r.ok())
+            .filter_map(Result::ok)
             .filter(|path| path.is_file())
         {
             let frame = MetaFrame::try_from(&entry)?;

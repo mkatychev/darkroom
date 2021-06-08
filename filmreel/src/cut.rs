@@ -119,7 +119,7 @@ impl Register {
     /// use in cut operations.
     ///
     /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/master/cut.md#read-operation)
-    pub fn read_match(&self, json_string: &str) -> Result<Vec<Match>, FrError> {
+    pub fn read_match<T: AsRef<str>>(&self, json_string: T) -> Result<Vec<Match>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
@@ -134,7 +134,7 @@ impl Register {
 
         let mut matches: Vec<Match> = Vec::new();
 
-        for mat in VAR_MATCH.captures_iter(json_string) {
+        for mat in VAR_MATCH.captures_iter(json_string.as_ref()) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(esc_char) = mat.name("esc_char") {
                 matches.push(Match::Escape(esc_char.range().clone()));
@@ -373,32 +373,30 @@ impl<'a> Match<'a> {
                 value: match_val,
                 range: r,
                 ..
-            } => match match_val {
-                // if the match value is a string
-                Value::String(match_str) => match json_value {
-                    // and the json value is as well, replace the range within
-                    Value::String(str_val) => {
+            } => {
+                if let Value::String(match_str) = match_val {
+                    // if both match_val AND json_value are strings,
+                    // replace the range within
+                    if let Value::String(str_val) = json_value {
                         str_val.replace_range(r, &match_str);
-                        Ok(())
+                        return Ok(());
                     }
-                    _ => Err(FrError::ReadInstruction(
+                    return Err(FrError::ReadInstruction(
                         "Match::Variable given a non string value to replace",
-                    )),
-                },
-                _ => {
-                    *json_value = match_val.clone();
-                    Ok(())
+                    ));
                 }
-            },
-            Match::Hide => match json_value {
-                Value::String(json_str) => {
+                *json_value = match_val.clone();
+                Ok(())
+            }
+            Match::Hide => {
+                if let Value::String(json_str) = json_value {
                     *json_str = "${_HIDDEN}".to_string();
-                    Ok(())
+                    return Ok(());
                 }
-                _ => Err(FrError::ReadInstruction(
+                Err(FrError::ReadInstruction(
                     "Match::Hide.value is a non string Value",
-                )),
-            },
+                ))
+            }
         }
     }
 }
