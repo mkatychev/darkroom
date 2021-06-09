@@ -8,17 +8,40 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 ---
 
-* Darkroom `0.3` or greater requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for making gRPC requests.
-* Cloning with submodules: `git clone --recurse-submodules -j8 git://github.com/foo/bar.git`
+## [Example](https://github.com/mkatychev/filmreel/blob/master/frame.md#listing-1):
+
+`usr.01s.createuser.fr.json` <sub>[naming a file](https://github.com/mkatychev/filmreel/blob/master/reel.md#reel-nomenclature)</sub>
+
+```jsonc
+{
+  "protocol": "HTTP",                           // communication protocol
+  "cut": {                                      // cut: the k/v store allowing variables to be pulled "from" and pushed "to"
+    "from": ["HTTP_ENDPOINT"],                  // pull the declared GRPC_METHOD variable
+    "to": {
+      "USER_ID": "'response'.'body'.'response'" // store the USER_ID found in body message
+    }
+  },
+  "request": {                                  // request object
+    "body": {
+      "email": "new_user@humanmail.com"
+    },
+    "uri": "POST ${HTTP_ENDPOINT}"              // request uri
+  },
+  "response": {                                 // response object
+    "body": {
+      "message": "created user: ${USER_ID}"
+    },
+    "status": 200                               // response status code
+  }
+}
+```
 
 ## Installation
 
-`cargo install --git https://github.com/mkatychev/darkroom`
+Simple: `cargo install --git https://github.com/mkatychev/darkroom`
+Clone with submodules: `git clone --recurse-submodules -j8 git://github.com/foo/bar.git`
+For gRPC requests: Darkroom `0.3` or greater requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for making gRPC requests.
 
-
-## CHANGELOG
-
-Please see the [CHANGELOG](CHANGELOG.md) for a release history.
 
 ## Usage:
 
@@ -82,6 +105,10 @@ dark --verbose --cut-out >(jq) record ./test_data stripe_token
 # create a stripe subscription preceding it with the stripe_token flow
 dark --cut-out >(jq) record ./test_data stripe_subscription --component './test_data&stripe_token'
 ```
+
+## CHANGELOG
+
+Please see the [CHANGELOG](CHANGELOG.md) for a release history.
 
 <!--
 VERSION="0.6.0"
