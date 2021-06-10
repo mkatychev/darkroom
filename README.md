@@ -13,31 +13,37 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 [`usr.cut.json`](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-register):
 ```jsonc
-{"HTTP_ENDPOINT": "/create_user"} // Cut: the data sharing system allowing one Frame to pass messages to the next Frame
+// Cut: the data sharing system allowing one Frame to pass messages to the next Frame
+{"HTTP_ENDPOINT": "/create_user"}
 ```
 
 [`usr.01s.createuser.fr.json`](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame-nomenclature):
 
 ```jsonc
-{                                          // Frame: the JSON file where input an output expectations are set
-  "protocol": "HTTP",                      // the declared communication protocol
-  "cut": {                                 // declare what variavles should be pulled "from" and pushed "to" `usr.cut.json`
-    "from": ["HTTP_ENDPOINT"],             // pull the declared GRPC_METHOD variable
+// Frame: the JSON file where input an output expectations are set
+{                                          
+  // protocol: the declared communication protocol
+  "protocol": "HTTP",
+  // cut: declare what variables should be pulled "from" and pushed "to" `usr.cut.json`
+  "cut": {                                 
+    // pull the HTTP_ENDPOINT "from" `usr.cut.json`
+    "from": ["HTTP_ENDPOINT"],
+    // push the USER_ID found in .response.body.msg "to" `usr.cut.json`
     "to": {
-      "USER_ID": "'response'.'body'.'msg'" // store the USER_ID found in the response body "message" key
+      "USER_ID": "'response'.'body'.'msg'" 
     }
   },
-  "request": {                             // request object
-    "body": {                              // request body
+  "request": {                             // Request object
+    "body": {                              // Request body
       "email": "new_user@humanmail.com"
     },
-    "uri": "POST ${HTTP_ENDPOINT}"         // request uri, HTTP_ENDPOINT will be replaced by "/create_user"
+    "uri": "POST ${HTTP_ENDPOINT}"         // Request uri: HTTP_ENDPOINT will be replaced by "/create_user"
   },
-  "response": {                            // response object
-    "body": {                              // response body
+  "response": {                            // Response object
+    "body": {                              // Response body
       "msg": "created user: ${USER_ID}"    // USER_ID will be stored if there is a match for the surrounding values
     },
-    "status": 200                          // response status code
+    "status": 200                          // expected response status code
   }
 }
 ```
