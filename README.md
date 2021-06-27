@@ -11,13 +11,13 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 ## [Sample request](https://github.com/mkatychev/filmreel/blob/master/frame.md#listing-1):
 
 
-[`usr.cut.json`](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-register):
+[`usr.cut.json`](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-register):
 ```jsonc
 // Cut: the data sharing system allowing one Frame to pass messages to the next Frame
 {"HTTP_ENDPOINT": "/create_user"}
 ```
 
-[`usr.01s.createuser.fr.json`](https://github.com/Bestowinc/filmReel/blob/master/frame.md#frame-nomenclature):
+[`usr.01s.createuser.fr.json`](https://github.com/mkatychev/filmReel/blob/master/frame.md#frame-nomenclature):
 
 ```jsonc
 // Frame: the JSON file where input an output expectations are set
