@@ -7,7 +7,7 @@ use darkroom::{
 use std::io::{self, Write};
 
 fn main() -> Result<(), Error> {
-    let args: Command = argh::from_env();
+    let args: Command = cargho::from_env();
 
     let opts: Opts = Opts::new(&args);
     let base_params = args.base_params();
