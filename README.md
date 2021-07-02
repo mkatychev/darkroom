@@ -46,7 +46,7 @@ A contract testing tool built in Rust using the [filmReel format](https://github
 
 ## Installation
 
-* Simple: `cargo install --git https://github.com/mkatychev/darkroom`
+* Simple: `cargo install darkroom`
 * Clone with submodules: `git clone --recurse-submodules -j8 https://github.com/mkatychev/darkroom`
 
 &nbsp;

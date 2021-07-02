@@ -1,3 +1,6 @@
+#### `0.7.1`:
+* migrated `argh` to `cargho` crate
+
 #### `0.7.0`:
 * added `dark man` command for additional documentation, can be excluded from build with the `--no-default-features` flag
   * added `dark vreel` command to support virtual reels allowing mixing of arbitrary cuts and frames in a chosen order:
@@ -22,7 +25,6 @@
 
 
 #### `0.4.0`:
-
 * range is added to recordings: `dark record --range "<start_u32>:<end_u32>" ./dir/ my_reel_name`
 
 
@@ -35,7 +37,6 @@
 
 
 #### `0.3.2`:
-
 * request retry attempts now include a `process_response` comparison
 * `ToTakeHiddenColouredJson` is now a generic trait
 * `ToStringHidden` is now a generc trait
@@ -43,32 +44,27 @@
 
 
 #### `0.3.1`:
-
 * frame response body is now optional
 
 
 #### `0.3.0`:
-
 * removed YAML deserialization now that `grpcurl` properly emits JSON errors
 * added retry `attempts` to frame requests: `{"request":{"attempts": {"times": 5, "ms": 500}}}`
 
 
 #### `0.2.3`:
-
 * added component reel support, component reels are generated as a prelude to the provided reel   `dark record --component "<dir>&<reel_name>" ./dir/ my_reel_name`
 * added anyhow error handling
 * `--cut-out` can now be returned on a failed `record` or `take`
 
 
 #### `0.2.1`:
-
 * added hidden variable support, hidden variables are defined with a leading underscore: `${_HIDDEN}`
 * added `dark version` command
 * moved common parameters into the main `dark` command to be shared across subcommands
 
 
 #### `0.2`:
-
 * HTTP support
 * added `form` key to HTTP frame requests: `{"request":{"uri":"POST post","form":{"key":"val","array[0]":"val0"}}}`
 * full JSON object storage and retrieval, the cut register is no longer a flat associative array, strings are still used to map to JSON objects for templating
