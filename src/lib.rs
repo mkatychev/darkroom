@@ -43,7 +43,7 @@ pub const fn version() -> &'static str {
 }
 
 /// Darkroom: A contract testing tool built in Rust using the filmReel format.
-#[derive(cargho::FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, PartialEq, Debug)]
 #[cargho(
     note = "Use `{command_name} man` for details on filmReel, the JSON format.",
     example = "Step through the httpbin test in [-i]nteractive mode:
