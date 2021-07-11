@@ -1,3 +1,6 @@
+#### `0.7.2`:
+* migrated `cargho` back to `argh` since new version was released
+
 #### `0.7.1`:
 * migrated `argh` to `cargho` crate
 

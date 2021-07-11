@@ -1,6 +1,6 @@
 use crate::params::BaseParams;
 use anyhow::{anyhow, Error};
-use cargho::FromArgs;
+use argh::FromArgs;
 use colored_json::{prelude::*, Colour, Styler};
 use serde::Serialize;
 use std::{convert::TryFrom, fs, path::PathBuf};
@@ -44,7 +44,7 @@ pub const fn version() -> &'static str {
 
 /// Darkroom: A contract testing tool built in Rust using the filmReel format.
 #[derive(FromArgs, PartialEq, Debug)]
-#[cargho(
+#[argh(
     note = "Use `{command_name} man` for details on filmReel, the JSON format.",
     example = "Step through the httpbin test in [-i]nteractive mode:
     $ {command_name} -i record ./test_data post",
@@ -55,38 +55,38 @@ pub const fn version() -> &'static str {
 )]
 pub struct Command {
     /// enable verbose output
-    #[cargho(switch, short = 'v')]
+    #[argh(switch, short = 'v')]
     verbose: bool,
 
     /// fallback address passed to the specified protocol
-    #[cargho(positional)]
+    #[argh(positional)]
     address: Option<String>,
 
     /// fallback header passed to the specified protocol
-    #[cargho(option, short = 'H')]
+    #[argh(option, short = 'H')]
     header: Option<String>,
 
     /// output of final cut file
-    #[cargho(option, arg_name = "file")]
+    #[argh(option, arg_name = "file")]
     cut_out: Option<PathBuf>,
 
     /// interactive frame sequence transitions
-    #[cargho(switch, short = 'i')]
+    #[argh(switch, short = 'i')]
     interactive: bool,
 
     /// enable TLS (automatically inferred for HTTP/S)
-    #[cargho(switch)]
+    #[argh(switch)]
     tls: bool,
 
     /// the path to a directory from which proto sources can be imported, for use with --proto flags.
-    #[cargho(option, arg_name = "dir")]
+    #[argh(option, arg_name = "dir")]
     proto_dir: Vec<PathBuf>,
 
     /// pass proto files used for payload forming
-    #[cargho(option, short = 'p', arg_name = "file")]
+    #[argh(option, short = 'p', arg_name = "file")]
     proto: Vec<PathBuf>,
 
-    #[cargho(subcommand)]
+    #[argh(subcommand)]
     pub nested: SubCommand,
 }
 
@@ -125,7 +125,7 @@ impl Opts {
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
-#[cargho(subcommand)]
+#[argh(subcommand)]
 pub enum SubCommand {
     Version(Version),
     Take(Take),
@@ -137,46 +137,46 @@ pub enum SubCommand {
 
 /// Returns CARGO_PKG_VERSION
 #[derive(FromArgs, PartialEq, Debug)]
-#[cargho(subcommand, name = "version")]
+#[argh(subcommand, name = "version")]
 pub struct Version {
-    /// returns cargo package version, this is a temporary cargho workaround
-    #[cargho(switch)]
+    /// returns cargo package version, this is a temporary argh workaround
+    #[argh(switch)]
     version: bool,
 }
 
 /// Takes a single frame, emitting the request then validating the returned response
 #[derive(FromArgs, PartialEq, Debug)]
-#[cargho(subcommand, name = "take")]
-#[cargho(
+#[argh(subcommand, name = "take")]
+#[argh(
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
     $ dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json"
 )]
 pub struct Take {
     /// path of the frame to process
-    #[cargho(positional)]
+    #[argh(positional)]
     frame: PathBuf,
 
     /// filepath of input cut file
-    #[cargho(option, short = 'c')]
+    #[argh(option, short = 'c')]
     cut: Option<PathBuf>,
 
     /// ignore looking for a cut file when running take
-    #[cargho(switch, short = 'n')]
+    #[argh(switch, short = 'n')]
     no_cut: bool,
 
     /// output of take file
-    #[cargho(option, short = 'o', arg_name = "file")]
+    #[argh(option, short = 'o', arg_name = "file")]
     take_out: Option<PathBuf>,
 
     /// filepath of merge cuts
-    #[cargho(positional)]
+    #[argh(positional)]
     merge_cuts: Vec<String>,
 }
 
 /// Attempts to play through an entire Reel sequence running a take for every frame in the sequence
 #[derive(FromArgs, PartialEq, Debug)]
-#[cargho(subcommand, name = "record")]
-#[cargho(
+#[argh(subcommand, name = "record")]
+#[argh(
     example = "Step through the httpbin test in [-i]nteractive mode:
     $ dark -i record ./test_data post",
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
@@ -184,71 +184,71 @@ pub struct Take {
 )]
 pub struct Record {
     /// directory path where frames and (if no explicit cut is provided) the cut are to be found
-    #[cargho(positional)]
+    #[argh(positional)]
     reel_path: PathBuf,
 
     /// name of the reel, used to find corresponding frames for the path provided
-    #[cargho(positional)]
+    #[argh(positional)]
     reel_name: String,
 
     /// filepath of input cut file
-    #[cargho(option, short = 'c')]
+    #[argh(option, short = 'c')]
     cut: Option<PathBuf>,
 
     /// repeatable component reel pattern using an ampersand separator: --component "<dir>&<reel_name>"
-    #[cargho(option, short = 'b')]
+    #[argh(option, short = 'b')]
     component: Vec<String>,
 
     /// filepath of merge cuts
-    #[cargho(positional)]
+    #[argh(positional)]
     merge_cuts: Vec<String>,
 
     /// output directory for successful takes
-    #[cargho(option, short = 'o')]
+    #[argh(option, short = 'o')]
     take_out: Option<PathBuf>,
 
     /// the range (inclusive) of frames that a record session will use, colon separated: --range <start>:<end> --range <start>:
-    #[cargho(option, short = 'r')]
+    #[argh(option, short = 'r')]
     range: Option<String>,
 
     /// client request timeout in seconds, --timeout 0 disables request timeout [default: 30]
-    #[cargho(option, short = 't', default = "30")]
+    #[argh(option, short = 't', default = "30")]
     timeout: u64,
 
     /// print timestamp at take start, error return, and reel completion
-    #[cargho(switch, short = 's')]
+    #[argh(switch, short = 's')]
     timestamp: bool,
 
     /// print total time elapsed from record start to completion
-    #[cargho(switch, short = 'd')]
+    #[argh(switch, short = 'd')]
     duration: bool,
 }
 
 /// Attempts to play through an entire VirtualReel sequence running a take for every frame in the sequence
 #[derive(FromArgs, PartialEq, Debug)]
-#[cargho(subcommand, name = "vrecord")]
-#[cargho(example = "Run the post reel in a v-reel setup:
+#[argh(subcommand, name = "vrecord")]
+#[argh(example = "Run the post reel in a v-reel setup:
 $ {command_name} ./test_data/post.vr.json
 $ {command_name} ./test_data/alt_post.vr.json")]
 pub struct VirtualRecord {
     /// filepath or json string of VirtualReel
-    #[cargho(positional)]
+    #[argh(positional)]
     vreel: String,
 
     /// output directory for successful takes
-    #[cargho(option, short = 'o')]
+    #[argh(option, short = 'o')]
     take_out: Option<PathBuf>,
 
     /// client request timeout in seconds, --timeout 0 disables request timeout [default: 30]
-    #[cargho(option, short = 't', default = "30")]
+    #[argh(option, short = 't', default = "30")]
     timeout: u64,
 
     /// print timestamp at take start, error return, and reel completion
-    #[cargho(switch, short = 's')]
+    #[argh(switch, short = 's')]
     timestamp: bool,
 
     /// print total time elapsed from record start to completion
-    #[cargho(switch, short = 'd')]
+    #[argh(switch, short = 'd')]
     duration: bool,
 }
 

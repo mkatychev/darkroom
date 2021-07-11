@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Error};
-use cargho::FromArgs;
+use argh::FromArgs;
 use mdcat::{push_tty, Environment, ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
 use minus::{page_all, Pager};
 use pulldown_cmark::{Event, Options, Parser, Tag};
@@ -85,8 +85,8 @@ const ENTRY_DOCSTRING: &str = r#"<entry>:
 const FILMREEL_REPO: &str = "https://github.com/mkatychev/filmReel/blob/master/";
 
 #[derive(FromArgs, PartialEq, Debug)]
-#[cargho(subcommand, name = "man")]
-#[cargho(note = r#"<entry>:
+#[argh(subcommand, name = "man")]
+#[argh(note = r#"<entry>:
 readme
 frame
 cut
@@ -103,10 +103,10 @@ validation"#)]
 /// return a given manual entry
 pub struct Man {
     /// the manual entry to specify
-    #[cargho(positional, default = "String::from(\"readme\")")]
+    #[argh(positional, default = "String::from(\"readme\")")]
     pub entry: String,
     /// return the TLDR variant of: reel, frame, and cut
-    #[cargho(switch, short = 'q')]
+    #[argh(switch, short = 'q')]
     pub quick: bool,
 }
 
