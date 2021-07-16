@@ -4,8 +4,7 @@ use filmreel::{frame::Request, response::Response};
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde_json::json;
-use std::{ffi::OsStr, path::PathBuf, process::Command};
-use std::{collections::HashMap};
+use std::{collections::HashMap, ffi::OsString, path::PathBuf, process::Command};
 
 /// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), Error> {
@@ -23,48 +22,47 @@ pub fn validate_grpcurl() -> Result<(), Error> {
 pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
     validate_grpcurl().context("grpcurl request failure")?;
 
-    let mut flags: Vec<&OsStr> = vec![OsStr::new("-format-error")];
+    let mut flags: Vec<OsString> = vec![OsString::from("-format-error")];
 
     if !prm.tls {
-        flags.push(OsStr::new("-plaintext"));
+        flags.push(OsString::from("-plaintext"));
     }
 
     // prepend "-import-path" to every protos PathBuf provided
     if let Some(proto_path) = prm.proto_path {
         flags.extend(iter_path_args(
-            OsStr::new("-import-path"),
-            proto_path.iter().map(OsStr::new),
+            OsString::from("-import-path"),
+            proto_path.iter().map(OsString::from),
         ));
     }
 
     // prepend "-proto" to every protos PathBuf provided
     if let Some(protos) = prm.proto {
         flags.extend(iter_path_args(
-            OsStr::new("-proto"),
-            protos.iter().map(OsStr::new),
+            OsString::from("-proto"),
+            protos.iter().map(OsString::from),
         ));
     }
 
-    let mut headers = Vec::<String>::new();
+    // let mut headers: Vec<String> = Vec::new();
     if let Some(h) = &prm.header {
-        let result: Result<HashMap<String, String>, serde_json::Error> = serde_json::from_str(&h);
-        match result {
-            Result::Ok(map) => {
-                for (key, value) in &map {
-                    headers.push(format!("{}: {}", key, value))
-                }
-            },
-            Result::Err(_) => {
-                headers.push(h.replace("\"", ""))
+        if crate::guess_json_obj(h) {
+            let map: HashMap<String, String> = serde_json::from_str(&h)?;
+            for (key, value) in &map {
+                flags.push(OsString::from("-H"));
+                flags.push(format!("{}: {}", key, value).into())
             }
-        };
-    }
+        } else {
+            flags.push(OsString::from("-H"));
+            flags.push(h.replace("\"", "").into());
+        }
+    };
 
-    let headers2: Vec<&str> = headers.iter().map(|s| &**s).collect();
-    for h in headers2 {
-        flags.push(OsStr::new("-H"));
-        flags.push(OsStr::new(h));
-    }
+    // let headers2: Vec<&String> = headers.iter().map(|s| s).collect();
+    // for h in headers {
+    //     flags.push(OsString::from("-H"));
+    //     flags.push(OsString::from(h));
+    // }
 
     let req_cmd = Command::new("grpcurl")
         .args(flags)
