@@ -1,3 +1,6 @@
+#### `0.7.3`:
+* changed valid cut variable regex from  `[A-Za-z_]` to `[A-Za-z_0-9]` as alpha _numerics_ were the intended format
+
 #### `0.7.2`:
 * migrated `cargho` back to `argh` since new version was released
 
