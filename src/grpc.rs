@@ -44,7 +44,6 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
         ));
     }
 
-    // let mut headers: Vec<String> = Vec::new();
     if let Some(h) = &prm.header {
         if crate::guess_json_obj(h) {
             let map: HashMap<String, String> = serde_json::from_str(&h)?;
@@ -57,12 +56,6 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
             flags.push(h.replace("\"", "").into());
         }
     };
-
-    // let headers2: Vec<&String> = headers.iter().map(|s| s).collect();
-    // for h in headers {
-    //     flags.push(OsString::from("-H"));
-    //     flags.push(OsString::from(h));
-    // }
 
     let req_cmd = Command::new("grpcurl")
         .args(flags)
