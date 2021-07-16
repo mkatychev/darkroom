@@ -50,7 +50,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: install grpcurl
-        run: wget -c https://github.com/fullstorydev/grpcurl/releases/download/v1.8.1/grpcurl_1.8.1_linux_x86_64.tar.gz -O - | tar -xz --directory=/usr/bin
+        run: wget -c https://github.com/fullstorydev/grpcurl/releases/download/v1.8.1/grpcurl_1.8.1_linux_x86_64.tar.gz -O - | tar -xz --directory=/usr/local/bin
       - name: httpbin post
         run: cargo run -- record ./test_data post
       - name: httpbin take
