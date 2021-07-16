@@ -1,6 +1,6 @@
 [package]
 name = "filmreel"
-version = "0.6.1"
+version = "0.6.2"
 description = "filmReel parser for Rust"
 authors = ["Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
