@@ -16,7 +16,7 @@ pub struct Register {
 }
 
 const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscores are permitted \
-                            in Cut Variable names => [A-Za-z_]";
+                            in Cut Variable names => [A-Za-z_0-9]";
 
 /// The Register's map of [Cut Variables]
 /// (https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
@@ -123,10 +123,10 @@ impl Register {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
-                (?P<esc_char>\\)?   # escape character
-                (?P<leading_b>\$\{) # leading brace
-                (?P<cut_var>[A-za-z_0-9]+) # Cut Variable
-                (?P<trailing_b>})?  # trailing brace
+                (?P<esc_char>\\)?          # escape character
+                (?P<leading_b>\$\{)        # leading brace
+                (?P<cut_var>[A-Za-z_0-9]+) # Cut Variable
+                (?P<trailing_b>})?         # trailing brace
                 "
             )
             .unwrap();
@@ -276,7 +276,7 @@ impl Register {
     pub fn write_operation(&mut self, key: &str, val: Value) -> Result<Option<Value>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
-            static ref KEY_CHECK: Regex = Regex::new(r"^[A-Za-z_]+$").unwrap();
+            static ref KEY_CHECK: Regex = Regex::new(r"^[A-Za-z_0-9]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
             return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()));
@@ -288,7 +288,7 @@ impl Register {
     pub fn flush_ignored(&mut self) {
         lazy_static! {
         // if key value consists of only lowercase letters and underscores
-            static ref KEY_IGNORE: Regex = Regex::new(r"^[a-z_]+$").unwrap();
+            static ref KEY_IGNORE: Regex = Regex::new(r"^[a-z_0-9]+$").unwrap();
         }
         let mut remove: Vec<String> = vec![];
         for (k, _) in self.vars.iter() {
