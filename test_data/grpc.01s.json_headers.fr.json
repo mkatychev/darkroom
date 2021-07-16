@@ -1,0 +1,38 @@
+{
+  "cut": {
+    "from": [
+      "ADDRESS"
+    ]
+  },
+  "protocol": "gRPC",
+  "request": {
+    "uri": "grpcbin.GRPCBin/HeadersUnary",
+    "entrypoint": "${ADDRESS}",
+    "header": {
+      "Header1": "header 1",
+      "Header2": "header 2"
+    }
+  },
+  "response": {
+    "validation": {
+      "'response'.'body'.'Metadata'": {
+        "partial": true
+      }
+    },
+    "body": {
+      "Metadata": {
+        "header1": {
+          "values": [
+            "header 1"
+          ]
+        },
+        "header2": {
+          "values": [
+            "header 2"
+          ]
+        }
+      }
+    },
+    "status": 0
+  }
+}

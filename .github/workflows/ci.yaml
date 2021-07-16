@@ -57,6 +57,8 @@ jobs:
         run: cargo run -- vrecord ./test_data/post.vr.json
       - name: httpbin vrecord alt
         run: cargo run -- vrecord ./test_data/alt_post.vr.json
+      - name: grpcbin headers
+        run: cargo run -- record ./test_data grpc
   lint:
     name: lint
     runs-on: ubuntu-latest

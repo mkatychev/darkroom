@@ -5,6 +5,7 @@ use lazy_static::lazy_static;
 use serde::Deserialize;
 use serde_json::json;
 use std::{ffi::OsStr, path::PathBuf, process::Command};
+use std::{collections::HashMap};
 
 /// Checks to see if grpcurl is in the system path
 pub fn validate_grpcurl() -> Result<(), Error> {
@@ -44,9 +45,23 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
         ));
     }
 
-    let headers = prm.header.as_ref().map(|h| h.replace("\"", ""));
+    let mut headers = Vec::<String>::new();
+    if let Some(h) = &prm.header {
+        let result: Result<HashMap<String, String>, serde_json::Error> = serde_json::from_str(&h);
+        match result {
+            Result::Ok(map) => {
+                for (key, value) in &map {
+                    headers.push(format!("{}: {}", key, value))
+                }
+            },
+            Result::Err(_) => {
+                headers.push(h.replace("\"", ""))
+            }
+        };
+    }
 
-    if let Some(h) = &headers {
+    let headers2: Vec<&str> = headers.iter().map(|s| &**s).collect();
+    for h in headers2 {
         flags.push(OsStr::new("-H"));
         flags.push(OsStr::new(h));
     }

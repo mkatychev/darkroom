@@ -1,0 +1,11 @@
+{
+  "name": "grpc_vreel",
+  "path": "./test_data",
+  "frames": [
+    "grpc.01s.multiple_headers.fr.json",
+    "grpc.02s.string_header.fr.json"
+  ],
+  "cut": {
+    "ADDRESS": "grpcb.in:9001"
+  }
+}
