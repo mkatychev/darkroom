@@ -1,0 +1,34 @@
+{
+  "cut": {
+    "from": [
+      "ADDRESS",
+      "URI_METHOD"
+    ]
+  },
+  "protocol": "HTTP",
+  "request": {
+    "uri": "${URI_METHOD} /post",
+    "entrypoint": "${ADDRESS}",
+    "header": {
+      "Header1": "header 1",
+      "Header2": "header 2"
+    }
+  },
+  "response": {
+    "validation": {
+      "'response'.'body'": {
+        "partial": true
+      },
+      "'response'.'body'.'headers'": {
+        "partial": true
+      }
+    },
+    "body": {
+      "headers": {
+          "Header1": "header 1",
+          "Header2": "header 2"
+        }
+    },
+    "status": 200
+  }
+}
