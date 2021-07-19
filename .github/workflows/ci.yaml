@@ -72,7 +72,7 @@ jobs:
           components: clippy
       - run: cargo clippy --all
   release:
-    needs: [test]
+    # needs: [test]
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
@@ -101,13 +101,18 @@ jobs:
       - name: Get the tag name
         run: echo "TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       - name: Setup Rust
-        uses: hecrj/setup-rust-action@master
-        with:
-          rust-version: ${{ matrix.rust }}
+        uses: actions-rs/toolchain@v1
+        with: # use nightly rustfmt rules
+          toolchain: stable
+          target: ${{ matrix.target }}
+          profile: minimal
+          components: rustfmt
       - name: Configure Rustup
         run: rustup target add ${{ matrix.target }}
       - name: Checkout
         uses: actions/checkout@v1
+        with:
+          submodules: recursive
       - name: Build
         run: cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}
       - name: Package
