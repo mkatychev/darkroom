@@ -44,7 +44,7 @@ jobs:
           submodules: recursive
       - name: Install OpenSSL
         if: ${{ matrix.os=='ubuntu-latest' }}
-        run: sudo apt-get install pkg-config libssl-dev
+        run: sudo apt-get install musl-tools
       - name: Build
         run: cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}
       - name: Package
