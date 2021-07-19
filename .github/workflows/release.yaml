@@ -39,16 +39,19 @@ jobs:
           target: ${{ matrix.target }}
           profile: minimal
           components: rustfmt
-      - uses: actions/checkout@v1
+      - name: Checkout
+        uses: actions/checkout@v1
         with:
           submodules: recursive
-      - name: Build musl
-        uses: stevenleadbeater/rust-musl-builder@master
+      - name: Install OpenSSL
         if: ${{ matrix.os=='ubuntu-latest' }}
-        with:
-          args: /bin/bash -c "cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}"
+        run: |
+          ls
+          pwd
+          sudo apt-get install musl-tools 
+          cd ${{ env.GITHUB_WORKSPACE }} && sudo musl-openssl.sh 
+          echo "PKG_CONFIG_ALLOW_CROSS=1\nOPENSSL_STATIC=true\nOPENSSL_DIR=/musl" >> $GITHUB_ENV
       - name: Build
-        if: ${{ matrix.os!='ubuntu-latest' }}
         run: cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}
       - name: Package
         shell: bash
