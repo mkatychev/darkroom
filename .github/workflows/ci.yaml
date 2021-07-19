@@ -71,3 +71,61 @@ jobs:
           profile: minimal
           components: clippy
       - run: cargo clippy --all
+  release:
+    needs: [test]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        features: [all-features, no-default-features]
+        include:
+          - features: all-features
+            feat-arg: ""
+            feat-archive: ""
+          - features: no-default-features
+            feat-arg: --no-default-features
+            feat-archive: -no-default-features
+          - os: ubuntu-latest
+            rust: stable
+            target: x86_64-unknown-linux-musl
+            bin: dark
+          - os: windows-latest
+            rust: stable
+            target: x86_64-pc-windows-msvc
+            bin: dark.exe
+          - os: macOS-latest
+            rust: stable
+            target: x86_64-apple-darwin
+            bin: dark
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Get the tag name
+        run: echo "TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+      - name: Setup Rust
+        uses: hecrj/setup-rust-action@master
+        with:
+          rust-version: ${{ matrix.rust }}
+      - name: Configure Rustup
+        run: rustup target add ${{ matrix.target }}
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Build
+        run: cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          strip target/${{ matrix.target }}/release/${{ matrix.bin }}
+          cd target/${{ matrix.target }}/release
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]
+          then
+            7z a ../../../darkroom-${{ env.TAG }}${{ matrix.feat-archive }}-${{ matrix.target }} ${{ matrix.bin }}
+          else
+            tar czvf ../../../darkroom-${{ env.TAG }}${{ matrix.feat-archive }}-${{ matrix.target }} ${{ matrix.bin }}
+          fi
+          cd -
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: "dark*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
