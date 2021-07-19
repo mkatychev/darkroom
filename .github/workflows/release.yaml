@@ -48,7 +48,8 @@ jobs:
         run: |
           ls
           pwd
-          sudo musl-openssl.sh 
+          echo $GITHUB_WORKSPACE/musl-openssl.sh 
+          sudo $GITHUB_WORKSPACE/musl-openssl.sh 
           sudo apt-get install musl-tools 
           echo "PKG_CONFIG_ALLOW_CROSS=1\nOPENSSL_STATIC=true\nOPENSSL_DIR=/musl" >> $GITHUB_ENV
       - name: Build
