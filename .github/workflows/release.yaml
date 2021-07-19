@@ -32,18 +32,12 @@ jobs:
     steps:
       - name: Get the tag name
         run: echo "TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with: # use nightly rustfmt rules
-          toolchain: stable
-          target: ${{ matrix.target }}
-          profile: minimal
-          components: rustfmt
       - name: Checkout
         uses: actions/checkout@v1
         with:
           submodules: recursive
       - name: Install OpenSSL
+        uses: actions/checkout@v1
         if: ${{ matrix.os=='ubuntu-latest' }}
         run: |
           ls
@@ -52,6 +46,13 @@ jobs:
           sudo $GITHUB_WORKSPACE/musl-openssl.sh 
           sudo apt-get install musl-tools 
           echo "PKG_CONFIG_ALLOW_CROSS=1\nOPENSSL_STATIC=true\nOPENSSL_DIR=/musl" >> $GITHUB_ENV
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with: # use nightly rustfmt rules
+          toolchain: stable
+          target: ${{ matrix.target }}
+          profile: minimal
+          components: rustfmt
       - name: Build
         run: cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}
       - name: Package
