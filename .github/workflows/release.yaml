@@ -6,7 +6,7 @@ jobs:
   release:
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        # os: [ubuntu-latest, macOS-latest, windows-latest]
         os: [ubuntu-latest]
         features: [all-features, no-default-features]
         include:
