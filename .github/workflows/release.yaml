@@ -20,14 +20,14 @@ jobs:
             rust: stable
             target: x86_64-unknown-linux-musl
             bin: dark
-          - os: windows-latest
-            rust: stable
-            target: x86_64-pc-windows-msvc
-            bin: dark.exe
-          - os: macOS-latest
-            rust: stable
-            target: x86_64-apple-darwin
-            bin: dark
+          # - os: windows-latest
+          #   rust: stable
+          #   target: x86_64-pc-windows-msvc
+          #   bin: dark.exe
+          # - os: macOS-latest
+          #   rust: stable
+          #   target: x86_64-apple-darwin
+          #   bin: dark
     runs-on: ${{ matrix.os }}
     steps:
       - name: Get the tag name
@@ -46,6 +46,8 @@ jobs:
       - name: Install OpenSSL
         if: ${{ matrix.os=='ubuntu-latest' }}
         run: |
+          ls
+          pwd
           sudo apt-get install musl-tools 
           sudo ./musl-openssl.sh 
           echo "PKG_CONFIG_ALLOW_CROSS=1\nOPENSSL_STATIC=true\nOPENSSL_DIR=/musl" >> $GITHUB_ENV
