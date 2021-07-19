@@ -37,13 +37,12 @@ jobs:
         with:
           submodules: recursive
       - name: Install OpenSSL
-        uses: actions/checkout@v1
         if: ${{ matrix.os=='ubuntu-latest' }}
         run: |
           ls
           pwd
           echo $GITHUB_WORKSPACE/musl-openssl.sh 
-          sudo $GITHUB_WORKSPACE/musl-openssl.sh 
+          sudo cat $GITHUB_WORKSPACE/musl-openssl.sh 
           sudo apt-get install musl-tools 
           echo "PKG_CONFIG_ALLOW_CROSS=1\nOPENSSL_STATIC=true\nOPENSSL_DIR=/musl" >> $GITHUB_ENV
       - name: Setup Rust
