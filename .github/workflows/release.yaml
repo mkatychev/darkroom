@@ -43,12 +43,10 @@ jobs:
         with:
           submodules: recursive
       - name: Build musl
-        uses: actions-rs/cargo@v1
+        uses: stevenleadbeater/rust-musl-builder@master
         if: ${{ matrix.os=='ubuntu-latest' }}
         with:
-          use-cross: true
-          command: build
-          args: --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}
+          args: /bin/bash -c "cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}"
       - name: Build
         if: ${{ matrix.os!='ubuntu-latest' }}
         run: cargo build --release ${{ matrix.feat-arg }} --target ${{ matrix.target }}
