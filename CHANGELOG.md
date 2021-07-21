@@ -1,3 +1,6 @@
+#### `0.7.4`:
+* support multiple headers for gRPC requests
+
 #### `0.7.3`:
 * changed valid cut variable regex from  `[A-Za-z_]` to `[A-Za-z_0-9]` as alpha _numerics_ were the intended format
 
