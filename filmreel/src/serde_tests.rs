@@ -22,7 +22,7 @@ macro_rules! test_ser_de {
             }
             #[test]
             fn [<$name _de>]() {
-                crate::serde_tests::test_deserialize($struct, $json_str)
+                $crate::serde_tests::test_deserialize($struct, $json_str)
             }
         }
     };

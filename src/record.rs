@@ -93,7 +93,7 @@ pub fn cmd_vrecord(cmd: VirtualRecord, mut base_params: BaseParams) -> Result<()
     )
 }
 
-/// run_record runs through a Reel sequence using the darkroom::Record or darkroom::VirtualRecord structs
+/// runs through a [fr::Reel] sequence using the [crate::Record] or [crate::VirtualRecord] structs
 pub fn run_record(mut runner: RecordRunner, base_params: BaseParams) -> Result<(), Error> {
     let start = Instant::now();
     let duration = runner.duration;
@@ -159,7 +159,7 @@ pub fn run_record(mut runner: RecordRunner, base_params: BaseParams) -> Result<(
     Ok(())
 }
 
-// merge any found PathBufs into the cut register destructively
+// merge any found [PathBuf]s into the cut register destructively
 pub fn read_into(base_register: &mut Register, merge_cuts: Vec<String>) -> Result<(), Error> {
     let mut err = Ok(());
     // Merge any found PathBufs into the cut register destructively
@@ -183,7 +183,7 @@ pub fn read_into(base_register: &mut Register, merge_cuts: Vec<String>) -> Resul
     Ok(())
 }
 
-/// write_cut dumps the in memory Cut Regiser to the PathBuf provided.
+/// write_cut dumps the in memory [Regiser] to the [PathBuf] provided.
 pub fn write_cut<T>(
     cut_out: &Option<PathBuf>,
     cut_register: &Register,

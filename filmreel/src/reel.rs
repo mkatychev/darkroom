@@ -106,9 +106,11 @@ impl Reel {
         let mut frames = Vec::new();
 
         for entry in glob(dir_glob.as_ref().to_str().unwrap())
-            .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))?
-            .filter_map(|r| r.ok())
+            .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))? // -> Result<PathBuf, FrErrror>?
+            .filter_map(|r| r.ok()) // Ok(PathBuf) -> Some(PathBuf)
             .filter(|path| path.is_file())
+        // PathBuf -> PathBuf
+        // -> PathBuf
         {
             let frame = MetaFrame::try_from(&entry)?;
             if permit_frame(frame.step_f32.trunc() as u32) {
