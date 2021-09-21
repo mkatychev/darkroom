@@ -163,7 +163,7 @@ impl Man {
 
         let mut pager = Pager::new();
         let mut buf = Vec::new();
-        push_tty(settings, &env, &mut buf, parser)?;
+        push_tty(settings, env, &mut buf, parser)?;
         pager.lines = String::from_utf8(buf)?;
         pager.prompt = "darkroom".to_string();
 

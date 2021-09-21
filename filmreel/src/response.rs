@@ -206,7 +206,7 @@ impl Validator {
 
                 for k in other_selection
                     .keys() // retain keys that are not found in preserve_keys
-                    .filter(|k| !preserve_keys.contains(&k))
+                    .filter(|k| !preserve_keys.contains(k))
                     .cloned()
                     .collect::<Vec<String>>()
                 {

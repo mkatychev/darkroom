@@ -70,10 +70,10 @@ pub fn process_response<'a, 'b>(
         frame.cut.hydrate_writes = true;
 
         if let Some(response_body) = &mut frame.response.body {
-            Frame::hydrate_val(&frame.cut, response_body, &cut_register, false)?;
+            Frame::hydrate_val(&frame.cut, response_body, cut_register, false)?;
         }
         if let Some(etc) = &mut frame.response.etc {
-            Frame::hydrate_val(&frame.cut, etc, &cut_register, false)?;
+            Frame::hydrate_val(&frame.cut, etc, cut_register, false)?;
         }
     }
 
@@ -137,7 +137,7 @@ pub fn run_take<'a>(
     let hidden_frame: Option<Frame> = if interactive || verbose {
         unhydrated_frame = Some(frame.clone());
         let mut hydrated = frame.clone();
-        hydrated.hydrate(&register, true)?;
+        hydrated.hydrate(register, true)?;
         Some(hydrated)
     } else {
         None
@@ -148,7 +148,7 @@ pub fn run_take<'a>(
     info!("{}", "=======================".magenta());
     info!("HYDRATING...");
     info!("{}", "=======================".magenta());
-    frame.hydrate(&register, false)?;
+    frame.hydrate(register, false)?;
     // init params after hydration so that  cut register params can be pulled otherwise this can
     // happen: Params { address: "${ADDRESS}", }
     let params = base_params.init(frame.get_request())?;
