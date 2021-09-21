@@ -28,11 +28,14 @@ pub struct Frame<'a> {
 const MISSING_VAR_ERR: &str = "Variable is not present in InstructionSet";
 const DUPE_VAR_REFERENCE_ERR: &str =
     "Cut Variables cannot be referenced by both read and write instructions";
+const DUPE_KEY_UPON_HYDRATION_ERR: &str = "Hydrated key produced a duplicate key value";
+const INVALID_KEY_HYDRATION_ERR: &str =
+    "Key attempted to be hydrated with a non-string cut variable";
 
 impl<'a> Frame<'a> {
     /// Creates a new Frame object running post deserialization validations
-    pub fn new(json_string: &str) -> Result<Frame, FrError> {
-        let frame: Frame = serde_json::from_str(json_string)?;
+    pub fn new(json_string: &str) -> Result<Self, FrError> {
+        let frame: Self = serde_json::from_str(json_string)?;
         frame.cut.validate()?;
         frame.response.validate()?;
         Ok(frame)
@@ -96,8 +99,38 @@ impl<'a> Frame<'a> {
     ) -> Result<(), FrError> {
         match val {
             Value::Object(map) => {
-                for (_, val) in map.iter_mut() {
+                let keys: HashSet<String> = map.keys().cloned().collect();
+                let mut replace_keys: Vec<(&String, String)> = Vec::new(); // Vec<(old_key, new_key)>
+                for (key, val) in map.iter_mut() {
+                    // replace value first
                     Self::hydrate_val(set, val, reg, hide)?;
+                    let mut new_key = Value::String(key.clone());
+                    let key_changed = Self::hydrate_str(set, &mut new_key, reg, hide)?;
+                    // no changes made to new_key
+                    if !key_changed {
+                        continue;
+                    }
+                    match new_key {
+                        // if new_key is a duplicate of existing keys
+                        Value::String(new_key) if keys.contains(&new_key) => {
+                            return Err(FrError::FrameParsef(
+                                DUPE_KEY_UPON_HYDRATION_ERR,
+                                new_key.into(),
+                            ));
+                        }
+                        Value::String(new_key) => {
+                            replace_keys.push((keys.get(key).unwrap(), new_key));
+                        }
+                        _ => return Err(FrError::FrameParse(INVALID_KEY_HYDRATION_ERR)),
+                    }
+                }
+                // newly_generated keys will now be inserted into the map
+                // removing the old key first
+                for (old_key, new_key) in replace_keys.into_iter() {
+                    // key hash hash to be recomputed
+                    // thus an explicit HashSet::remove is required
+                    let val = map.remove(old_key).unwrap();
+                    map.insert(new_key, val);
                 }
                 Ok(())
             }
@@ -118,12 +151,16 @@ impl<'a> Frame<'a> {
     /// Performs a Register.read_operation on the entire String
     fn hydrate_str(
         set: &InstructionSet,
-        string: &mut Value,
+        val: &mut Value,
         reg: &Register,
         hide: bool,
-    ) -> Result<(), FrError> {
+    ) -> Result<bool, FrError> {
         {
-            let matches = reg.read_match(&string.as_str().expect("hydrate_str None found"))?;
+            let matches = reg.read_match(&val.as_str().expect("hydrate_str None found"))?;
+            // return false if no matches found
+            if matches.is_empty() {
+                return Ok(false);
+            }
             // Check if the InstructionSet has the given variable
             for mat in matches.into_iter() {
                 if let Some(n) = mat.name() {
@@ -133,17 +170,17 @@ impl<'a> Frame<'a> {
                     // Now that the cut var is confirmed to exist in the entire instruction set
                     // perform read operation ony if cut var is present in read instructions
                     if set.reads.contains(n) {
-                        reg.read_operation(mat, string, hide)?;
+                        reg.read_operation(mat, val, hide)?;
                         continue;
                     }
                     // if variable name is found in the "to" field of the InstructionSet
                     // AND `hydrate_writes` is true
                     if set.writes.contains_key(n) && set.hydrate_writes {
-                        reg.read_operation(mat, string, hide)?;
+                        reg.read_operation(mat, val, hide)?;
                     }
                 }
             }
-            Ok(())
+            Ok(true)
         }
     }
 }
@@ -413,6 +450,66 @@ mod tests {
 
                 response: Response {
                     body: Some(json!("${RESPONSE}")),
+                    status: 0,
+                    ..Default::default()
+                },
+            },
+            frame
+        );
+    }
+    const KEY_VAR_JSON: &str = r#"
+{
+  "protocol": "gRPC",
+  "cut": {
+    "from": [
+      "KEY",
+      "KEY_2"
+    ]
+  },
+  "request": {
+    "body": {},
+    "uri": ""
+  },
+  "response": {
+    "body": {
+        "${KEY}": "val",
+        "${KEY_2}": "val_2",
+        "${KEY}${KEY_2}": "val_3"
+    },
+    "status": 0
+  }
+}
+    "#;
+    // "OBJECT"=>json!({ "key": "value"})
+    #[test]
+    fn test_key_hydrate() {
+        let reg = register!({
+            "KEY"=> "key",
+            "KEY_2"=> "key_2"
+        });
+        let mut frame: Frame = Frame::new(KEY_VAR_JSON).unwrap();
+        // TODO add hidden test
+        frame.hydrate(&reg, false).unwrap();
+        assert_eq!(
+            Frame {
+                protocol: Protocol::GRPC,
+                cut:      InstructionSet {
+                    reads:          from!["KEY", "KEY_2"],
+                    writes:         HashMap::new(),
+                    hydrate_writes: false,
+                },
+                request:  Request {
+                    body: Some(json!({})),
+                    uri: "".into(),
+                    ..Default::default()
+                },
+
+                response: Response {
+                    body: Some(json!( {
+                       "key": "val",
+                       "key_2": "val_2",
+                       "keykey_2": "val_3"
+                    })),
                     status: 0,
                     ..Default::default()
                 },
