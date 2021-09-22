@@ -10,6 +10,7 @@
   "cut": {
     "URI_METHOD": "POST",
     "ADDRESS": "https://httpbin.org",
-    "BODY": "the exact body that is sent"
+    "BODY": "the exact body that is sent",
+    "ORIGIN_KEY": "origin"
   }
 }

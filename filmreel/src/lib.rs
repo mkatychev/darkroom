@@ -13,7 +13,7 @@ Add the following to the Cargo.toml of your project:
 
 ```toml
 [dependencies]
-filmreel = "0.6"
+filmreel = "0.7"
 ```
 
 */
