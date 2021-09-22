@@ -3,6 +3,7 @@
     "from": [
       "ADDRESS",
       "BODY",
+      "ORIGIN_KEY",
       "URI_METHOD"
     ],
     "to": {
@@ -25,7 +26,7 @@
       "args": {},
       "data": "\"${BODY}\"",
       "json": "${BODY}",
-      "origin": "${IP}"
+      "${ORIGIN_KEY}": "${IP}"
     },
     "status": 200
   }

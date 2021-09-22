@@ -121,7 +121,7 @@ impl<'a> Frame<'a> {
                         _ => return Err(FrError::FrameParse(INVALID_KEY_HYDRATION_ERR)),
                     }
                 }
-                // newly_generated keys will now be inserted into the map
+                // newly generated keys will now be inserted into the map
                 // removing the old key first
                 for (old_key, new_key) in replace_keys.into_iter() {
                     // key hash has to be recomputed
