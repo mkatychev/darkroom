@@ -1,6 +1,6 @@
 #### `0.8.0`:
-* added cut variable functionality to JSON keys, keys can reference multiple
-  cut variables so long as the variables are all strings: `"${KEY}${KEY_2}": "val_3"`
+* added cut variable functionality to JSON keys, with also the option to reference
+  multiple cut variables so long as the variables are all strings: `"${KEY}${KEY_2}": "val_3"`
 
 #### `0.7.4`:
 * support multiple headers for gRPC requests
