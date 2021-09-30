@@ -297,7 +297,7 @@ impl Register {
             }
         }
         for k in remove.iter() {
-            self.remove(&k);
+            self.remove(k);
         }
     }
 }

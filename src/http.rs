@@ -64,7 +64,7 @@ such as 'data:' mailto: URLs, and localhost without a leading http:// or https:/
     }
 
     if let Some(h) = &prm.header {
-        builder = builder.headers(build_header(&h)?);
+        builder = builder.headers(build_header(h)?);
     }
     Ok(builder)
 }

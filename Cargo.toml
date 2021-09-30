@@ -1,6 +1,6 @@
 [package]
 name = "darkroom"
-version = "0.7.4"
+version = "0.8.0"
 description = "A contract testing tool built in Rust"
 authors = ["Mikhail Katychev <mkatych@gmail.com>"]
 edition = "2018"
@@ -21,30 +21,30 @@ members = [
 ]
 
 [dependencies]
-anyhow = "1.0.40"
-argh = "0.1.5"
+anyhow = "1.0.44"
+argh = "0.1.6"
 chrono = "0.4.19"
 colored = "2.0.0"
 colored-diff = "0.2.2"
 colored_json = "2.1.0"
-filmreel = { version = "0.6.0", path = "filmreel" }
-http = "0.2.4"
+filmreel = { version = "0.7.0", path = "filmreel" }
+http = "0.2.5"
 lazy_static = "1.4.0"
 log = { version = "0.4.14", features = ["std"] }
 prettytable-rs = "0.8.0"
-reqwest = { version = "0.11.3", features = ["blocking", "json"] }
-serde = { version = "1.0.125", features = ["derive"] }
-serde_json = "1.0.64"
-url = "2.2.1"
-which = "4.1.0"
+reqwest = { version = "0.11.4", features = ["blocking", "json"] }
+serde = { version = "1.0.130", features = ["derive"] }
+serde_json = "1.0.68"
+url = "2.2.2"
+which = "4.2.2"
 
-mdcat = { version = "0.22.4", optional = true }
-syntect = { version = "4.5.0", optional = true }
+mdcat = { version = "0.23.2", optional = true }
+syntect = { version = "4.6.0", optional = true }
 pulldown-cmark = { version = "0.8.0", optional = true }
 minus = { version = "3.4.0", optional = true, features = ["static_output"] }
 
 [dev-dependencies]
-rstest = "0.10.0"
+rstest = "0.11.0"
 
 [features]
 default = ["man"]
