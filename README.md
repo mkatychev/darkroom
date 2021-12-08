@@ -1,20 +1,59 @@
-# Darkroom  <img src="https://raw.githubusercontent.com/Bestowinc/darkroom/master/darkroomlogo_mini.svg" width="149" align="right"/>
+# Darkroom  <img src="https://raw.githubusercontent.com/mkatychev/darkroom/master/darkroomlogo_mini.svg" width="149" align="right"/>
 
 [![Crates.io](https://img.shields.io/crates/v/darkroom.svg)](https://crates.io/crates/darkroom) [![Docs.rs](https://docs.rs/darkroom/badge.svg)](https://docs.rs/darkroom/)
 
 
 
-A contract testing tool built in Rust using the [filmReel format](https://github.com/Bestowinc/filmReel).
+A contract testing tool built in Rust using the [filmReel format](https://github.com/mkatychev/filmReel).
 
 ---
 
-* Darkroom `0.3` or greater requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for making gRPC requests.
-* Cloning with submodules: `git clone --recurse-submodules -j8 git://github.com/foo/bar.git`
+## [Sample request](https://github.com/mkatychev/filmreel/blob/master/frame.md#listing-1):
 
 
-## CHANGELOG
+[`usr.cut.json`](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-register):
+```jsonc
+// Cut: the data sharing system allowing one Frame to pass messages to the next Frame
+{"HTTP_ENDPOINT": "/create_user"}
+```
 
-Please see the [CHANGELOG](CHANGELOG.md) for a release history.
+[`usr.01s.createuser.fr.json`](https://github.com/mkatychev/filmReel/blob/master/frame.md#frame-nomenclature):
+
+```jsonc
+// Frame: the JSON file where input an output expectations are set
+{                                          
+  "protocol": "HTTP",                      // protocol: the declared communication protocol
+  "cut": {                                 // cut: declare what variables should be pulled "from" and pushed "to" `usr.cut.json`
+    "from": ["HTTP_ENDPOINT"],             // pull the HTTP_ENDPOINT "from" `usr.cut.json`
+    "to": {                                // push the USER_ID found in .response.body.msg "to" `usr.cut.json`
+      "USER_ID": "'response'.'body'.'msg'"
+    }
+  },
+  "request": {                             // request object
+    "body": {                              // request body
+      "email": "new_user@humanmail.com"
+    },
+    "uri": "POST ${HTTP_ENDPOINT}"         // request uri: HTTP_ENDPOINT will be replaced by "/create_user"
+  },
+  "response": {                            // response object
+    "body": {                              // response body
+      "msg": "created user: ${USER_ID}"    // USER_ID will be stored if there is a match for the surrounding values
+    },
+    "status": 200                          // expected response status code
+  }
+}
+```
+
+## Installation
+
+* Simple: `cargo install darkroom`
+* Clone with submodules: `git clone --recurse-submodules -j8 https://github.com/mkatychev/darkroom`
+
+&nbsp;
+
+
+For gRPC requests: Darkroom `0.3` or greater requires [grpcurl v1.6.0 or greater](https://github.com/fullstorydev/grpcurl/#installation) for making gRPC requests.
+
 
 ## Usage:
 
@@ -68,16 +107,20 @@ Notes:
 # step through the httpbin test in [-i]nteractive mode
 dark -i record ./test_data post
 # to fail at the third httpbin frame, set a timeout of two seconds
-dark -i record ./test_data post --timeout 2
+dark --interactive record ./test_data post --timeout 2
 # multiple merge cuts can be used, with values being overridden left to right (right will have newer values)
 dark --interactive record ./test_data post --cut ./test_data/post.cut.json '{"NEW":"value"}' '{"NEWER": "value", "NEW":"overridden"}'
-# echo the origin "${IP}" that gets written to the cut register from the httpbin.org POST request
+# echo the origin "${IP}" that gets written to the cut register from the httpbin.org POST response
 dark --cut-out >(jq .IP) take ./test_data/post.01s.body.fr.json --cut ./test_data/post.cut.json
-# create a stripe token using public API key
-dark --cut-out >(jq) record ./test_data stripe_token
-# create a stripe subscription using the stripoe_token component
+# create a stripe token using the public Stripe API key
+dark --verbose --cut-out >(jq) record ./test_data stripe_token
+# create a stripe subscription preceding it with the stripe_token flow
 dark --cut-out >(jq) record ./test_data stripe_subscription --component './test_data&stripe_token'
 ```
+
+## CHANGELOG
+
+Please see the [CHANGELOG](CHANGELOG.md) for a release history.
 
 <!--
 VERSION="0.6.0"

@@ -4,11 +4,13 @@
   "frames": [
     "post.01s.body.fr.json",
     "post.03s.delay.fr.json",
-    "post.02s.no_content.fr.json"
+    "post.02s.no_content.fr.json",
+    "post.04s.multiple_headers.fr.json"
   ],
   "cut": {
     "URI_METHOD": "POST",
     "ADDRESS": "https://httpbin.org",
-    "BODY": "the exact body that is sent"
+    "BODY": "the exact body that is sent",
+    "ORIGIN_KEY": "origin"
   }
 }

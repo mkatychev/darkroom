@@ -8,7 +8,7 @@ use std::{collections::HashMap, convert::TryFrom, ops::Range, path::PathBuf};
 /// Holds Cut Variables and their corresponding values stored in a series of
 /// key/value pairs.
 ///
-/// [Cut Register](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-register)
+/// [Cut Register](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-register)
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 pub struct Register {
     #[serde(serialize_with = "ordered_val_map", flatten)]
@@ -16,10 +16,10 @@ pub struct Register {
 }
 
 const VAR_NAME_ERR: &str = "Only alphanumeric characters, dashes, and underscores are permitted \
-                            in Cut Variable names => [A-Za-z_]";
+                            in Cut Variable names => [A-Za-z_0-9]";
 
 /// The Register's map of [Cut Variables]
-/// (https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
+/// (https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
 type Variables = HashMap<String, Value>;
 
 impl Register {
@@ -55,14 +55,14 @@ impl Register {
 
     /// Gets a reference to the string slice value for the given var name.
     ///
-    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
+    /// [Cut Variable](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
     pub fn get_key_value<K: AsRef<str>>(&self, key: K) -> Option<(&String, &Value)> {
         self.vars.get_key_value(key.as_ref())
     }
 
     /// Gets a reference to the string slice value for the given var name.
     ///
-    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
+    /// [Cut Variable](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
     pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&Value> {
         self.vars.get(key.as_ref())
     }
@@ -74,7 +74,7 @@ impl Register {
 
     /// Returns a boolean indicating whether [`Register.vars`] contains a given key.
     ///
-    /// [Cut Variable](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-variable)
+    /// [Cut Variable](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
     pub fn contains_key(&self, key: &str) -> bool {
         self.vars.contains_key(key)
     }
@@ -118,15 +118,15 @@ impl Register {
     /// Returns a vector of Match enums enums found in the string provided for
     /// use in cut operations.
     ///
-    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/master/cut.md#read-operation)
+    /// [Read Operation](https://github.com/mkatychev/filmReel/blob/master/cut.md#read-operation)
     pub fn read_match(&self, json_string: &str) -> Result<Vec<Match>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
-                (?P<esc_char>\\)?   # escape character
-                (?P<leading_b>\$\{) # leading brace
-                (?P<cut_var>[A-za-z_0-9]+) # Cut Variable
-                (?P<trailing_b>})?  # trailing brace
+                (?P<esc_char>\\)?          # escape character
+                (?P<leading_b>\$\{)        # leading brace
+                (?P<cut_var>[A-Za-z_0-9]+) # Cut Variable
+                (?P<trailing_b>})?         # trailing brace
                 "
             )
             .unwrap();
@@ -175,7 +175,7 @@ impl Register {
     /// Replaces a byte range in a given string with the range given in the
     /// ::Match provided.
     ///
-    /// [Read Operation](https://github.com/Bestowinc/filmReel/blob/master/cut.md#read-operation)
+    /// [Read Operation](https://github.com/mkatychev/filmReel/blob/master/cut.md#read-operation)
     pub fn read_operation(
         &self,
         mat: Match,
@@ -276,7 +276,7 @@ impl Register {
     pub fn write_operation(&mut self, key: &str, val: Value) -> Result<Option<Value>, FrError> {
         lazy_static! {
             // Permit only alphachars dashes and underscores for variable names
-            static ref KEY_CHECK: Regex = Regex::new(r"^[A-Za-z_]+$").unwrap();
+            static ref KEY_CHECK: Regex = Regex::new(r"^[A-Za-z_0-9]+$").unwrap();
         }
         if !KEY_CHECK.is_match(key) {
             return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()));
@@ -288,7 +288,7 @@ impl Register {
     pub fn flush_ignored(&mut self) {
         lazy_static! {
         // if key value consists of only lowercase letters and underscores
-            static ref KEY_IGNORE: Regex = Regex::new(r"^[a-z_]+$").unwrap();
+            static ref KEY_IGNORE: Regex = Regex::new(r"^[a-z_0-9]+$").unwrap();
         }
         let mut remove: Vec<String> = vec![];
         for (k, _) in self.vars.iter() {
@@ -297,7 +297,7 @@ impl Register {
             }
         }
         for k in remove.iter() {
-            self.remove(&k);
+            self.remove(k);
         }
     }
 }
@@ -403,7 +403,7 @@ impl<'a> Match<'a> {
     }
 }
 
-/// Constructs a [Cut Register](https://github.com/Bestowinc/filmReel/blob/master/cut.md#cut-register)
+/// Constructs a [Cut Register](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-register)
 /// from the provided series of key value pairs.
 #[macro_export]
 macro_rules! register {

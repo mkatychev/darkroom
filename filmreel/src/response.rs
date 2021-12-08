@@ -21,7 +21,7 @@ const MISSING_SELECTION_ERR: &str = "selection missing from Frame body";
 
 /// Encapsulates the expected response payload.
 ///
-/// [Request Object](https://github.com/Bestowinc/filmReel/blob/master/frame.md#request)
+/// [Request Object](https://github.com/mkatychev/filmReel/blob/master/frame.md#request)
 #[derive(Serialize, Clone, Deserialize, Debug)]
 pub struct Response<'a> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -206,7 +206,7 @@ impl Validator {
 
                 for k in other_selection
                     .keys() // retain keys that are not found in preserve_keys
-                    .filter(|k| !preserve_keys.contains(&k))
+                    .filter(|k| !preserve_keys.contains(k))
                     .cloned()
                     .collect::<Vec<String>>()
                 {

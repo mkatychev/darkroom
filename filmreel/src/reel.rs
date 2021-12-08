@@ -12,7 +12,7 @@ use std::{
 
 /// Represents the sequence of Frames to execute.
 ///
-/// [Reel spec](https://github.com/Bestowinc/filmReel/blob/master/Reel.md#reel)
+/// [Reel spec](https://github.com/mkatychev/filmReel/blob/master/Reel.md#reel)
 #[derive(Debug)]
 pub struct Reel {
     dir:    PathBuf,
@@ -106,9 +106,11 @@ impl Reel {
         let mut frames = Vec::new();
 
         for entry in glob(dir_glob.as_ref().to_str().unwrap())
-            .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))?
-            .filter_map(|r| r.ok())
+            .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))? // -> Result<PathBuf, FrErrror>?
+            .filter_map(|r| r.ok()) // Ok(PathBuf) -> Some(PathBuf)
             .filter(|path| path.is_file())
+        // PathBuf -> PathBuf
+        // -> PathBuf
         {
             let frame = MetaFrame::try_from(&entry)?;
             if permit_frame(frame.step_f32.trunc() as u32) {
@@ -255,7 +257,7 @@ fn parse_sequence(seq: &str) -> Result<(f32, FrameType), FrError> {
     Ok((seq_f32, frame_type))
 }
 
-/// [Frame Types](https://github.com/Bestowinc/filmReel/blob/master/Reel.md#frame-type)
+/// [Frame Types](https://github.com/mkatychev/filmReel/blob/master/Reel.md#frame-type)
 #[derive(Clone, PartialEq, Debug)]
 pub enum FrameType {
     Error,
