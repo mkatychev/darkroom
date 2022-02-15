@@ -25,13 +25,13 @@ const MISSING_SELECTION_ERR: &str = "selection missing from Frame body";
 #[derive(Serialize, Clone, Deserialize, Debug)]
 pub struct Response<'a> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body:       Option<Value>,
+    pub body: Option<Value>,
     //
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub etc:        Option<Value>, // https://github.com/serde-rs/serde/issues/1626
+    pub etc: Option<Value>, // https://github.com/serde-rs/serde/issues/1626
     #[serde(skip_serializing)]
     pub validation: Option<Validation<'a>>,
-    pub status:     u32,
+    pub status: u32,
 }
 
 impl<'a> Response<'a> {
@@ -154,10 +154,10 @@ fn strip_query(query: &str) -> &str {
 impl Default for Response<'_> {
     fn default() -> Self {
         Self {
-            body:       None,
-            etc:        Some(json!({})),
+            body: None,
+            etc: Some(json!({})),
             validation: None,
-            status:     0,
+            status: 0,
         }
     }
 }
@@ -180,7 +180,7 @@ type Validation<'a> = BTreeMap<Cow<'a, str>, Validator>;
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 #[serde(default)]
 pub struct Validator {
-    partial:   bool,
+    partial: bool,
     unordered: bool,
 }
 
@@ -238,7 +238,7 @@ impl Validator {
                 // NOTE: Array partial matches need to be ordered as well as contiguous.
                 // The example below would not result in a match:
                 // Other: [A, B, B, C, A, B, B, C]
-                for i in (0..other_selection.len()).into_iter() {
+                for i in 0..other_selection.len() {
                     if i + self_len > other_selection.len() {
                         // other_selection[i..] is already larger than self_selection here
                         // cannot find a partial match at this point
@@ -386,16 +386,16 @@ mod tests {
     fn test_match_payload_response() {
         let frame = Frame {
             protocol: Protocol::GRPC,
-            cut:      InstructionSet {
-                reads:          from![],
-                writes:         to! ({
+            cut: InstructionSet {
+                reads: from![],
+                writes: to! ({
                     "USER_ID"=> "'response'.'body'.'id'",
                     "CREATED"=> "'response'.'body'.'created'",
                     "ignore"=> "'response'.'body'.'array'.[0].'ignore'"
                 }),
                 hydrate_writes: true,
             },
-            request:  Request {
+            request: Request {
                 ..Default::default()
             },
             response: Response {

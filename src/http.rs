@@ -1,11 +1,11 @@
 use crate::params::Params;
 use anyhow::{anyhow, Context, Error};
 use filmreel::{frame::Request, response::Response};
-use http::header::HeaderMap;
+use http::header::{self, HeaderMap};
 use log::warn;
 use reqwest::{blocking::*, Method};
 use serde_json::{json, Value};
-use std::{collections::HashMap, convert::TryFrom, time::Duration};
+use std::{collections::HashMap, convert::TryFrom, io::Read, time::Duration};
 use url::Url;
 
 /// build_request parses a Frame Request and a Params object to send a HTTP payload using reqwest
@@ -87,10 +87,7 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
     // the Response.content_length() method to get the exact body byte size
     let response_body: Option<Value> = match response.content_length() {
         Some(0) => None,
-        None => {
-            warn!("unable to determine Response body content length");
-            None
-        }
+        None => handle_chunked_response(response)?,
         Some(_) => response
             .json()
             .context("http::request response.json() decode failure")?,
@@ -103,6 +100,33 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
         validation: None,
         status,
     })
+}
+
+fn handle_chunked_response(
+    mut response: reqwest::blocking::Response,
+) -> Result<Option<Value>, Error> {
+    if let Some(encoding) = response.headers().get(header::TRANSFER_ENCODING) {
+        let encoding = encoding.to_str()?;
+        if encoding != "chunked" {
+            warn!("unsupported Response Transfer-Encoding: {}", encoding);
+            return Ok(None);
+        }
+        let mut body_buf = vec![];
+        // The terminating chunk is a regular chunk, with the exception that its length is
+        // zero. It is followed by the trailer, which consists of a (possibly empty)
+        // sequence of header fields.
+        // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+        while !body_buf.ends_with(b"0\r\n") {
+            let read_bytes = response.read(&mut body_buf)?;
+            if read_bytes == 0 {
+                break;
+            }
+        }
+        // TODO strip "\r\n" trailers off of body_buf
+        return Ok(serde_json::from_slice(&body_buf)?);
+    }
+    warn!("unable to determine Response body content length");
+    Ok(None)
 }
 
 #[cfg(test)]

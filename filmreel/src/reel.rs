@@ -83,7 +83,7 @@ impl Reel {
         if !dir_ref.is_dir() {
             panic!(
                 "dir argument to get_frame_dir_glob is not a directory: {}",
-                dir_ref.to_string_lossy().to_string(),
+                dir_ref.to_string_lossy(),
             );
         }
 
