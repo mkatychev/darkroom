@@ -19,17 +19,17 @@ pub fn validate_grpcurl() -> Result<(), Error> {
 
 /// request parses a Frame Request and a Params object to send a gRPC payload using `grpcurl`
 /// the command line tool
-pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
+pub fn request<'a>(params: &mut Params, req: Request) -> Result<Response<'a>, Error> {
     validate_grpcurl().context("grpcurl request failure")?;
 
     let mut flags: Vec<OsString> = vec![OsString::from("-format-error")];
 
-    if !prm.tls {
+    if !params.tls {
         flags.push(OsString::from("-plaintext"));
     }
 
     // prepend "-import-path" to every protos PathBuf provided
-    if let Some(proto_path) = prm.proto_path {
+    if let Some(proto_path) = params.proto_path {
         flags.extend(iter_path_args(
             OsString::from("-import-path"),
             proto_path.iter().map(OsString::from),
@@ -37,14 +37,14 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
     }
 
     // prepend "-proto" to every protos PathBuf provided
-    if let Some(protos) = prm.proto {
+    if let Some(protos) = params.proto {
         flags.extend(iter_path_args(
             OsString::from("-proto"),
             protos.iter().map(OsString::from),
         ));
     }
 
-    if let Some(h) = &prm.header {
+    if let Some(h) = &params.header {
         if crate::guess_json_obj(h) {
             let map: HashMap<String, String> = serde_json::from_str(h)?;
             for (key, value) in &map {
@@ -53,26 +53,26 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
             }
         } else {
             flags.push(OsString::from("-H"));
-            flags.push(h.replace("\"", "").into());
+            flags.push(h.replace('\"', "").into());
         }
     };
 
     let req_cmd = Command::new("grpcurl")
         .args(flags)
         .arg("-connect-timeout")
-        .arg(format!("{:.1}", prm.timeout as f32))
+        .arg(format!("{:.1}", params.timeout as f32))
         .arg("-d")
         .arg(req.to_payload()?)
-        .arg(&prm.address)
+        .arg(&params.address)
         .arg(req.get_uri())
         .output()
         .context("failed to execute grpcurl process")?;
 
     let response = match req_cmd.status.code() {
         Some(0) => Response {
-            body:       serde_json::from_slice(&req_cmd.stdout)?,
-            status:     0,
-            etc:        Some(json!({})),
+            body: serde_json::from_slice(&req_cmd.stdout)?,
+            status: 0,
+            etc: Some(json!({})),
             validation: None,
         },
         Some(_) => {
@@ -86,9 +86,9 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
             })?;
             // create frame response from deserialized grpcurl error
             Response {
-                body:       Some(serde_json::Value::String(err.message)),
-                status:     err.code,
-                etc:        Some(json!({})),
+                body: Some(serde_json::Value::String(err.message)),
+                status: err.code,
+                etc: Some(json!({})),
                 validation: None,
             }
         }
@@ -99,7 +99,7 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct ResponseError {
-    code:    u32,
+    code: u32,
     message: String,
 }
 
@@ -122,7 +122,7 @@ mod serde_tests {
         let json_struct: ResponseError = serde_json::from_str(INTERNAL_ERROR).unwrap();
         assert_eq!(
             ResponseError {
-                code:    13,
+                code: 13,
                 message: "input cannot be empty".to_owned(),
             },
             json_struct
@@ -135,7 +135,7 @@ mod serde_tests {
             serde_json::from_slice(&AUTH_ERROR.as_bytes().to_vec()).unwrap();
         assert_eq!(
             ResponseError {
-                code:    16,
+                code: 16,
                 message: "rpc error: code = Unauthenticated desc = Empty JWT token".to_owned(),
             },
             json_struct

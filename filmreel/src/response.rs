@@ -2,7 +2,7 @@ use crate::{
     cut::Register,
     error::FrError,
     frame::*,
-    utils::{new_mut_selector, select_value, MutSelector},
+    utils::{new_mut_selector, select_value},
 };
 use serde::{Deserialize, Serialize};
 use serde_hashkey::{
@@ -25,13 +25,13 @@ const MISSING_SELECTION_ERR: &str = "selection missing from Frame body";
 #[derive(Serialize, Clone, Deserialize, Debug)]
 pub struct Response<'a> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub body:       Option<Value>,
+    pub body: Option<Value>,
     //
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub etc:        Option<Value>, // https://github.com/serde-rs/serde/issues/1626
+    pub etc: Option<Value>, // https://github.com/serde-rs/serde/issues/1626
     #[serde(skip_serializing)]
     pub validation: Option<Validation<'a>>,
-    pub status:     u32,
+    pub status: u32,
 }
 
 impl<'a> Response<'a> {
@@ -103,28 +103,28 @@ impl<'a> Response<'a> {
         if self.body.is_none() || other.body.is_none() || self.validation.is_none() {
             return Ok(());
         }
-        for (k, v) in self.validation.as_ref().unwrap().iter() {
+        for (query, validator) in self.validation.as_ref().unwrap().iter() {
             // if no validator operations are needed
-            if !v.partial && !v.unordered {
+            if !validator.partial && !validator.unordered {
                 continue;
             }
 
-            let selector = new_mut_selector(strip_query(k))?;
-            if v.unordered {
-                v.apply_unordered(
-                    k,
-                    &selector,
-                    self.body.as_mut().unwrap(),
-                    other.body.as_mut().unwrap(),
-                )?;
+            let selector = new_mut_selector(strip_query(query))?;
+            // add query string value to selections that return None
+            let self_selection = selector(self.body.as_mut().unwrap()).ok_or_else(|| {
+                FrError::ReadInstructionf(MISSING_SELECTION_ERR, query.to_string())
+            })?;
+
+            let other_selection = match selector(other.body.as_mut().unwrap()) {
+                Some(o) => o,
+                None => continue,
+            };
+
+            if validator.unordered {
+                validator.apply_unordered(self_selection, other_selection)?;
             }
-            if v.partial {
-                v.apply_partial(
-                    k,
-                    &selector,
-                    self.body.as_mut().unwrap(),
-                    other.body.as_mut().unwrap(),
-                )?;
+            if validator.partial {
+                validator.apply_partial(self_selection, other_selection)?;
             }
         }
 
@@ -154,10 +154,10 @@ fn strip_query(query: &str) -> &str {
 impl Default for Response<'_> {
     fn default() -> Self {
         Self {
-            body:       None,
-            etc:        Some(json!({})),
+            body: None,
+            etc: Some(json!({})),
             validation: None,
-            status:     0,
+            status: 0,
         }
     }
 }
@@ -180,29 +180,19 @@ type Validation<'a> = BTreeMap<Cow<'a, str>, Validator>;
 #[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
 #[serde(default)]
 pub struct Validator {
-    partial:   bool,
+    partial: bool,
     unordered: bool,
 }
 
 impl Validator {
     fn apply_partial(
         &self,
-        query: &str,
-        selector: &MutSelector,
-        self_body: &mut Value,
-        other_body: &mut Value,
+        self_selection: &mut Value,
+        other_selection: &mut Value,
     ) -> Result<(), FrError> {
-        let selection = selector(self_body)
-            .ok_or_else(|| FrError::ReadInstructionf(MISSING_SELECTION_ERR, query.to_string()))?;
-        match selection {
-            Value::Object(o) => {
-                let preserve_keys = o.keys().collect::<Vec<&String>>();
-                // if the response selection is not an object or selects nothing (None is returned)
-                // return early
-                let other_selection = match selector(other_body) {
-                    Some(Value::Object(o)) => o,
-                    _ => return Ok(()),
-                };
+        match (self_selection, other_selection) {
+            (Value::Object(self_selection), Value::Object(other_selection)) => {
+                let preserve_keys = self_selection.keys().collect::<Vec<&String>>();
 
                 for k in other_selection
                     .keys() // retain keys that are not found in preserve_keys
@@ -213,12 +203,7 @@ impl Validator {
                     other_selection.remove(&k);
                 }
             }
-            Value::Array(self_selection) => {
-                let other_selection = match selector(other_body) {
-                    Some(Value::Array(o)) => o,
-                    _ => return Ok(()),
-                };
-
+            (Value::Array(self_selection), Value::Array(other_selection)) => {
                 let self_len = self_selection.len();
                 // do not mutate if self_len is greater that other_selection
                 if self_len >= other_selection.len() {
@@ -238,7 +223,7 @@ impl Validator {
                 // NOTE: Array partial matches need to be ordered as well as contiguous.
                 // The example below would not result in a match:
                 // Other: [A, B, B, C, A, B, B, C]
-                for i in (0..other_selection.len()).into_iter() {
+                for i in 0..other_selection.len() {
                     if i + self_len > other_selection.len() {
                         // other_selection[i..] is already larger than self_selection here
                         // cannot find a partial match at this point
@@ -250,6 +235,16 @@ impl Validator {
                     }
                 }
             }
+            (Value::String(self_selection), Value::String(other_selection)) => {
+                let mut self_arr = string_to_array(self_selection);
+                let mut other_arr = string_to_array(other_selection);
+                self.apply_partial(&mut self_arr, &mut other_arr)?;
+                unsafe {
+                    *self_selection = array_to_string(self_arr);
+                    *other_selection = array_to_string(other_arr);
+                };
+            }
+            (Value::Object(_) | Value::Array(_) | Value::String(_), _) => {}
             _ => {
                 return Err(FrError::ReadInstruction(
                     "validation selectors must point to a JSON object or array",
@@ -261,20 +256,11 @@ impl Validator {
 
     fn apply_unordered(
         &self,
-        query: &str,
-        selector: &MutSelector,
-        self_body: &mut Value,
-        other_body: &mut Value,
+        self_selection: &mut Value,
+        other_selection: &mut Value,
     ) -> Result<(), FrError> {
-        let selection = selector(self_body)
-            .ok_or_else(|| FrError::ReadInstructionf(MISSING_SELECTION_ERR, query.to_string()))?;
-        match selection {
-            Value::Object(_) => Ok(()),
-            Value::Array(self_selection) => {
-                let other_selection = match selector(other_body) {
-                    Some(Value::Array(o)) => o,
-                    _ => return Ok(()),
-                };
+        match (self_selection, other_selection) {
+            (Value::Array(self_selection), Value::Array(other_selection)) => {
                 // https://gist.github.com/daboross/976978d8200caf86e02acb6805961195
                 let mut other_idx_map: HashMap<Key<Hash>, Vec<usize>> = HashMap::new();
                 other_selection
@@ -352,11 +338,47 @@ impl Validator {
 
                 Ok(())
             }
+            (Value::String(self_selection), Value::String(other_selection)) => {
+                let mut self_arr = string_to_array(self_selection);
+                let mut other_arr = string_to_array(other_selection);
+                self.apply_unordered(&mut self_arr, &mut other_arr)?;
+                unsafe {
+                    *self_selection = array_to_string(self_arr);
+                    *other_selection = array_to_string(other_arr);
+                };
+                Ok(())
+            }
+            (Value::Object(_) | Value::Array(_) | Value::String(_), _) => Ok(()),
             _ => Err(FrError::ReadInstruction(
                 "validation selectors must point to a JSON object or array",
             )),
         }
     }
+}
+
+// SAFETY string_to_array guarantees that a Value::Array is returned
+unsafe fn array_to_string(arr: Value) -> String {
+    arr.as_array()
+        .unwrap_unchecked()
+        .iter()
+        .map(|s| {
+            if let Value::String(s) = s {
+                return s.to_owned();
+            }
+            String::new()
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
+fn string_to_array(string: &str) -> Value {
+    let vec = string
+        .strip_prefix('\u{feff}')
+        .unwrap_or(string)
+        .lines()
+        .map(|s| Value::String(s.to_string()))
+        .collect::<Vec<Value>>();
+    Value::Array(vec)
 }
 
 /// hash_value hashes [Value::Object] variants using only the key elements
@@ -386,16 +408,16 @@ mod tests {
     fn test_match_payload_response() {
         let frame = Frame {
             protocol: Protocol::GRPC,
-            cut:      InstructionSet {
-                reads:          from![],
-                writes:         to! ({
+            cut: InstructionSet {
+                reads: from![],
+                writes: to! ({
                     "USER_ID"=> "'response'.'body'.'id'",
                     "CREATED"=> "'response'.'body'.'created'",
                     "ignore"=> "'response'.'body'.'array'.[0].'ignore'"
                 }),
                 hydrate_writes: true,
             },
-            request:  Request {
+            request: Request {
                 ..Default::default()
             },
             response: Response {
@@ -459,6 +481,11 @@ mod tests {
             5 => (with_arr, r#"["A", "B", "C"]"#, true),
             6 => (with_arr, r#"["other_value", false, "A", "B", "C"]"#, true),
             7 => (with_arr, r#"["other_value", false, "B", "C"]"#, false),
+            8 => (
+                r#""Newline\nResponse""#,
+                r#""Other\nNewline\nResponse""#,
+                true,
+            ),
             _ => panic!(),
         }
     }
@@ -471,7 +498,8 @@ mod tests {
         case(partial_case(4)),
         case(partial_case(5)),
         case(partial_case(6)),
-        case(partial_case(7))
+        case(partial_case(7)),
+        case(partial_case(8))
     )]
     fn test_partial_validation(t_case: (&str, &str, bool)) {
         let self_response = str::replace(PARTIAL_FRAME, "%s", t_case.0);
@@ -520,6 +548,7 @@ mod tests {
             10 => (string_arr, r#"["B","A","D","C"]"#, false),
             11 => (with_f32, r#"["C",13.37,"B","A"]"#, true),
             12 => (with_dupes, r#"["A","C","A","B","A"]"#, true),
+            13 => (r#""Newline\nResponse""#, r#""Response\nNewline""#, true),
             _ => panic!(),
         }
     }
@@ -537,7 +566,8 @@ mod tests {
         case(unordered_case(9)),
         case(unordered_case(10)),
         case(unordered_case(11)),
-        case(unordered_case(12))
+        case(unordered_case(12)),
+        case(unordered_case(13))
     )]
     fn test_unordered_validation(t_case: (&str, &str, bool)) {
         let self_response = str::replace(UNORDERED_FRAME, "%s", t_case.0);
@@ -639,6 +669,11 @@ mod tests {
                 r#"[1,{"B":true},0]"#,
                 r#"[0,1,{"B":true}]"#,
             ),
+            15 => (
+                r#""Newline\nResponse""#,
+                r#""Other\nResponse""#,
+                r#""Response\nOther""#,
+            ),
             _ => panic!(),
         }
     }
@@ -658,7 +693,8 @@ mod tests {
         case(partial_unordered_case(11)),
         case(partial_unordered_case(12)),
         case(partial_unordered_case(13)),
-        case(partial_unordered_case(14))
+        case(partial_unordered_case(14)),
+        case(partial_unordered_case(15))
     )]
     fn test_partial_unordered_validation(t_case: (&str, &str, &str)) {
         let self_response = str::replace(PARTIAL_UNORDERED, "%s", t_case.0);

@@ -1,6 +1,7 @@
 use crate::Command;
 use anyhow::{anyhow, Error};
 use filmreel::frame::Request;
+use http::HeaderValue;
 use log::{error, warn};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -8,14 +9,15 @@ use std::path::PathBuf;
 /// Parameters needed for a uri method to be sent.
 #[derive(Debug, Default, PartialEq, Clone)]
 pub struct Params<'a> {
-    pub timeout:       u64,
+    pub content_type: Option<HeaderValue>,
+    pub timeout: u64,
     pub use_timestamp: bool,
-    pub tls:           bool,
-    pub header:        Option<String>,
-    pub address:       String,
-    pub proto_path:    Option<&'a Vec<PathBuf>>,
-    pub proto:         Option<&'a Vec<PathBuf>>,
-    pub attempts:      Option<Attempts>,
+    pub tls: bool,
+    pub header: Option<String>,
+    pub address: String,
+    pub proto_path: Option<&'a Vec<PathBuf>>,
+    pub proto: Option<&'a Vec<PathBuf>>,
+    pub attempts: Option<Attempts>,
 }
 
 impl<'a> Params<'a> {
@@ -49,37 +51,37 @@ pub fn warn_timestamp(timestamp: bool) {
 /// before the given values are checked for in the Frame
 #[derive(Clone)]
 pub struct BaseParams {
-    pub timeout:     u64,
-    pub timestamp:   bool,
-    pub tls:         bool,
-    pub header:      Option<String>,
-    pub address:     Option<String>,
-    pub proto_path:  Vec<PathBuf>,
-    pub proto:       Vec<PathBuf>,
-    pub cut_out:     Option<PathBuf>,
+    pub timeout: u64,
+    pub timestamp: bool,
+    pub tls: bool,
+    pub header: Option<String>,
+    pub address: Option<String>,
+    pub proto_path: Vec<PathBuf>,
+    pub proto: Vec<PathBuf>,
+    pub cut_out: Option<PathBuf>,
     pub interactive: bool,
-    pub verbose:     bool,
+    pub verbose: bool,
 }
 
 #[derive(Clone, Copy, Deserialize, Default, Debug, PartialEq)]
 pub struct Attempts {
     pub times: u32,
-    pub ms:    u64,
+    pub ms: u64,
 }
 
 impl From<&Command> for BaseParams {
     fn from(cmd: &Command) -> Self {
         Self {
-            timeout:     30,
-            timestamp:   false,
-            tls:         cmd.tls,
-            header:      cmd.header.clone(),
-            address:     cmd.address.clone(),
-            proto_path:  cmd.proto.clone(),
-            proto:       cmd.proto.clone(),
-            cut_out:     cmd.cut_out.clone(),
+            timeout: 30,
+            timestamp: false,
+            tls: cmd.tls,
+            header: cmd.header.clone(),
+            address: cmd.address.clone(),
+            proto_path: cmd.proto.clone(),
+            proto: cmd.proto.clone(),
+            cut_out: cmd.cut_out.clone(),
             interactive: cmd.interactive,
-            verbose:     cmd.verbose,
+            verbose: cmd.verbose,
         }
     }
 }
@@ -120,6 +122,7 @@ impl BaseParams {
         };
 
         Ok(Params {
+            content_type: None,
             timeout: self.timeout,
             use_timestamp: self.timestamp,
             tls: self.tls,
@@ -162,15 +165,15 @@ mod tests {
     #[test]
     fn test_init() {
         let args = Command {
-            tls:         false,
-            address:     Some("www.initial_addr.com".to_string()),
-            header:      Some("initial_header".to_string()),
-            proto_dir:   vec![],
-            proto:       vec![],
-            verbose:     false,
-            cut_out:     None,
+            tls: false,
+            address: Some("www.initial_addr.com".to_string()),
+            header: Some("initial_header".to_string()),
+            proto_dir: vec![],
+            proto: vec![],
+            verbose: false,
+            cut_out: None,
             interactive: false,
-            nested:      SubCommand::Version(Version { version: true }),
+            nested: SubCommand::Version(Version { version: true }),
         };
         let request: Request = serde_json::from_str::<Frame>(
             r#"
@@ -200,17 +203,15 @@ mod tests {
         let params: Params = base_params.init(request).unwrap();
         assert_eq!(
             Params {
-                timeout:       30,
+                content_type: None,
+                timeout: 30,
                 use_timestamp: false,
-                tls:           false,
-                header:        Some("\"Authorization: Bearer BIG_BEAR\"".to_string()),
-                address:       "localhost:8000".to_string(),
-                proto_path:    None,
-                proto:         None,
-                attempts:      Some(Attempts {
-                    times: 2,
-                    ms:    200,
-                }),
+                tls: false,
+                header: Some("\"Authorization: Bearer BIG_BEAR\"".to_string()),
+                address: "localhost:8000".to_string(),
+                proto_path: None,
+                proto: None,
+                attempts: Some(Attempts { times: 2, ms: 200 }),
             },
             params
         )

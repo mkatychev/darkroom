@@ -93,16 +93,16 @@ pub struct Command {
 impl Command {
     pub fn base_params(&self) -> BaseParams {
         BaseParams {
-            timeout:     30,
-            timestamp:   false,
-            tls:         self.tls,
-            header:      self.header.clone(),
-            address:     self.address.clone(),
-            proto_path:  self.proto_dir.clone(),
-            proto:       self.proto.clone(),
-            cut_out:     self.cut_out.clone(),
+            timeout: 30,
+            timestamp: false,
+            tls: self.tls,
+            header: self.header.clone(),
+            address: self.address.clone(),
+            proto_path: self.proto_dir.clone(),
+            proto: self.proto.clone(),
+            cut_out: self.cut_out.clone(),
             interactive: self.interactive,
-            verbose:     self.verbose,
+            verbose: self.verbose,
         }
     }
 
@@ -342,7 +342,7 @@ impl VirtualRecord {
             let mut vreel_file = VirtualReel::try_from(vreel_path.clone())?;
             // default to parent directory of vreel file if path is not specified
             if vreel_file.path.is_none() {
-                let parent_dir = fs::canonicalize(vreel_path.parent().unwrap().to_path_buf())?;
+                let parent_dir = fs::canonicalize(vreel_path.parent().unwrap())?;
                 vreel_file.path = Some(parent_dir);
             }
             vreel_file

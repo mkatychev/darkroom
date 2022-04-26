@@ -3,10 +3,13 @@ use anyhow::{anyhow, Context, Error};
 use filmreel::{frame::Request, response::Response};
 use http::header::HeaderMap;
 use log::warn;
-use reqwest::{blocking::*, Method};
+use reqwest::{blocking::*, header::HeaderValue, Method};
 use serde_json::{json, Value};
 use std::{collections::HashMap, convert::TryFrom, time::Duration};
 use url::Url;
+
+pub const TEXT_CONTENT_TYPE: &str = "text/html; charset=utf-8";
+pub const JSON_CONTENT_TYPE: &str = "application/json";
 
 /// build_request parses a Frame Request and a Params object to send a HTTP payload using reqwest
 pub fn build_request(prm: &Params, req: Request) -> Result<RequestBuilder, Error> {
@@ -80,21 +83,33 @@ fn build_header(header: &str) -> Result<HeaderMap, Error> {
 
 // request is used by run_request to send an http request and deserialize the returned data
 // into a Response struct
-pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
-    let response = build_request(&prm, req)?.send()?;
+pub fn request<'a>(params: &mut Params, req: Request) -> Result<Response<'a>, Error> {
+    let response = build_request(params, req)?.send()?;
     let status = response.status().as_u16() as u32;
     // reqwest.Response is a private Option<Value> field so we rely on
     // the Response.content_length() method to get the exact body byte size
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .cloned()
+        .unwrap_or(HeaderValue::from_static(TEXT_CONTENT_TYPE));
     let response_body: Option<Value> = match response.content_length() {
         Some(0) => None,
         None => {
             warn!("unable to determine Response body content length");
             None
         }
-        Some(_) => response
-            .json()
-            .context("http::request response.json() decode failure")?,
+        Some(_) => {
+            if content_type == HeaderValue::from_static(JSON_CONTENT_TYPE) {
+                response
+                    .json()
+                    .context("http::request response.json() decode failure")?
+            } else {
+                Some(Value::String(response.text()?))
+            }
+        }
     };
+    params.content_type = Some(content_type);
 
     Ok(Response {
         // TODO add response headers

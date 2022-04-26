@@ -4,6 +4,7 @@ use crate::{
     record::write_cut,
     Take, ToStringPretty, ToTakeColouredJson, ToTakeHiddenColouredJson,
 };
+use ::http::HeaderValue;
 use anyhow::{anyhow, Context, Error};
 use colored::*;
 use colored_diff::PrettyDifference;
@@ -25,7 +26,7 @@ use std::{
 };
 
 // run_request decides which protocol to use for sending a hydrated Frame Request
-pub fn run_request<'a>(params: Params, frame: Frame) -> Result<Response<'a>, Error> {
+pub fn run_request<'a>(params: &mut Params, frame: Frame) -> Result<Response<'a>, Error> {
     let request_fn = match frame.protocol {
         Protocol::HTTP => http::request,
         Protocol::GRPC => grpc::request,
@@ -79,13 +80,15 @@ pub fn process_response<'a, 'b>(
 
     if frame.response != payload_response {
         params.error_timestamp();
-        error!(
-            "{}",
-            PrettyDifference {
-                expected: &frame.response.to_string_pretty()?,
-                actual:   &payload_response.to_string_pretty()?,
+        let expected = &mut frame.response.to_string_pretty()?;
+        let actual = &mut payload_response.to_string_pretty()?;
+        if let Some(content_type) = &params.content_type {
+            if content_type != HeaderValue::from_static(http::JSON_CONTENT_TYPE) {
+                *expected = expected.replace("\\n", "\n");
+                *actual = actual.replace("\\n", "\n");
             }
-        );
+        }
+        error!("{}", PrettyDifference { expected, actual });
         error!(
             "{}{}{}",
             "= ".red(),
@@ -151,7 +154,7 @@ pub fn run_take<'a>(
     frame.hydrate(register, false)?;
     // init params after hydration so that  cut register params can be pulled otherwise this can
     // happen: Params { address: "${ADDRESS}", }
-    let params = base_params.init(frame.get_request())?;
+    let mut params = base_params.init(frame.get_request())?;
 
     if interactive {
         let mut stdin = io::stdin();
@@ -172,12 +175,7 @@ pub fn run_take<'a>(
             hidden.to_coloured_tk_json()?,
         ]);
         table.printstd();
-        write!(
-            stdout,
-            "{}",
-            format!("Press {} to continue...", "ENTER".yellow())
-        )
-        .expect("write to stdout panic");
+        write!(stdout, "Press {} to continue...", "ENTER".yellow()).expect("write to stdout panic");
         stdout.flush().expect("stdout flush panic");
 
         // Read a single byte and discard
@@ -198,7 +196,7 @@ pub fn run_take<'a>(
                 attempts.ms.to_string().yellow(),
                 "ms",
             );
-            if let Ok(response) = run_request(params.clone(), frame.clone()) {
+            if let Ok(response) = run_request(&mut params, frame.clone()) {
                 if process_response(&params, frame, register, response, output.clone()).is_ok() {
                     return Ok(());
                 }
@@ -213,7 +211,7 @@ pub fn run_take<'a>(
         );
     }
 
-    let response = run_request(params.clone(), frame.clone())?;
+    let response = run_request(&mut params, frame.clone())?;
     match process_response(&params, frame, register, response, output) {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
@@ -225,15 +223,16 @@ pub fn cmd_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
     let metaframe = MetaFrame::try_from(&cmd.frame)?;
 
     // set up cut register
-    let mut cut_register: Register;
 
     let cut_file = cmd.get_cut_file()?;
-    if cmd.no_cut || !cut_file.exists() && !cmd.merge_cuts.is_empty() {
-        cut_register = Register::new();
-    } else {
-        let cut_str = fr::file_to_string(cut_file)?;
-        cut_register = Register::from(&cut_str)?;
-    }
+
+    let mut cut_register: Register =
+        if cmd.no_cut || !cut_file.exists() && !cmd.merge_cuts.is_empty() {
+            Register::new()
+        } else {
+            let cut_str = fr::file_to_string(cut_file)?;
+            Register::from(&cut_str)?
+        };
 
     // Frame to be mutably borrowed
     let frame = Frame::try_from(cmd.frame).context(metaframe.get_filename())?;
@@ -332,10 +331,10 @@ mod tests {
         )
         .unwrap();
         let payload_response = Response {
-            body:       Some(json!("created user: BIG_BEN")),
-            etc:        Some(json!({})),
+            body: Some(json!("created user: BIG_BEN")),
+            etc: Some(json!({})),
             validation: None,
-            status:     200,
+            status: 200,
         };
         let mut register = Register::default();
         let params = Params::default();
