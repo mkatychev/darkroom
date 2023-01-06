@@ -84,7 +84,7 @@ const ENTRY_DOCSTRING: &str = r#"<entry>:
 
 const FILMREEL_REPO: &str = "https://github.com/mkatychev/filmReel/blob/master/";
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, PartialEq, Eq, Debug)]
 #[argh(subcommand, name = "man")]
 #[argh(note = r#"<entry>:
 readme

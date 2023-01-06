@@ -124,7 +124,7 @@ impl Opts {
     }
 }
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, PartialEq, Eq, Debug)]
 #[argh(subcommand)]
 pub enum SubCommand {
     Version(Version),
@@ -136,7 +136,7 @@ pub enum SubCommand {
 }
 
 /// Returns CARGO_PKG_VERSION
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, PartialEq, Eq, Debug)]
 #[argh(subcommand, name = "version")]
 pub struct Version {
     /// returns cargo package version, this is a temporary argh workaround
@@ -145,7 +145,7 @@ pub struct Version {
 }
 
 /// Takes a single frame, emitting the request then validating the returned response
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, PartialEq, Eq, Debug)]
 #[argh(subcommand, name = "take")]
 #[argh(
     example = "Echo the origin `${{IP}}` that gets written to the cut register from the httpbin.org POST request:
@@ -174,7 +174,7 @@ pub struct Take {
 }
 
 /// Attempts to play through an entire Reel sequence running a take for every frame in the sequence
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, PartialEq, Eq, Debug)]
 #[argh(subcommand, name = "record")]
 #[argh(
     example = "Step through the httpbin test in [-i]nteractive mode:
@@ -225,7 +225,7 @@ pub struct Record {
 }
 
 /// Attempts to play through an entire VirtualReel sequence running a take for every frame in the sequence
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, PartialEq, Eq, Debug)]
 #[argh(subcommand, name = "vrecord")]
 #[argh(example = "Run the post reel in a v-reel setup:
 $ {command_name} ./test_data/post.vr.json
@@ -342,7 +342,7 @@ impl VirtualRecord {
             let mut vreel_file = VirtualReel::try_from(vreel_path.clone())?;
             // default to parent directory of vreel file if path is not specified
             if vreel_file.path.is_none() {
-                let parent_dir = fs::canonicalize(vreel_path.parent().unwrap().to_path_buf())?;
+                let parent_dir = fs::canonicalize(vreel_path.parent().unwrap())?;
                 vreel_file.path = Some(parent_dir);
             }
             vreel_file

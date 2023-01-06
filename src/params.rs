@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 /// Parameters needed for a uri method to be sent.
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct Params<'a> {
     pub timeout:       u64,
     pub use_timestamp: bool,
@@ -61,7 +61,7 @@ pub struct BaseParams {
     pub verbose:     bool,
 }
 
-#[derive(Clone, Copy, Deserialize, Default, Debug, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Default, Debug, PartialEq, Eq)]
 pub struct Attempts {
     pub times: u32,
     pub ms:    u64,
@@ -233,7 +233,7 @@ mod tests {
             "../third_file",
         ]
         .iter()
-        .map(|x| OsStr::new(x))
+        .map(OsStr::new)
         .collect();
         assert_eq!(
             expected,

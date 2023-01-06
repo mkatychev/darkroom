@@ -53,7 +53,7 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
             }
         } else {
             flags.push(OsString::from("-H"));
-            flags.push(h.replace("\"", "").into());
+            flags.push(h.replace('\"', "").into());
         }
     };
 
@@ -132,7 +132,7 @@ mod serde_tests {
     #[test]
     fn test_auth() {
         let json_struct: ResponseError =
-            serde_json::from_slice(&AUTH_ERROR.as_bytes().to_vec()).unwrap();
+            serde_json::from_slice(AUTH_ERROR.as_bytes()).unwrap();
         assert_eq!(
             ResponseError {
                 code:    16,
