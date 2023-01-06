@@ -21,31 +21,31 @@ members = [
 ]
 
 [dependencies]
-anyhow = "1.0.56"
-argh = "0.1.7"
-chrono = "0.4.19"
+anyhow = "1.0.68"
+argh = "0.1.9"
+chrono = "0.4.23"
 colored = "2.0.0"
 colored-diff = "0.2.3"
 colored_json = "2.1.0"
 filmreel = { version = "0.7.0", path = "filmreel" }
-http = "0.2.6"
+http = "0.2.8"
 lazy_static = "1.4.0"
-log = { version = "0.4.14", features = ["std"] }
-prettytable-rs = "0.8.0"
-reqwest = { version = "0.11.10", features = ["blocking", "json"] }
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = "1.0.79"
-url = "2.2.2"
-which = "4.2.4"
+log = { version = "0.4.17", features = ["std"] }
+prettytable-rs = "0.10.0"
+reqwest = { version = "0.11.13", features = ["blocking", "json"] }
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.91"
+url = "2.3.1"
+which = "4.3.0"
 
-mdcat = { version = "0.26.1", optional = true }
-syntect = { version = "4.6.0", optional = true }
-pulldown-cmark = { version = "0.9.1", optional = true }
+mdcat = { version = "0.30.3", optional = true }
+syntect = { version = "5.0.0", optional = true }
+pulldown-cmark = { version = "0.9.2", optional = true }
 # overflow broken for latest minus
 minus = { version = "3.4.0", optional = true, features = ["static_output"] }
 
 [dev-dependencies]
-rstest = "0.12.0"
+rstest = "0.16.0"
 
 [features]
 default = ["man"]

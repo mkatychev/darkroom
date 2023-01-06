@@ -1,7 +1,8 @@
 use crate::params::BaseParams;
 use anyhow::{anyhow, Error};
 use argh::FromArgs;
-use colored_json::{prelude::*, Colour, Styler};
+//                             >:(      Colour
+use colored_json::{prelude::*, Color as Colour, Styler};
 use serde::Serialize;
 use std::{convert::TryFrom, fs, path::PathBuf};
 
@@ -93,16 +94,16 @@ pub struct Command {
 impl Command {
     pub fn base_params(&self) -> BaseParams {
         BaseParams {
-            timeout:     30,
-            timestamp:   false,
-            tls:         self.tls,
-            header:      self.header.clone(),
-            address:     self.address.clone(),
-            proto_path:  self.proto_dir.clone(),
-            proto:       self.proto.clone(),
-            cut_out:     self.cut_out.clone(),
+            timeout: 30,
+            timestamp: false,
+            tls: self.tls,
+            header: self.header.clone(),
+            address: self.address.clone(),
+            proto_path: self.proto_dir.clone(),
+            proto: self.proto.clone(),
+            cut_out: self.cut_out.clone(),
             interactive: self.interactive,
-            verbose:     self.verbose,
+            verbose: self.verbose,
         }
     }
 
