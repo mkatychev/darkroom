@@ -200,12 +200,12 @@ where
         }
         // write with a hidden cut if directory w,as provided
         if path.is_dir() {
-            let dir_cut = &path.join(format!(".{}.cut.json", reel_name));
-            fs::write(dir_cut, &cut_register.to_string_hidden()?)
+            let dir_cut = &path.join(format!(".{reel_name}.cut.json"));
+            fs::write(dir_cut, cut_register.to_string_hidden()?)
                 .context("unable to write to --cut_out directory")?;
         } else {
             debug!("writing cut output to PathBuf...");
-            fs::write(path, &cut_register.to_string_hidden()?)
+            fs::write(path, cut_register.to_string_hidden()?)
                 .context("unable to write to cmd.get_cut_copy()")?;
         }
     }
@@ -221,7 +221,7 @@ pub fn take_output<P: AsRef<Path>>(dir: &P, file: &P) -> PathBuf {
         .map(|f| f.trim_end_matches(".fr"))
         .expect("take_output: failed filepath trimming");
 
-    dir.as_ref().join(format!("{}.tk.json", frame_stem))
+    dir.as_ref().join(format!("{frame_stem}.tk.json"))
 }
 
 /// create component output
@@ -253,7 +253,7 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
         }
     }
     let reel = Reel::new(reel_path, reel_name, None)
-        .context(format!("component Reel::new failure => {}", reel_name))?;
+        .context(format!("component Reel::new failure => {reel_name}"))?;
     let cut_path = reel.get_default_cut_path();
     if !cut_path.is_file() {
         return Err(anyhow!(
@@ -264,8 +264,7 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
     Ok((
         reel,
         Register::try_from(cut_path.clone()).context(format!(
-            "component Register::from failure => {:?}",
-            cut_path
+            "component Register::from failure => {cut_path:?}"
         ))?,
     ))
 }

@@ -232,7 +232,7 @@ pub fn cmd_take(cmd: Take, base_params: BaseParams) -> Result<(), Error> {
         cut_register = Register::new();
     } else {
         let cut_str = fr::file_to_string(cut_file)?;
-        cut_register = Register::from(&cut_str)?;
+        cut_register = Register::from(cut_str)?;
     }
 
     // Frame to be mutably borrowed

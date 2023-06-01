@@ -49,7 +49,7 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
             let map: HashMap<String, String> = serde_json::from_str(h)?;
             for (key, value) in &map {
                 flags.push(OsString::from("-H"));
-                flags.push(format!("{}: {}", key, value).into())
+                flags.push(format!("{key}: {value}").into())
             }
         } else {
             flags.push(OsString::from("-H"));

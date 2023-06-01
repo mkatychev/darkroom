@@ -28,12 +28,11 @@ pub fn build_request(prm: &Params, req: Request) -> Result<RequestBuilder, Error
             method = Method::from_bytes(method_str.as_bytes())?;
             let entrypoint = &prm.address;
             endpoint = Url::parse(entrypoint)
-                .context(format!("base url: {}", entrypoint))?
+                .context(format!("base url: {entrypoint}"))?
                 .join(tail_str)
                 .context(format!(
-                    "base url: {}, This is the case if the scheme and ':' delimiter are not followed by a '/',
-such as 'data:' mailto: URLs, and localhost without a leading http:// or https://",
-                    entrypoint
+                    "base url: {entrypoint}, This is the case if the scheme and ':' delimiter are not followed by a '/',
+such as 'data:' mailto: URLs, and localhost without a leading http:// or https://"
                 ))?;
         }
         _ => {
