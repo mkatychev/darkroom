@@ -131,8 +131,7 @@ mod serde_tests {
 
     #[test]
     fn test_auth() {
-        let json_struct: ResponseError =
-            serde_json::from_slice(AUTH_ERROR.as_bytes()).unwrap();
+        let json_struct: ResponseError = serde_json::from_slice(AUTH_ERROR.as_bytes()).unwrap();
         assert_eq!(
             ResponseError {
                 code:    16,
