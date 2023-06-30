@@ -1,2 +1,5 @@
 [registries.crates-io]
 protocol = "sparse"
+
+[profile.release]
+strip = true

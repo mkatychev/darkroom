@@ -17,18 +17,18 @@ path = "src/lib.rs"
 
 [dependencies]
 colored = "2.0.0"
-glob  = "0.3.0"
+glob  = "0.3.1"
 lazy_static = "1.4.0"
-paste = "1.0.5"
-pest = "2.1.3"
-pest_derive = "2.1.0"
+paste = "1.0.12"
+pest = "2.6.0"
+pest_derive = "2.6.0"
 pretty_assertions = "0.7.2"
-regex = "1.5.4"
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = "1.0.68"
-serde-hashkey = { version = "0.4.0", features = ["ordered-float"] }
+regex = "1.8.3"
+serde = { version = "1.0.163", features = ["derive"] }
+serde_json = "1.0.96"
+serde-hashkey = { version = "0.4.5", features = ["ordered-float"] }
 
-jql = { version = "3.0.0", optional = true }
+jql = { version = "3.3.0", optional = true }
 
 [features]
 default = []
@@ -36,4 +36,4 @@ full_jql = ["jql"]
 
 [dev-dependencies]
 rstest = "0.11.0"
-paste = "1.0.5"
+paste = "1.0.12"

@@ -21,26 +21,26 @@ members = [
 ]
 
 [dependencies]
-anyhow = "1.0.68"
-argh = "0.1.9"
-chrono = "0.4.23"
+anyhow = "1.0.71"
+argh = "0.1.10"
+chrono = "0.4.26"
 colored = "2.0.0"
 colored-diff = "0.2.3"
 colored_json = "2.1.0"
 filmreel = { version = "0.7.0", path = "filmreel" }
-http = "0.2.8"
+http = "0.2.9"
 lazy_static = "1.4.0"
-log = { version = "0.4.17", features = ["std"] }
+log = { version = "0.4.18", features = ["std"] }
 prettytable-rs = "0.10.0"
-reqwest = { version = "0.11.13", features = ["blocking", "json"] }
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.91"
+reqwest = { version = "0.11.18", features = ["blocking", "json"] }
+serde = { version = "1.0.163", features = ["derive"] }
+serde_json = "1.0.96"
 url = "2.3.1"
-which = "4.3.0"
+which = "4.4.0"
 
 mdcat = { version = "0.30.3", optional = true }
 syntect = { version = "5.0.0", optional = true }
-pulldown-cmark = { version = "0.9.2", optional = true }
+pulldown-cmark = { version = "0.9.3", optional = true }
 # overflow broken for latest minus
 minus = { version = "3.4.0", optional = true, features = ["static_output"] }
 
