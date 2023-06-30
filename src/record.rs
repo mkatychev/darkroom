@@ -263,9 +263,8 @@ fn parse_component(component: String) -> Result<(Reel, Register), Error> {
     }
     Ok((
         reel,
-        Register::try_from(cut_path.clone()).context(format!(
-            "component Register::from failure => {cut_path:?}"
-        ))?,
+        Register::try_from(cut_path.clone())
+            .context(format!("component Register::from failure => {cut_path:?}"))?,
     ))
 }
 
