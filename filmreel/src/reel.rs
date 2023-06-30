@@ -106,7 +106,7 @@ impl Reel {
         let mut frames = Vec::new();
 
         for entry in glob(dir_glob.as_ref().to_str().unwrap())
-            .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))? // -> Result<PathBuf, FrErrror>?
+            .map_err(|e| FrError::ReelParsef("PatternError: {}", e.to_string()))? // -> Result<PathBuf, FrError>?
             .filter_map(|r| r.ok()) // Ok(PathBuf) -> Some(PathBuf)
             .filter(|path| path.is_file())
         // PathBuf -> PathBuf
@@ -202,7 +202,7 @@ impl MetaFrame {
         return format!("{}.{}.{}.fr.json", self.reel_name, self.step, self.name);
     }
 
-    // get_cut_file retuns the default cut file location
+    // get_cut_file returns the default cut file location
     pub fn get_cut_file<P: AsRef<Path>>(&self, dir: P) -> PathBuf {
         if !dir.as_ref().is_dir() {
             panic!("\"{}\" is not a directory!", dir.as_ref().to_string_lossy());

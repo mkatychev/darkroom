@@ -165,7 +165,7 @@ impl<'a> Frame<'a> {
                         return Err(FrError::FrameParsef(MISSING_VAR_ERR, n.to_string()));
                     }
                     // Now that the cut var is confirmed to exist in the entire instruction set
-                    // perform read operation ony if cut var is present in read instructions
+                    // perform read operation only if cut var is present in read instructions
                     if set.reads.contains(n) {
                         reg.read_operation(mat, val, hide)?;
                         continue;

@@ -19,7 +19,7 @@
 * added `dark vreel` command to support virtual reels allowing mixing of arbitrary cuts and frames in a chosen order:
   `dark vrecord ./test_data/post.vr.json`
 * added partial and unordered response validations to filmreel
-* implemented subset of `jql` for mutable selections of the resposne json
+* implemented subset of `jql` for mutable selections of the response json
   the `jql` library can be included with the `--features=filmreel/full_jql` flag
 * an empty body in the request is now appropriately represented as a missing `body` key rather than `"body": {}`
 * `take` and `record` can now accept a mixture of filepaths and json strings:
@@ -47,7 +47,7 @@
 * range is added to recordings: `dark record --range "<start_u32>:<end_u32>" ./dir/ my_reel_name`
 * `grpcurl` errors propagate to stdout properly
 * `"request"["form"]` request building URL functionality moved to `"request"["query"]`
-* `"request"["form"]` now properly bulids the form data of the HTTP request
+* `"request"["form"]` now properly builds the form data of the HTTP request
 
 
 #### `0.3.2`:

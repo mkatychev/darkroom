@@ -102,7 +102,7 @@ pub fn new_mut_selector(query: &str) -> Result<MutSelector, FrError> {
                 let index_selector: MutSelector = Box::new(move |x: &mut Value| x.get_mut(index));
                 generator.push(index_selector);
             }
-            // selector will always be the only pair at the top level of the genreated AST
+            // selector will always be the only pair at the top level of the generated AST
             // all other rules are "silent" and never tokenized, this is represented by the leading
             // underscore in pest:
             //
@@ -155,7 +155,7 @@ pub fn new_selector(query: &str) -> Result<Selector, FrError> {
                 let index_selector: Selector = Box::new(move |x: &Value| x.get(index));
                 generator.push(index_selector);
             }
-            // selector will always be the only pair at the top level of the genreated AST
+            // selector will always be the only pair at the top level of the generated AST
             // all other rules are "silent" and never tokenized, this is represented by the leading
             // underscore in pest:
             //
@@ -224,7 +224,7 @@ mod tests {
             ),
             5 => (ARR_JSON, "[3].[0]", vec![Box::new(3), Box::new(0)]),
             6 => (ARR_JSON, "[0].'key'", vec![Box::new(0), Box::new("key")]),
-            // should panic: acessing index 1 of empty array
+            // should panic: accessing index 1 of empty array
             7 => (ARR_JSON, "[2].[1]", vec![Box::new(2), Box::new(1)]),
             8 => (OBJ_JSON, r#"'\'\''"#, vec![Box::new("\\'\\'")]),
             _ => panic!(),

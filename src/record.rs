@@ -183,7 +183,7 @@ pub fn read_into(base_register: &mut Register, merge_cuts: Vec<String>) -> Resul
     Ok(())
 }
 
-/// write_cut dumps the in memory [Regiser] to the [PathBuf] provided.
+/// write_cut dumps the in memory [Register] to the [PathBuf] provided.
 pub fn write_cut<T>(
     cut_out: &Option<PathBuf>,
     cut_register: &Register,

@@ -128,14 +128,14 @@ impl<'a> Response<'a> {
             }
         }
 
-        // for comparison's sake set validtion to None once applying is finished
+        // for comparison's sake set validation to None once applying is finished
         self.validation = None;
 
         Ok(())
     }
 }
 
-// For now selector queries are only used on the reponse body
+// For now selector queries are only used on the response body
 // selector logic takes the body Value object while mainting a valid
 // "whole file" query for reference's sake
 // `"'response'.'body'" => "."`
@@ -162,7 +162,7 @@ impl Default for Response<'_> {
     }
 }
 
-/// PartialEq needs to exlcude [`Response.validation`] to ensure that [`Response::apply_validation`] can
+/// PartialEq needs to exclude [`Response.validation`] to ensure that [`Response::apply_validation`] can
 /// diffentiatiate between the parent `Response` (the one pulled directle from the filmReel file)
 /// and the child [`Response`] (one deserialized from returned data) since the client validations
 /// should always be[`Option::None`]
@@ -633,7 +633,7 @@ mod tests {
                 r#"[0,{"A":0},1,2,3]"#,
             ),
             14 => (
-                // test hash_value, mutliple keys should not
+                // test hash_value, multiple keys should not
                 // have a matching hash of a single key
                 r#"[0,{"A":false,"B":true},1]"#,
                 r#"[1,{"B":true},0]"#,

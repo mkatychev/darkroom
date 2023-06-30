@@ -1,0 +1,10 @@
+# typos config
+# https://github.com/crate-ci/typos/blob/master/docs/reference.md
+
+[files]
+ignore-dot = true
+
+[default.extend-identifiers]
+cx = "ctx"
+[default.extend-words]
+parsef = "parsef"
