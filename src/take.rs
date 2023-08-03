@@ -83,7 +83,7 @@ pub fn process_response<'a, 'b>(
             "{}",
             PrettyDifference {
                 expected: &frame.response.to_string_pretty()?,
-                actual:   &payload_response.to_string_pretty()?,
+                actual: &payload_response.to_string_pretty()?,
             }
         );
         error!(
@@ -158,17 +158,17 @@ pub fn run_take<'a>(
         let mut stdout = io::stdout();
         let mut table = Table::new();
         table.add_row(row![
-            format!("[{}] frame", "Unhydrated".red()),
-            format!("[{}]", "Cut Register".yellow()),
+            // format!("[{}] frame", "Unhydrated".red()),
+            // format!("[{}]", "Cut Register".yellow()),
             format!("[{}] frame", "Hydrated".green()),
         ]);
 
         let hidden = hidden_frame.ok_or_else(|| anyhow!("None for interactive hidden_frame"))?;
         table.add_row(row![
-            unhydrated_frame
-                .expect("None for unhydrated_frame")
-                .to_coloured_tk_json()?,
-            register.to_hidden_tk_json()?,
+            // unhydrated_frame
+            //     .expect("None for unhydrated_frame")
+            //     .to_coloured_tk_json()?,
+            // register.to_hidden_tk_json()?,
             hidden.to_coloured_tk_json()?,
         ]);
         table.printstd();
@@ -332,10 +332,10 @@ mod tests {
         )
         .unwrap();
         let payload_response = Response {
-            body:       Some(json!("created user: BIG_BEN")),
-            etc:        Some(json!({})),
+            body: Some(json!("created user: BIG_BEN")),
+            etc: Some(json!({})),
             validation: None,
-            status:     200,
+            status: 200,
         };
         let mut register = Register::default();
         let params = Params::default();
