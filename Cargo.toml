@@ -43,6 +43,7 @@ syntect = { version = "5.0.0", optional = true }
 pulldown-cmark = { version = "0.9.3", optional = true }
 # overflow broken for latest minus
 minus = { version = "3.4.0", optional = true, features = ["static_output"] }
+# tokio = { version = "1.16.1", features = ["macros"] }
 
 [dev-dependencies]
 rstest = "0.16.0"
