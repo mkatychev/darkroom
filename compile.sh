@@ -2,7 +2,7 @@
 
 set -ueo pipefail
 
-docker info >/dev/null
+docker info > /dev/null
 
 VERSION="$(git describe --tags --abbrev=8)"
 
