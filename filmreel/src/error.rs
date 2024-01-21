@@ -60,10 +60,10 @@ macro_rules! errorf {
 impl fmt::Display for FrError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            FrError::FrameParse(msg) => write!(f, "FrameParseError: {}", msg),
-            FrError::ReelParse(msg) => write!(f, "ReelParseError: {}", msg),
-            FrError::WriteInstruction(msg) => write!(f, "WriteInstructionError: {}", msg),
-            FrError::ReadInstruction(msg) => write!(f, "ReadInstructionError: {}", msg),
+            FrError::FrameParse(msg) => write!(f, "FrameParseError: {msg}"),
+            FrError::ReelParse(msg) => write!(f, "ReelParseError: {msg}"),
+            FrError::WriteInstruction(msg) => write!(f, "WriteInstructionError: {msg}"),
+            FrError::ReadInstruction(msg) => write!(f, "ReadInstructionError: {msg}"),
             FrError::FrameParsef(msg, item) => {
                 errorf!(f, "FrameParseError", msg, item);
                 Ok(())

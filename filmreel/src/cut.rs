@@ -210,7 +210,7 @@ impl Register {
         if expected != frame_str {
             return Err(FrError::FrameParsef(
                 "Singe variable mismatch -",
-                format!("Expected:{}, Got:{}", expected, frame_str),
+                format!("Expected:{expected}, Got:{frame_str}"),
             ));
         }
         Ok(())
@@ -228,11 +228,10 @@ impl Register {
                 (?P<head_val>.*)   # value preceding cut var
                 (?P<esc_char>\\)?  # escape character
                 (?P<cut_decl>\$\{{
-                {}
+                {var_name}
                 \}})               # Cut Variable Declaration
                 (?P<tail_val>.*)   # value following cut var
-                ",
-            var_name
+                "
         ))
         .expect("write-match regex error");
 
@@ -306,7 +305,7 @@ impl TryFrom<PathBuf> for Register {
     type Error = FrError;
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        let buf = crate::file_to_reader(&path)?;
+        let buf = crate::file_to_reader(path)?;
 
         let register = serde_json::from_reader(buf)?;
         Ok(register)
@@ -434,7 +433,7 @@ mod tests {
             kv_vec.push((k, v));
         }
         assert_eq!(
-            vec![(&"FIRST_NAME", "Primus"), (&"RESPONSE", "ALRIGHT")].sort(),
+            [(&"FIRST_NAME", "Primus"), (&"RESPONSE", "ALRIGHT")].sort(),
             kv_vec.sort_by(|a, b| a.0.cmp(b.0))
         );
     }
@@ -485,7 +484,7 @@ mod tests {
          death, but not himself.";
 
     fn case_read_op(case: u32) -> (Value, Value) {
-        return match case {
+        match case {
             1 => (
                 json!("My name is ${FIRST_NAME} ${LAST_NAME}"),
                 json!("My name is Slim Shady"),
@@ -508,7 +507,7 @@ mod tests {
             ),
             5 => (json!("${OBJECT}"), json!({"key": "value"})),
             _ => (json!({}), json!({})),
-        };
+        }
     }
     #[rstest(
         in_out,
@@ -527,7 +526,7 @@ mod tests {
             "OBJECT"=> json!({"key": "value"})
         });
         let matches: Vec<Match> = reg
-            .read_match(&input.as_str().unwrap())
+            .read_match(input.as_str().unwrap())
             .expect("match error");
         for mat in matches.into_iter() {
             reg.read_operation(mat, &mut input, false).unwrap();
@@ -579,7 +578,7 @@ mod tests {
         )
     )]
     fn test_write_match(var: &str, frame: &str, payload: &str, expected: &str) {
-        match Register::write_match(var, frame, &payload.to_string()) {
+        match Register::write_match(var, frame, payload) {
             Ok(mat) => assert_eq!(expected, mat.unwrap()),
             Err(err) => assert_eq!(expected, err.to_string()),
         }

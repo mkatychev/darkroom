@@ -238,7 +238,7 @@ impl Validator {
                 // NOTE: Array partial matches need to be ordered as well as contiguous.
                 // The example below would not result in a match:
                 // Other: [A, B, B, C, A, B, B, C]
-                for i in (0..other_selection.len()).into_iter() {
+                for i in (0..other_selection.len()) {
                     if i + self_len > other_selection.len() {
                         // other_selection[i..] is already larger than self_selection here
                         // cannot find a partial match at this point
@@ -284,7 +284,7 @@ impl Validator {
                         Ok(k) => {
                             // if .entry(k) returns a Vec, push i to it
                             // if .entry(k) returns None, insert Vec::new() then push i to it
-                            other_idx_map.entry(k).or_insert_with(Vec::new).push(i);
+                            other_idx_map.entry(k).or_default().push(i);
                             Ok(())
                         }
                         Err(e) => Err(e),
@@ -348,7 +348,7 @@ impl Validator {
                 let mut i = 0;
                 other_selection.retain(|_| (!placeholder_indices.contains(&i), i += 1).0);
                 // https://stackoverflow.com/questions/47037573/how-to-prepend-a-slice-to-a-vec#answer-47037876
-                other_selection.splice(0..0, sink.into_iter().map(|(_, v)| v));
+                other_selection.splice(0..0, sink.into_values());
 
                 Ok(())
             }

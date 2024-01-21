@@ -55,7 +55,7 @@ impl<'a> Frame<'a> {
     pub fn get_request_uri(&self) -> Result<String, FrError> {
         let unst = serde_json::to_string(&self.request.uri)?;
 
-        Ok(unst.replace("\"", ""))
+        Ok(unst.replace('\"', ""))
     }
 
     /// Returns a Value object from the response body, used for response comparisons and writing to
@@ -186,7 +186,7 @@ impl<'a> TryFrom<PathBuf> for Frame<'a> {
     type Error = FrError;
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        let buf = crate::file_to_reader(&path)?;
+        let buf = crate::file_to_reader(path)?;
 
         let frame: Frame = serde_json::from_reader(buf)?;
         Ok(frame)
@@ -245,7 +245,7 @@ impl<'a> InstructionSet<'a> {
         if intersection.is_some() {
             return Err(FrError::FrameParsef(
                 DUPE_VAR_REFERENCE_ERR,
-                format!("{:?}", intersection),
+                format!("{intersection:?}"),
             ));
         }
         Ok(())

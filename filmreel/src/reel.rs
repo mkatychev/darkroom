@@ -31,7 +31,7 @@ impl Reel {
     {
         let dir_glob = Self::get_frame_dir_glob(&dir, reel_name);
 
-        let mut frames = Self::get_metaframes(&dir_glob, range)?;
+        let mut frames = Self::get_metaframes(dir_glob, range)?;
 
         // sort by string value since sorting by f32 is not idiomatic
         frames.sort_by(|a, b| a.path.cmp(&b.path));
@@ -47,7 +47,7 @@ impl Reel {
     /// convenience function to get default associated cut file
     pub fn get_default_cut_path(&self) -> PathBuf {
         let reel_name = self.frames[0].reel_name.clone();
-        self.dir.join(format!("{}.cut.json", reel_name))
+        self.dir.join(format!("{reel_name}.cut.json"))
     }
 
     /// Return only successful frames
@@ -83,11 +83,11 @@ impl Reel {
         if !dir_ref.is_dir() {
             panic!(
                 "dir argument to get_frame_dir_glob is not a directory: {}",
-                dir_ref.to_string_lossy().to_string(),
+                dir_ref.to_string_lossy(),
             );
         }
 
-        dir_ref.join(format!("{}.*.*.fr.json", reel_name))
+        dir_ref.join(format!("{reel_name}.*.*.fr.json"))
     }
 
     /// get_metaframes takes a directory glob ref and a possible range, returning a vector of
@@ -199,7 +199,7 @@ impl MetaFrame {
 
     // get_filename returns the str representation of the MetaFrame.path file stem
     pub fn get_filename(&self) -> String {
-        return format!("{}.{}.{}.fr.json", self.reel_name, self.step, self.name);
+        format!("{}.{}.{}.fr.json", self.reel_name, self.step, self.name)
     }
 
     // get_cut_file returns the default cut file location
