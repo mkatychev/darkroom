@@ -19,7 +19,7 @@ pub enum FrError {
     Serde(String),
     Parse(String),
     File(String, String),
-    Pest(PestError<Rule>),
+    Pest(Box<PestError<Rule>>),
 }
 
 impl Error for FrError {
@@ -39,7 +39,7 @@ impl From<SerdeError> for FrError {
 
 impl From<PestError<Rule>> for FrError {
     fn from(err: PestError<Rule>) -> FrError {
-        Self::Pest(err)
+        Self::Pest(Box::new(err))
     }
 }
 

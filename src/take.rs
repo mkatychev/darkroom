@@ -83,7 +83,7 @@ pub fn process_response<'a, 'b>(
             "{}",
             PrettyDifference {
                 expected: &frame.response.to_string_pretty()?,
-                actual:   &payload_response.to_string_pretty()?,
+                actual: &payload_response.to_string_pretty()?,
             }
         );
         error!(
@@ -172,12 +172,7 @@ pub fn run_take<'a>(
             hidden.to_coloured_tk_json()?,
         ]);
         table.printstd();
-        write!(
-            stdout,
-            "{}",
-            format!("Press {} to continue...", "ENTER".yellow())
-        )
-        .expect("write to stdout panic");
+        write!(stdout, "Press {} to continue...", "ENTER".yellow()).expect("write to stdout panic");
         stdout.flush().expect("stdout flush panic");
 
         // Read a single byte and discard
@@ -332,10 +327,10 @@ mod tests {
         )
         .unwrap();
         let payload_response = Response {
-            body:       Some(json!("created user: BIG_BEN")),
-            etc:        Some(json!({})),
+            body: Some(json!("created user: BIG_BEN")),
+            etc: Some(json!({})),
             validation: None,
-            status:     200,
+            status: 200,
         };
         let mut register = Register::default();
         let params = Params::default();

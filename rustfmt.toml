@@ -15,4 +15,5 @@ use_small_heuristics = "Default"
 use_try_shorthand = true
 trailing_comma = "Vertical"
 struct_field_align_threshold = 20
+enum_discrim_align_threshold = 20
 unstable_features = true

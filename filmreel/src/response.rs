@@ -238,7 +238,7 @@ impl Validator {
                 // NOTE: Array partial matches need to be ordered as well as contiguous.
                 // The example below would not result in a match:
                 // Other: [A, B, B, C, A, B, B, C]
-                for i in (0..other_selection.len()) {
+                for i in 0..other_selection.len() {
                     if i + self_len > other_selection.len() {
                         // other_selection[i..] is already larger than self_selection here
                         // cannot find a partial match at this point

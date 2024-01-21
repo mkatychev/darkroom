@@ -40,8 +40,8 @@ where
 
 #[cfg(feature = "full_jql")]
 pub fn select_value(val: &Value, query: &str) -> Result<Value, FrError> {
-    let selectors = query.replace("'", "\"");
-    match jql::walker(val, Some(&selectors)) {
+    let selectors = query.replace('\'', "\"");
+    match jql::walker(val, selectors.as_ref()) {
         Ok(v) => match v {
             Value::String(_) => Ok(v),
             v => Ok(v),
