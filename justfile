@@ -1,7 +1,14 @@
-# Run clippy with the --fix flag
-fix:
-  cd {{invocation_directory()}}; cargo clippy --fix --all-targets --all-features
+# Justfiles are processed by the just command runner (https://just.systems/).
 
-# Run nightly cargo format
+# You can install it with `brew install just` or `cargo install just`
+_default:
+    just --list
+
+# Run rustfmt
 fmt:
-  cargo +nightly fmt --all
+    rustup run nightly cargo fmt -- \
+      --config-path ./fmt/rustfmt.toml
+
+# Run clippy fix and rustfmt afterwards
+fix *args: && fmt
+    cd {{ invocation_directory() }}; cargo clippy --fix --all-targets --all-features {{ args }}
