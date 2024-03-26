@@ -20,9 +20,7 @@ jobs:
         with:
           toolchain: nightly
           components: rustfmt
-      # from stable toolchain:
-      # cargo +nightly fmt --all
-      - run: cargo fmt --all -- --check
+      - run: cargo +nightly fmt -- --config-path ./fmt/rustfmt.toml
       - run: cargo clippy --all
   test:
     name: test
@@ -34,7 +32,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - run: cargo test --verbose --workspace
+      - name: install nextest
+        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-~/.cargo}/bin"
+      - run: cargo nextest run
   examples:
     name: examples
     runs-on: ubuntu-latest
@@ -54,16 +54,16 @@ jobs:
       - name: install grpcurl
         env:
           GRPCURL_URL: "https://github.com/fullstorydev/grpcurl/releases/download/\
-            v${GRPCURLV}/grpcurl_${GRPCURLV}_linux_x86_64.tar.gz"
+            v${{ env.GRPCURLV }}/grpcurl_${{ env.GRPCURLV }}_linux_x86_64.tar.gz"
+        run: sudo curl -sL "$GRPCURL_URL" sudo tar xvz -C /usr/local/bin/
+      - name: record
         run: |
-          sudo curl -sL "$GRPCURL_URL" sudo tar xvz -C /usr/local/bin/
-      - name: httpbin post
-        run: cargo run -- record ./test_data post
-      - name: httpbin take
-        run: cargo run -- take ./test_data/post.01s.body.fr.json
-      - name: httpbin vrecord
-        run: cargo run -- vrecord ./test_data/post.vr.json
-      - name: httpbin vrecord alt
-        run: cargo run -- vrecord ./test_data/alt_post.vr.json
-      - name: grpcbin headers
-        run: cargo run -- record ./test_data grpc
+          cargo run -- record ./test_data post
+          cargo run -- record ./test_data grpc
+      - name: take
+        run: |
+          cargo run -- take ./test_data/post.01s.body.fr.json
+      - name: vrecord
+        run: |
+          cargo run -- vrecord ./test_data/post.vr.json
+          cargo run -- vrecord ./test_data/alt_post.vr.json
