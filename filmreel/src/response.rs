@@ -245,7 +245,7 @@ impl Validator {
                         return Ok(());
                     }
                     if &other_selection[i..i + self_len] == self_selection.as_slice() {
-                        *other_selection = self_selection.clone();
+                        other_selection.clone_from(self_selection);
                         return Ok(()); // partial match has been found, no need to iterate further
                     }
                 }

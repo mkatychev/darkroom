@@ -218,11 +218,9 @@ mod tests {
 
     #[test]
     fn test_iter_path_args() {
-        let path_vec = vec![
-            PathBuf::from("./first.file"),
+        let path_vec = [PathBuf::from("./first.file"),
             PathBuf::from("./second_file"),
-            PathBuf::from("../third_file"),
-        ];
+            PathBuf::from("../third_file")];
 
         let expected: Vec<&OsStr> = [
             "prefix",
