@@ -5,9 +5,16 @@ on:
     branches:
       - master
       - dev
+
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#concurrency
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   GRPCURLV: "1.8.1"
+
 jobs:
   lint:
     name: rustfmt
@@ -33,9 +40,7 @@ jobs:
         with:
           submodules: recursive
       - name: install nextest
-        run: |
-          mkdir -p ~/.cargo/bin
-          curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-~/.cargo}/bin"
+        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C /usr/local/bin
       - run: cargo nextest run
   examples:
     name: examples
