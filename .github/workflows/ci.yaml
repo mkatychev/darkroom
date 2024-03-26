@@ -59,7 +59,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: install grpcurl
-        run: sudo curl -sL "$GRPCURL_URL" sudo tar xvz -C /usr/local/bin/
+        run: sudo curl -sL "${{ env.GRPCURL_URL }}" | sudo tar xvz -C /usr/local/bin/
         env:
           GRPCURL_URL: "https://github.com/fullstorydev/grpcurl/releases/download/\
             v${{ env.GRPCURLV }}/grpcurl_${{ env.GRPCURLV }}_linux_x86_64.tar.gz"
