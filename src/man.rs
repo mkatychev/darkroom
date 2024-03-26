@@ -154,10 +154,10 @@ impl Man {
         // NOTE this does not do anything since markdown is pulled from constant functions
         let env = &Environment::for_local_directory(&"/")?;
         let settings = &Settings {
-            resource_access:       ResourceAccess::LocalOnly,
-            syntax_set:            SyntaxSet::default(),
+            resource_access: ResourceAccess::LocalOnly,
+            syntax_set: SyntaxSet::default(),
             terminal_capabilities: TerminalCapabilities::detect(),
-            terminal_size:         TerminalSize::from_terminal()
+            terminal_size: TerminalSize::from_terminal()
                 .map_or_else(|| Err(anyhow!("termsize is None")), Ok)?,
         };
 

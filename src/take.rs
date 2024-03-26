@@ -17,7 +17,6 @@ use filmreel::{
 use log::{debug, error, info, warn};
 use prettytable::*;
 use std::{
-    convert::TryFrom,
     fs,
     io::{self, prelude::*},
     path::PathBuf,
@@ -83,7 +82,7 @@ pub fn process_response<'a, 'b>(
             "{}",
             PrettyDifference {
                 expected: &frame.response.to_string_pretty()?,
-                actual:   &payload_response.to_string_pretty()?,
+                actual: &payload_response.to_string_pretty()?,
             }
         );
         error!(
@@ -300,8 +299,8 @@ fn log_mismatch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmreel::{cut::Register, register, response::Response};
-    use serde_json::{self, json};
+    use filmreel::{cut::Register, register};
+    use serde_json::json;
 
     #[test]
     fn test_process_response() {
@@ -327,10 +326,10 @@ mod tests {
         )
         .unwrap();
         let payload_response = Response {
-            body:       Some(json!("created user: BIG_BEN")),
-            etc:        Some(json!({})),
+            body: Some(json!("created user: BIG_BEN")),
+            etc: Some(json!({})),
             validation: None,
-            status:     200,
+            status: 200,
         };
         let mut register = Register::default();
         let params = Params::default();

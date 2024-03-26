@@ -74,11 +74,11 @@ const REQUEST_ETC_JSON: &str = r#"
 test_ser_de!(
     request_etc,
     Request {
-        body:       Some(json!({})),
-        header:     Some(json!({"Authorization": "${USER_TOKEN}"})),
+        body: Some(json!({})),
+        header: Some(json!({"Authorization": "${USER_TOKEN}"})),
         entrypoint: None,
-        etc:        Some(json!({"id": "007"})),
-        uri:        json!("POST /logout/${USER_ID}"),
+        etc: Some(json!({"id": "007"})),
+        uri: json!("POST /logout/${USER_ID}"),
     },
     REQUEST_ETC_JSON
 );
@@ -132,8 +132,8 @@ const INSTRUCTION_SET_JSON: &str = r#"
 test_ser_de!(
     instruction_set,
     InstructionSet {
-        reads:          from!["USER_ID", "USER_TOKEN"],
-        writes:         to!({
+        reads: from!["USER_ID", "USER_TOKEN"],
+        writes: to!({
             "SESSION_ID" => ".response.body.session_id",
             "DATETIME" => ".response.body.timestamp"
         }),
@@ -176,15 +176,15 @@ test_ser_de!(
     frame,
     Frame {
         protocol: Protocol::HTTP,
-        cut:      InstructionSet {
-            reads:          from!["USER_ID", "USER_TOKEN"],
-            writes:         to!({
+        cut: InstructionSet {
+            reads: from!["USER_ID", "USER_TOKEN"],
+            writes: to!({
                 "SESSION_ID" => ".response.body.session_id",
                 "DATETIME" => ".response.body.timestamp"
             }),
             hydrate_writes: false,
         },
-        request:  Request {
+        request: Request {
             body: Some(json!({})),
             header: Some(json!({ "Authorization": "${USER_TOKEN}" })),
             uri: json!("POST /logout/${USER_ID}"),
@@ -218,8 +218,8 @@ test_ser_de!(
     simple_frame,
     Frame {
         protocol: Protocol::HTTP,
-        cut:      InstructionSet::default(),
-        request:  Request {
+        cut: InstructionSet::default(),
+        request: Request {
             uri: json!("POST /logout/${USER_ID}"),
             ..Default::default()
         },

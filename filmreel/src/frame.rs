@@ -18,11 +18,11 @@ use std::{
 /// [Frame spec](https://github.com/mkatychev/filmReel/blob/master/frame.md#frame)
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Frame<'a> {
-    pub protocol:       Protocol,
+    pub protocol: Protocol,
     #[serde(default, skip_serializing_if = "InstructionSet::is_empty")]
-    pub cut:            InstructionSet<'a>, // Both the reads and writes can be optional
+    pub cut: InstructionSet<'a>, // Both the reads and writes can be optional
     pub(crate) request: Request,
-    pub response:       Response<'a>,
+    pub response: Response<'a>,
 }
 
 const MISSING_VAR_ERR: &str = "Variable is not present in InstructionSet";
@@ -217,13 +217,13 @@ pub struct InstructionSet<'a> {
         skip_serializing_if = "HashSet::is_empty",
         serialize_with = "ordered_set"
     )]
-    pub(crate) reads:   HashSet<Cow<'a, str>>,
+    pub(crate) reads: HashSet<Cow<'a, str>>,
     #[serde(
         rename(serialize = "to", deserialize = "to"),
         skip_serializing_if = "HashMap::is_empty",
         serialize_with = "ordered_str_map"
     )]
-    pub(crate) writes:  HashMap<Cow<'a, str>, Cow<'a, str>>,
+    pub(crate) writes: HashMap<Cow<'a, str>, Cow<'a, str>>,
     #[serde(skip_serializing, default)]
     pub hydrate_writes: bool,
 }
@@ -259,12 +259,12 @@ impl<'a> InstructionSet<'a> {
 pub struct Request {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) body: Option<Value>,
-    pub(crate) uri:  Value,
+    pub(crate) uri: Value,
     #[serde(flatten, skip_serializing_if = "Option::is_none")]
-    pub(crate) etc:  Option<Value>,
+    pub(crate) etc: Option<Value>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) header:     Option<Value>,
+    pub(crate) header: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) entrypoint: Option<Value>,
 }
@@ -304,10 +304,10 @@ impl Request {
 impl Default for Request {
     fn default() -> Self {
         Self {
-            body:       None,
-            uri:        Value::Null,
-            etc:        Some(json!({})),
-            header:     None,
+            body: None,
+            uri: Value::Null,
+            etc: Some(json!({})),
+            header: None,
             entrypoint: None,
         }
     }
@@ -419,8 +419,8 @@ mod tests {
         assert_eq!(
             Frame {
                 protocol: Protocol::GRPC,
-                cut:      InstructionSet {
-                    reads:          from![
+                cut: InstructionSet {
+                    reads: from![
                         "EMAIL",
                         "FIRST",
                         "HOST",
@@ -430,19 +430,19 @@ mod tests {
                         "PORT",
                         "USER_TOKEN"
                     ],
-                    writes:         HashMap::new(),
+                    writes: HashMap::new(),
                     hydrate_writes: false,
                 },
-                request:  Request {
-                    body:       Some(json!({
+                request: Request {
+                    body: Some(json!({
                         "name": "Mario Rossi",
                         "email": "new_user@humanmail.com",
                         "object": json!({ "key": "value"})
                     })),
-                    header:     Some(json!({"Authorization": "Bearer jWt"})),
+                    header: Some(json!({"Authorization": "Bearer jWt"})),
                     entrypoint: Some(json!("localhost:8080")),
-                    uri:        json!("user_api.User/CreateUser"),
-                    etc:        Some(json!({})),
+                    uri: json!("user_api.User/CreateUser"),
+                    etc: Some(json!({})),
                 },
 
                 response: Response {
@@ -490,12 +490,12 @@ mod tests {
         assert_eq!(
             Frame {
                 protocol: Protocol::GRPC,
-                cut:      InstructionSet {
-                    reads:          from!["KEY", "KEY_2"],
-                    writes:         HashMap::new(),
+                cut: InstructionSet {
+                    reads: from!["KEY", "KEY_2"],
+                    writes: HashMap::new(),
                     hydrate_writes: false,
                 },
-                request:  Request {
+                request: Request {
                     body: Some(json!({})),
                     uri: "".into(),
                     ..Default::default()
@@ -518,8 +518,8 @@ mod tests {
     #[test]
     fn test_instruction_set_validate() {
         let set = InstructionSet {
-            reads:          from!["USER_ID"],
-            writes:         to! ({"USER_ID"=> "'response'.'body'.'id'"}),
+            reads: from!["USER_ID"],
+            writes: to! ({"USER_ID"=> "'response'.'body'.'id'"}),
             hydrate_writes: false,
         };
         assert!(set.validate().is_err());

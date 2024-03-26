@@ -1,5 +1,4 @@
 edition = "2021"
-enum_discrim_align_threshold = 20
 fn_params_layout = "Tall"
 force_explicit_abi = true
 hard_tabs = false
@@ -10,7 +9,6 @@ newline_style = "Auto"
 remove_nested_parens = true
 reorder_imports = true
 reorder_modules = true
-struct_field_align_threshold = 20
 tab_spaces = 4
 trailing_comma = "Vertical"
 unstable_features = true

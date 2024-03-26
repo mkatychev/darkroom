@@ -15,7 +15,7 @@ use std::{
 /// [Reel spec](https://github.com/mkatychev/filmReel/blob/master/Reel.md#reel)
 #[derive(Debug)]
 pub struct Reel {
-    dir:    PathBuf,
+    dir: PathBuf,
     frames: Vec<MetaFrame>,
 }
 
@@ -53,7 +53,7 @@ impl Reel {
     /// Return only successful frames
     pub fn success_only(self) -> Self {
         Self {
-            dir:    self.dir,
+            dir: self.dir,
             frames: self.frames.into_iter().filter(|x| x.is_success()).collect(),
         }
     }
@@ -147,13 +147,13 @@ impl IntoIterator for Reel {
 ///
 #[derive(Clone, PartialEq, Debug)]
 pub struct MetaFrame {
-    pub reel_name:  String,
+    pub reel_name: String,
     pub frame_type: FrameType,
-    pub alt_name:   Option<String>,
-    pub name:       String,
-    pub path:       PathBuf,
-    pub step_f32:   f32,
-    step:           String,
+    pub alt_name: Option<String>,
+    pub name: String,
+    pub path: PathBuf,
+    pub step_f32: f32,
+    step: String,
 }
 
 impl TryFrom<&PathBuf> for MetaFrame {
@@ -302,12 +302,12 @@ mod tests {
         assert_eq!(
             MetaFrame {
                 frame_type: FrameType::Success,
-                name:       "frame_name".to_string(),
-                alt_name:   None,
-                path:       PathBuf::from("./reel_name.01s.frame_name.fr.json"),
-                reel_name:  "reel_name".to_string(),
-                step:       "01s".to_string(),
-                step_f32:   1.0,
+                name: "frame_name".to_string(),
+                alt_name: None,
+                path: PathBuf::from("./reel_name.01s.frame_name.fr.json"),
+                reel_name: "reel_name".to_string(),
+                step: "01s".to_string(),
+                step_f32: 1.0,
             },
             try_path
         );
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn test_validate() {
         let reel = Reel {
-            dir:    ".".into(),
+            dir: ".".into(),
             frames: vec![
                 MetaFrame::try_from(&PathBuf::from("./reel.01s.frame1.fr.json")).unwrap(),
                 MetaFrame::try_from(&PathBuf::from("./reel.01e.frame2.fr.json")).unwrap(),
@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn test_validate_err() {
         let reel = Reel {
-            dir:    ".".into(),
+            dir: ".".into(),
             frames: vec![
                 MetaFrame::try_from(&PathBuf::from("./reel.01s.frame1.fr.json")).unwrap(),
                 MetaFrame::try_from(&PathBuf::from("./reel.01s.frame2.fr.json")).unwrap(),
