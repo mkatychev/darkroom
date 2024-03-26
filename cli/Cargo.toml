@@ -3,6 +3,7 @@ name = "darkroom"
 version = "0.8.0"
 description = "A contract testing tool built in Rust"
 
+edition.workspace = true
 readme.workspace = true
 license.workspace = true
 authors.workspace = true
@@ -19,7 +20,6 @@ chrono.workspace = true
 colored-diff.workspace = true
 colored.workspace = true
 colored_json.workspace = true
-filmreel.workspace = true
 http.workspace = true
 lazy_static.workspace = true
 log.workspace = true
@@ -29,6 +29,7 @@ serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
 which.workspace = true
+filmreel.path = "../filmreel"
 
 mdcat = { workspace = true, optional = true }
 syntect = { workspace = true, optional = true }
