@@ -4,7 +4,7 @@ use argh::FromArgs;
 //                             >:(      Colour
 use colored_json::{prelude::*, Color as Colour, Styler};
 use serde::Serialize;
-use std::{convert::TryFrom, fs, path::PathBuf};
+use std::{ fs, path::PathBuf};
 
 #[cfg(feature = "man")]
 use crate::man::Man;
