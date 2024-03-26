@@ -155,9 +155,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Command, SubCommand, Version};
-    use filmreel::frame::{Frame, Request};
-    use std::{ffi::OsStr, path::PathBuf};
+    use crate::{SubCommand, Version};
+    use filmreel::frame::Frame;
+    use std::ffi::OsStr;
 
     #[test]
     fn test_init() {

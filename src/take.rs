@@ -299,7 +299,7 @@ fn log_mismatch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmreel::{cut::Register, register};
+    use filmreel::register;
     use serde_json::json;
 
     #[test]

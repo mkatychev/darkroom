@@ -5,7 +5,7 @@ use http::header::HeaderMap;
 use log::warn;
 use reqwest::{blocking::*, Method};
 use serde_json::{json, Value};
-use std::{collections::HashMap,  time::Duration};
+use std::{collections::HashMap, time::Duration};
 use url::Url;
 
 /// build_request parses a Frame Request and a Params object to send a HTTP payload using reqwest

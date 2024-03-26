@@ -7,7 +7,6 @@ use std::{
     iter::FromIterator,
     ops::Range,
     path::{Path, PathBuf},
-    result::Result,
 };
 
 /// Represents the sequence of Frames to execute.

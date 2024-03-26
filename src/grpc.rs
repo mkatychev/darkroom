@@ -106,7 +106,6 @@ struct ResponseError {
 #[cfg(test)]
 mod serde_tests {
     use super::*;
-    use serde_json;
 
     const INTERNAL_ERROR: &str = r#"{
   "code": 13,
