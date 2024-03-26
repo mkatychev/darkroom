@@ -33,7 +33,9 @@ jobs:
         with:
           submodules: recursive
       - name: install nextest
-        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-~/.cargo}/bin"
+        run: |
+          mkdir -p ~/.cargo/bin
+          curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "${CARGO_HOME:-~/.cargo}/bin"
       - run: cargo nextest run
   examples:
     name: examples
