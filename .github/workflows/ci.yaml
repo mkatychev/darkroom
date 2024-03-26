@@ -55,6 +55,8 @@ jobs:
         env:
           GRPCURL_URL: "https://github.com/fullstorydev/grpcurl/releases/download/\
             v${GRPCURLV}/grpcurl_${GRPCURLV}_linux_x86_64.tar.gz"
+        run: |
+          sudo curl -sL "$GRPCURL_URL" sudo tar xvz -C /usr/local/bin/
       - name: httpbin post
         run: cargo run -- record ./test_data post
       - name: httpbin take
