@@ -70,9 +70,9 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
 
     let response = match req_cmd.status.code() {
         Some(0) => Response {
-            body:       serde_json::from_slice(&req_cmd.stdout)?,
-            status:     0,
-            etc:        Some(json!({})),
+            body: serde_json::from_slice(&req_cmd.stdout)?,
+            status: 0,
+            etc: Some(json!({})),
             validation: None,
         },
         Some(_) => {
@@ -86,9 +86,9 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
             })?;
             // create frame response from deserialized grpcurl error
             Response {
-                body:       Some(serde_json::Value::String(err.message)),
-                status:     err.code,
-                etc:        Some(json!({})),
+                body: Some(serde_json::Value::String(err.message)),
+                status: err.code,
+                etc: Some(json!({})),
                 validation: None,
             }
         }
@@ -99,14 +99,13 @@ pub fn request<'a>(prm: Params, req: Request) -> Result<Response<'a>, Error> {
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct ResponseError {
-    code:    u32,
+    code: u32,
     message: String,
 }
 
 #[cfg(test)]
 mod serde_tests {
     use super::*;
-    use serde_json;
 
     const INTERNAL_ERROR: &str = r#"{
   "code": 13,
@@ -122,7 +121,7 @@ mod serde_tests {
         let json_struct: ResponseError = serde_json::from_str(INTERNAL_ERROR).unwrap();
         assert_eq!(
             ResponseError {
-                code:    13,
+                code: 13,
                 message: "input cannot be empty".to_owned(),
             },
             json_struct
@@ -134,7 +133,7 @@ mod serde_tests {
         let json_struct: ResponseError = serde_json::from_slice(AUTH_ERROR.as_bytes()).unwrap();
         assert_eq!(
             ResponseError {
-                code:    16,
+                code: 16,
                 message: "rpc error: code = Unauthenticated desc = Empty JWT token".to_owned(),
             },
             json_struct

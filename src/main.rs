@@ -2,7 +2,7 @@ use anyhow::Error;
 use darkroom::{
     record::{cmd_record, cmd_vrecord},
     take::cmd_take,
-    *,
+    version, Command, Logger, Opts, SubCommand,
 };
 use std::io::{self, Write};
 

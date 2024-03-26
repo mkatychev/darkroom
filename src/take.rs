@@ -17,7 +17,6 @@ use filmreel::{
 use log::{debug, error, info, warn};
 use prettytable::*;
 use std::{
-    convert::TryFrom,
     fs,
     io::{self, prelude::*},
     path::PathBuf,
@@ -300,8 +299,8 @@ fn log_mismatch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filmreel::{cut::Register, register, response::Response};
-    use serde_json::{self, json};
+    use filmreel::register;
+    use serde_json::json;
 
     #[test]
     fn test_process_response() {

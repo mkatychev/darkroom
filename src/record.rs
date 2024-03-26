@@ -5,7 +5,6 @@ use filmreel as fr;
 use fr::{cut::Register, frame::Frame, reel::*, ToStringHidden};
 use log::{debug, error, warn};
 use std::{
-    convert::TryFrom,
     fs,
     ops::Range,
     path::{Path, PathBuf},
@@ -13,10 +12,10 @@ use std::{
 };
 
 pub struct RecordRunner {
-    duration:   bool,
-    reel_name:  String,
-    take_out:   Option<PathBuf>,
-    register:   Register,
+    duration: bool,
+    reel_name: String,
+    take_out: Option<PathBuf>,
+    register: Register,
     pub frames: Vec<MetaFrame>,
 }
 
@@ -42,11 +41,11 @@ pub fn cmd_record(cmd: Record, mut base_params: BaseParams) -> Result<(), Error>
 
     run_record(
         RecordRunner {
-            duration:  cmd.duration,
+            duration: cmd.duration,
             reel_name: cmd.reel_name,
-            take_out:  cmd.take_out,
-            register:  cut_register,
-            frames:    comp_reels.into_iter().flatten().collect(),
+            take_out: cmd.take_out,
+            register: cut_register,
+            frames: comp_reels.into_iter().flatten().collect(),
         },
         base_params,
     )

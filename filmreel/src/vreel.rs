@@ -4,12 +4,12 @@ use std::{borrow::Cow, collections::BTreeMap, convert::TryFrom, path::PathBuf};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct VirtualReel<'a> {
-    pub name:   Cow<'a, str>,
+    pub name: Cow<'a, str>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path:   Option<PathBuf>,
+    pub path: Option<PathBuf>,
     // use BTtreeMap en lieu of HashMap to maintain order
     pub frames: VirtualFrames<'a>,
-    pub cut:    VirtualCut,
+    pub cut: VirtualCut,
 }
 
 impl<'a> VirtualReel<'a> {
@@ -128,10 +128,10 @@ mod tests {
     test_ser_de!(
         vframe,
         VirtualReel {
-            name:   "reel_name".into(),
-            path:   None,
+            name: "reel_name".into(),
+            path: None,
             frames: vframes!(["frame1.fr.json", "frame2.fr.json"]),
-            cut:    VirtualCut::Register(register!({"KEY" => "value"})),
+            cut: VirtualCut::Register(register!({"KEY" => "value"})),
         },
         VREEL_JSON
     );
@@ -150,10 +150,10 @@ mod tests {
     test_ser_de!(
         pathbuf_vframe,
         VirtualReel {
-            name:   "reel_name".into(),
-            path:   Some("./reel_dir".into()),
+            name: "reel_name".into(),
+            path: Some("./reel_dir".into()),
             frames: vframes!({"1" => PathBuf::from("other_reel.01s.name.fr.json")}),
-            cut:    VirtualCut::MergeCuts(vec!["other_reel.cut.json".into()]),
+            cut: VirtualCut::MergeCuts(vec!["other_reel.cut.json".into()]),
         },
         PATH_VREEL_JSON
     );
