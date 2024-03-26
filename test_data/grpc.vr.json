@@ -6,6 +6,6 @@
     "grpc.02s.string_header.fr.json"
   ],
   "cut": {
-    "ADDRESS": "grpcb.in:9001"
+    "ADDRESS": "grpcbin.test.k6.io:8080"
   }
 }
