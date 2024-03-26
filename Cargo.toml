@@ -1,26 +1,20 @@
-[package]
-name = "darkroom"
-version = "0.8.0"
-description = "A contract testing tool built in Rust"
-authors = ["Mikhail Katychev <mkatych@gmail.com>"]
+[workspace.package]
 edition = "2021"
+version = "0.8.0"
+
+authors = ["Mikhail Katychev <mkatych@gmail.com>"]
 license = "GPL-3.0"
 readme = "README.md"
-
-documentation = "https://docs.rs/crate/darkroom/"
-homepage = "https://crates.io/crates/darkroom"
-repository = "https://github.com/mkatychev/darkroom/"
-
-[[bin]]
-name = "dark"
-path = "src/main.rs"
+repository = "https://github.com/mkatychev/darkroom"
 
 [workspace]
 members = [
-  "filmreel"
+  "cli",
+  "filmreel",
 ]
+resolver = "2"
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0.71"
 argh = "0.1.10"
 chrono = "0.4.26"
@@ -28,25 +22,25 @@ colored = "2.0.0"
 colored-diff = "0.2.3"
 colored_json = "2.1.0"
 filmreel = { version = "0.7.0", path = "filmreel" }
+glob  = "0.3.1"
 http = "0.2.9"
 lazy_static = "1.4.0"
 log = { version = "0.4.18", features = ["std"] }
+mdcat = "0.30.3"
+# overflow broken for latest minus
+minus = { version = "3.4.0", features = ["static_output"] }
+paste = "1.0.12"
+pest = "2.6.0"
+pest_derive = "2.6.0"
+pretty_assertions = "0.7.2"
 prettytable-rs = "0.10.0"
+pulldown-cmark ="0.9.3"
+regex = "1.8.3"
 reqwest = { version = "0.11.18", features = ["blocking", "json"] }
+rstest = "0.16.0"
 serde = { version = "1.0.163", features = ["derive"] }
+serde-hashkey = { version = "0.4.5", features = ["ordered-float"] }
 serde_json = "1.0.96"
+syntect = "5.0.0"
 url = "2.3.1"
 which = "4.4.0"
-
-mdcat = { version = "0.30.3", optional = true }
-syntect = { version = "5.0.0", optional = true }
-pulldown-cmark = { version = "0.9.3", optional = true }
-# overflow broken for latest minus
-minus = { version = "3.4.0", optional = true, features = ["static_output"] }
-
-[dev-dependencies]
-rstest = "0.16.0"
-
-[features]
-default = ["man"]
-man = ["mdcat", "syntect", "pulldown-cmark", "minus"]

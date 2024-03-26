@@ -1,0 +1,37 @@
+[package]
+name = "darkroom"
+version = "0.8.0"
+description = "A contract testing tool built in Rust"
+
+readme.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "dark"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+argh.workspace = true
+chrono.workspace = true
+colored-diff.workspace = true
+colored.workspace = true
+colored_json.workspace = true
+filmreel.workspace = true
+http.workspace = true
+lazy_static.workspace = true
+log.workspace = true
+prettytable-rs.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+which.workspace = true
+
+mdcat = { workspace = true, optional = true }
+syntect = { workspace = true, optional = true }
+pulldown-cmark = { version = "0.9.3", optional = true }
+# overflow broken for latest minus
+minus = { workspace = true, optional = true }
