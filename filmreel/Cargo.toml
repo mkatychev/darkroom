@@ -1,32 +1,29 @@
 [package]
 name = "filmreel"
 version = "0.7.0"
-description = "filmReel parser for Rust"
-authors = ["Mikhail Katychev <mkatych@gmail.com>"]
-edition = "2018"
-license = "GPL-3.0"
-readme = "README.md"
 
+description = "filmReel parser for Rust"
+readme = "README.md"
 documentation = "https://docs.rs/crate/filmreel/"
 homepage = "https://crates.io/crates/filmreel"
-repository = "https://github.com/mkatychev/darkroom"
 
-[lib]
-name = "filmreel"
-path = "src/lib.rs"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
 
 [dependencies]
-colored = "2.0.0"
-glob  = "0.3.1"
-lazy_static = "1.4.0"
-paste = "1.0.12"
-pest = "2.6.0"
-pest_derive = "2.6.0"
-pretty_assertions = "0.7.2"
-regex = "1.8.3"
-serde = { version = "1.0.163", features = ["derive"] }
-serde_json = "1.0.96"
-serde-hashkey = { version = "0.4.5", features = ["ordered-float"] }
+colored.workspace = true
+glob.workspace = true
+lazy_static.workspace = true
+paste.workspace = true
+pest.workspace = true
+pest_derive.workspace = true
+pretty_assertions.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde-hashkey.workspace = true
 
 jql = { version = "3.3.0", optional = true }
 
@@ -35,5 +32,5 @@ default = []
 full_jql = ["jql"]
 
 [dev-dependencies]
-rstest = "0.11.0"
-paste = "1.0.12"
+rstest.workspace = true
+paste.workspace = true
