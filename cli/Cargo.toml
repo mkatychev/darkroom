@@ -36,3 +36,6 @@ syntect = { workspace = true, optional = true }
 pulldown-cmark = { version = "0.9.3", optional = true }
 # overflow broken for latest minus
 minus = { workspace = true, optional = true }
+
+[dev-dependencies]
+rstest.workspace = true
