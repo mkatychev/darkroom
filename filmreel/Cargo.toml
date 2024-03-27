@@ -25,7 +25,7 @@ serde.workspace = true
 serde_json.workspace = true
 serde-hashkey.workspace = true
 
-jql = { version = "3.3.0", optional = true }
+jql = { version = "5.2.0", optional = true }
 
 [features]
 default = []

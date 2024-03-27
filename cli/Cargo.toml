@@ -33,7 +33,7 @@ filmreel.path = "../filmreel"
 
 mdcat = { workspace = true, optional = true }
 syntect = { workspace = true, optional = true }
-pulldown-cmark = { version = "0.9.3", optional = true }
+pulldown-cmark = { workspace = true, optional = true }
 # overflow broken for latest minus
 minus = { workspace = true, optional = true }
 
