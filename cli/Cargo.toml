@@ -1,8 +1,8 @@
 [package]
 name = "darkroom"
-version = "0.8.0"
 description = "A contract testing tool built in Rust"
 
+version.workspace = true
 edition.workspace = true
 readme.workspace = true
 license.workspace = true
