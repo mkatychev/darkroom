@@ -9,6 +9,10 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
+[features]
+default = ["man"]
+man = []
+
 [[bin]]
 name = "dark"
 path = "src/main.rs"

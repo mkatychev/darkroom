@@ -43,3 +43,8 @@ url = "2.5"
 which = "6"
 # overflow broken for latest minus
 minus = { version = "3.4.0", features = ["static_output"] }
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
