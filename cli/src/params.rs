@@ -18,7 +18,7 @@ pub struct Params<'a> {
     pub attempts: Option<Attempts>,
 }
 
-impl<'a> Params<'a> {
+impl Params<'_> {
     pub fn fmt_timestamp(&self) -> String {
         if self.use_timestamp {
             return format!("[{}] ", chrono::Utc::now());

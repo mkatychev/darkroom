@@ -14,7 +14,7 @@ fix *args: && fmt
     cd {{ invocation_directory() }}; cargo clippy --fix --all-targets --all-features {{ args }}
 
 integration:
-  cargo run -- record ./test_data grpc
+  cargo run -- -v record ./test_data grpc
   cargo run -- record ./test_data post
   cargo run -- take ./test_data/post.01s.body.fr.json
   cargo run -- vrecord ./test_data/alt_post.vr.json

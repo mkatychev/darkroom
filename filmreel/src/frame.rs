@@ -32,7 +32,7 @@ const DUPE_KEY_UPON_HYDRATION_ERR: &str = "Hydrated key produced a duplicate key
 const INVALID_KEY_HYDRATION_ERR: &str =
     "Key attempted to be hydrated with a non-string cut variable";
 
-impl<'a> Frame<'a> {
+impl Frame<'_> {
     /// Creates a new Frame object running post deserialization validations
     pub fn new(json_string: &str) -> Result<Self, FrError> {
         let frame: Self = serde_json::from_str(json_string)?;
@@ -182,7 +182,7 @@ impl<'a> Frame<'a> {
     }
 }
 
-impl<'a> TryFrom<PathBuf> for Frame<'a> {
+impl TryFrom<PathBuf> for Frame<'_> {
     type Error = FrError;
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
@@ -228,7 +228,7 @@ pub struct InstructionSet<'a> {
     pub hydrate_writes: bool,
 }
 
-impl<'a> InstructionSet<'a> {
+impl InstructionSet<'_> {
     fn is_empty(&self) -> bool {
         self.reads.is_empty() && self.writes.is_empty()
     }

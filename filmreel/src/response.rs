@@ -166,13 +166,13 @@ impl Default for Response<'_> {
 /// diffentiatiate between the parent `Response` (the one pulled directle from the filmReel file)
 /// and the child [`Response`] (one deserialized from returned data) since the client validations
 /// should always be[`Option::None`]
-impl<'a> PartialEq for Response<'a> {
+impl PartialEq for Response<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.body.eq(&other.body) && self.etc.eq(&other.etc) && self.status.eq(&other.status)
     }
 }
 
-impl<'a> Eq for Response<'a> {}
+impl Eq for Response<'_> {}
 
 type Validation<'a> = BTreeMap<Cow<'a, str>, Validator>;
 

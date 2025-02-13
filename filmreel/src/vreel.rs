@@ -12,7 +12,7 @@ pub struct VirtualReel<'a> {
     pub cut: VirtualCut,
 }
 
-impl<'a> VirtualReel<'a> {
+impl VirtualReel<'_> {
     /// Prepends the "path" key to any PathBuf values in "frames" and "cut"
     pub fn join_path(&mut self) {
         if self.path.is_none() {
@@ -46,7 +46,7 @@ impl<'a> VirtualReel<'a> {
     }
 }
 
-impl<'a> TryFrom<PathBuf> for VirtualReel<'a> {
+impl TryFrom<PathBuf> for VirtualReel<'_> {
     type Error = FrError;
 
     fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
