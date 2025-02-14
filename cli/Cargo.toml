@@ -11,7 +11,7 @@ repository.workspace = true
 
 [features]
 default = ["man"]
-man = []
+man = ["pulldown-cmark-mdcat", "minus", "syntect", "pulldown-cmark"]
 
 [[bin]]
 name = "dark"
@@ -36,7 +36,7 @@ which.workspace = true
 filmreel.path = "../filmreel"
 filmreel.version = "0.9.0"
 
-mdcat = { workspace = true, optional = true }
+pulldown-cmark-mdcat = { workspace = true, optional = true }
 syntect = { workspace = true, optional = true }
 pulldown-cmark = { workspace = true, optional = true }
 # overflow broken for latest minus

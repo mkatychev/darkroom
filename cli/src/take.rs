@@ -119,9 +119,9 @@ pub fn process_response<'a, 'b>(
 /// 3. initializes frame specific settings for the take using base_params.init(frame.get_request())
 /// 4. runs a request and processes the response, multiple times if attempts are present in the Params object
 /// 5. Outputs a diff to stdout and returns an error if there is a mismatch:
-///    - Form Mismatch: output during run_request when the returned JSON does not match the
-///     expected structure
-///    - Value Mismatch: output during process_response when the returned JSON values do not
+///  - Form Mismatch: output during run_request when the returned JSON does not match the
+///    expected structure
+///  - Value Mismatch: output during process_response when the returned JSON values do not
 ///    match
 pub fn run_take<'a>(
     frame: &'a mut Frame<'a>,

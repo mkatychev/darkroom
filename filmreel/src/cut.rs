@@ -430,11 +430,13 @@ mod tests {
         let mut kv_vec = vec![];
 
         for (k, v) in reg.iter() {
-            kv_vec.push((k, v));
+            kv_vec.push((k.as_str(), v.as_str().unwrap()));
         }
+
+        kv_vec.sort_by(|a, b| a.0.cmp(b.0));
         assert_eq!(
-            [(&"FIRST_NAME", "Primus"), (&"RESPONSE", "ALRIGHT")].sort(),
-            kv_vec.sort_by(|a, b| a.0.cmp(b.0))
+            [("FIRST_NAME", "Primus"), ("RESPONSE", "ALRIGHT")],
+            kv_vec.as_slice()
         );
     }
 
@@ -551,10 +553,7 @@ mod tests {
             "FIRST_NAME"=> "Slim",
             "LAST_NAME"=> "Shady"
         });
-        assert_eq!(
-            expected,
-            reg.read_match(&mut input.to_string()).unwrap_err()
-        )
+        assert_eq!(expected, reg.read_match(input).unwrap_err())
     }
 
     #[rstest(

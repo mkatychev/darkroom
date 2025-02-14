@@ -1,69 +1,72 @@
 use anyhow::{anyhow, Error};
 use argh::FromArgs;
-use mdcat::{push_tty, Environment, ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
 use minus::{page_all, Pager};
 use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark_mdcat::{
+    push_tty, resources::NoopResourceHandler, Environment, Settings, TerminalProgram, TerminalSize,
+    Theme,
+};
 use std::str;
 use syntect::parsing::SyntaxSet;
 use url::Url;
 
 const fn readme() -> &'static [u8] {
-    include_bytes!("../filmreel_md/README.md")
+    include_bytes!("../../filmreel_md/README.md")
 }
 
 const fn frame(quick: bool) -> &'static [u8] {
     if quick {
-        return include_bytes!("../filmreel_md/quickref/frame.md");
+        return include_bytes!("../../filmreel_md/quickref/frame.md");
     }
-    include_bytes!("../filmreel_md/frame.md")
+    include_bytes!("../../filmreel_md/frame.md")
 }
 
 const fn cut(quick: bool) -> &'static [u8] {
     if quick {
-        return include_bytes!("../filmreel_md/quickref/cut.md");
+        return include_bytes!("../../filmreel_md/quickref/cut.md");
     }
-    include_bytes!("../filmreel_md/cut.md")
+    include_bytes!("../../filmreel_md/cut.md")
 }
 
 const fn reel(quick: bool) -> &'static [u8] {
     if quick {
-        return include_bytes!("../filmreel_md/quickref/reel.md");
+        return include_bytes!("../../filmreel_md/quickref/reel.md");
     }
-    include_bytes!("../filmreel_md/reel.md")
+    include_bytes!("../../filmreel_md/reel.md")
 }
 
 const fn hidden_variables() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/hidden_variables.md")
+    include_bytes!("../../filmreel_md/extra_concepts/hidden_variables.md")
 }
 
 const fn ignored_variables() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/ignored_variables.md")
+    include_bytes!("../../filmreel_md/extra_concepts/ignored_variables.md")
 }
 
 const fn merge_cuts() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/merge_cuts.md")
+    include_bytes!("../../filmreel_md/extra_concepts/merge_cuts.md")
 }
 
 const fn retry_attempts() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/retry_attempts.md")
+    include_bytes!("../../filmreel_md/extra_concepts/retry_attempts.md")
 }
 const fn mismatch() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/mismatch.md")
+    include_bytes!("../../filmreel_md/extra_concepts/mismatch.md")
 }
 const fn component() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/component.md")
+    include_bytes!("../../filmreel_md/extra_concepts/component.md")
 }
 
 const fn filename() -> &'static [u8] {
-    include_bytes!("../filmreel_md/quickref/frame_type.md")
+    include_bytes!("../../filmreel_md/quickref/frame_type.md")
 }
 
 const fn storage() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/cut_storage.md")
+    include_bytes!("../../filmreel_md/extra_concepts/cut_storage.md")
 }
 
 const fn validation() -> &'static [u8] {
-    include_bytes!("../filmreel_md/extra_concepts/validation.md")
+    include_bytes!("../../filmreel_md/extra_concepts/validation.md")
 }
 
 const ENTRY_DOCSTRING: &str = r#"<entry>:
@@ -141,12 +144,20 @@ impl Man {
                 true
             })
             .map(|event| match event {
-                Event::End(Tag::Link(link, dest, title))
-                    if !dest.starts_with("http") && dest.contains(".md") =>
-                {
-                    let new_str = repo.join(&dest).unwrap().to_string();
+                Event::Start(Tag::Link {
+                    link_type,
+                    dest_url,
+                    title,
+                    id,
+                }) if !dest_url.starts_with("http") && dest_url.contains(".md") => {
+                    let dest_url = repo.join(&dest_url).unwrap().to_string().into();
 
-                    Event::End(Tag::Link(link, new_str.into(), title))
+                    Event::Start(Tag::Link {
+                        link_type,
+                        dest_url,
+                        title,
+                        id,
+                    })
                 }
                 _ => event,
             });
@@ -154,16 +165,16 @@ impl Man {
         // NOTE this does not do anything since markdown is pulled from constant functions
         let env = &Environment::for_local_directory(&"/")?;
         let settings = &Settings {
-            resource_access: ResourceAccess::LocalOnly,
-            syntax_set: SyntaxSet::default(),
-            terminal_capabilities: TerminalCapabilities::detect(),
+            theme: Theme::default(),
+            syntax_set: &SyntaxSet::default(),
+            terminal_capabilities: TerminalProgram::detect().capabilities(),
             terminal_size: TerminalSize::from_terminal()
                 .map_or_else(|| Err(anyhow!("termsize is None")), Ok)?,
         };
 
         let mut pager = Pager::new();
         let mut buf = Vec::new();
-        push_tty(settings, env, &mut buf, parser)?;
+        push_tty(settings, env, &NoopResourceHandler, &mut buf, parser)?;
         pager.lines = String::from_utf8(buf)?;
         pager.prompt = "darkroom".to_string();
 

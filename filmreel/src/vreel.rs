@@ -96,10 +96,8 @@ macro_rules! vframes {
         VirtualFrames::List(vec![PathBuf::from($val)])
     );
     ([$($val: expr),+]) => ({
-        use ::std::path::PathBuf;
 
-        let mut vec = Vec::new();
-        $(vec.push(PathBuf::from($val));)*
+        let vec = vec![$(std::path::PathBuf::from($val),)+];
         VirtualFrames::List(vec)
     });
     ({$( $key: expr => $val: expr ),*}) => {{
