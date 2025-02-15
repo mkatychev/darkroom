@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg version="1.1" viewBox="0 0 542 359" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+  <filter id="a" x="-13.7%" y="-18.4%" width="130.4%" height="133.3%">
+   <feMerge>
+    <feMergeNode in="SourceGraphic"/>
+   </feMerge>
+  </filter>
+ </defs>
+ <g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="20">
+  <circle id="Oval" cx="119.5" cy="119.5" r="109.5"/>
+  <circle id="Oval" cx="120" cy="120" r="18"/>
+  <circle id="Oval" cx="422.5" cy="119.5" r="109.5"/>
+  <circle id="Oval" cx="423" cy="120" r="18"/>
+  <g id="c" transform="translate(340 196)" filter="url(#a)">
+   <circle id="r-circle" transform="translate(18 129) scale(1 -1) translate(-18 -129)" cx="18" cy="129" r="18"/>
+   <path id="r-line" transform="translate(98.5 67.5) scale(1 -1) translate(-98.5 -67.5)" d="m36 0 125 135" fill="#000" stroke-linecap="square"/>
+  </g>
+  <g transform="translate(120.5 269.5) scale(-1 1) translate(-80.5 -73.5)">
+   <circle id="l-circle" transform="translate(18 129) scale(1 -1) translate(-18 -129)" cx="18" cy="129" r="18"/>
+   <path id="r-line" transform="translate(98.5 67.5) scale(1 -1) translate(-98.5 -67.5)" d="m36 0 125 135" fill="#000" stroke-linecap="square"/>
+  </g>
+  <path id="m-line" d="m183 343h165" stroke-linecap="square"/>
+ </g>
+</svg>
+
