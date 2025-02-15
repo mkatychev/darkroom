@@ -10,64 +10,23 @@ use std::str;
 use syntect::parsing::SyntaxSet;
 use url::Url;
 
-const fn readme() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/README.md")
-}
-
-const fn frame(quick: bool) -> &'static [u8] {
-    if quick {
-        return include_bytes!("../../filmreel_md/quickref/frame.md");
-    }
-    include_bytes!("../../filmreel_md/frame.md")
-}
-
-const fn cut(quick: bool) -> &'static [u8] {
-    if quick {
-        return include_bytes!("../../filmreel_md/quickref/cut.md");
-    }
-    include_bytes!("../../filmreel_md/cut.md")
-}
-
-const fn reel(quick: bool) -> &'static [u8] {
-    if quick {
-        return include_bytes!("../../filmreel_md/quickref/reel.md");
-    }
-    include_bytes!("../../filmreel_md/reel.md")
-}
-
-const fn hidden_variables() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/hidden_variables.md")
-}
-
-const fn ignored_variables() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/ignored_variables.md")
-}
-
-const fn merge_cuts() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/merge_cuts.md")
-}
-
-const fn retry_attempts() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/retry_attempts.md")
-}
-const fn mismatch() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/mismatch.md")
-}
-const fn component() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/component.md")
-}
-
-const fn filename() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/quickref/frame_type.md")
-}
-
-const fn storage() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/cut_storage.md")
-}
-
-const fn validation() -> &'static [u8] {
-    include_bytes!("../../filmreel_md/extra_concepts/validation.md")
-}
+const README: &str = include_str!("../../filmreel_md/README.md");
+const FRAME: &str = include_str!("../../filmreel_md/frame.md");
+const FRAME_QUICK: &str = include_str!("../../filmreel_md/quickref/frame.md");
+const CUT: &str = include_str!("../../filmreel_md/cut.md");
+const CUT_QUICK: &str = include_str!("../../filmreel_md/quickref/cut.md");
+const REEL: &str = include_str!("../../filmreel_md/reel.md");
+const REEL_QUICK: &str = include_str!("../../filmreel_md/quickref/reel.md");
+const HIDDEN_VARIABLES: &str = include_str!("../../filmreel_md/extra_concepts/hidden_variables.md");
+const IGNORED_VARIABLES: &str =
+    include_str!("../../filmreel_md/extra_concepts/ignored_variables.md");
+const MERGE_CUTS: &str = include_str!("../../filmreel_md/extra_concepts/merge_cuts.md");
+const RETRY_ATTEMPTS: &str = include_str!("../../filmreel_md/extra_concepts/retry_attempts.md");
+const MISMATCH: &str = include_str!("../../filmreel_md/extra_concepts/mismatch.md");
+const COMPONENT: &str = include_str!("../../filmreel_md/extra_concepts/component.md");
+const FILENAME: &str = include_str!("../../filmreel_md/quickref/frame_type.md");
+const STORAGE: &str = include_str!("../../filmreel_md/extra_concepts/cut_storage.md");
+const VALIDATION: &str = include_str!("../../filmreel_md/extra_concepts/validation.md");
 
 const ENTRY_DOCSTRING: &str = r#"<entry>:
     readme
@@ -116,27 +75,30 @@ pub struct Man {
 impl Man {
     // output_entry renders markdown for various filmreel and darkroom concepts
     pub fn output_entry(&self) -> Result<(), Error> {
-        let md = match &self.entry[..3] as &str {
-            "rea" => readme(),                 // "readme"
-            "cut" => cut(self.quick),          // "cut"
-            "ree" => reel(self.quick),         // "reel"
-            "fra" => frame(self.quick),        // "frame"
-            "com" => component(),              // "component"
-            "fil" => filename(),               // "filename"
-            "hid" => hidden_variables(),       // "hidden-variables" | "hidden"
-            "ign" => ignored_variables(),      // "ignored-variables" | "ignore" | "ignored"
-            "mer" => merge_cuts(),             // "merge-cuts"
-            "mis" => mismatch(),               // "mismatch"
-            "ret" | "att" => retry_attempts(), // "retry-attempts" | "attempts"
-            "sto" => storage(),                // "storage"
-            "par" | "uno" | "val" => validation(),
+        let md = match (&self.entry[..3], self.quick) {
+            ("rea", _) => README,
+            ("cut", true) => CUT_QUICK,           // "cut"
+            ("cut", false) => CUT,                // "cut"
+            ("ree", true) => REEL_QUICK,          // "reel"
+            ("ree", false) => REEL,               // "reel"
+            ("fra", true) => FRAME_QUICK,         // "frame"
+            ("fra", false) => FRAME,              // "frame"
+            ("com", _) => COMPONENT,              // "component"
+            ("fil", _) => FILENAME,               // "filename"
+            ("hid", _) => HIDDEN_VARIABLES,       // "hidden-variables" | "hidden"
+            ("ign", _) => IGNORED_VARIABLES,      // "ignored-variables" | "ignore" | "ignored"
+            ("mer", _) => MERGE_CUTS,             // "merge-cuts"
+            ("mis", _) => MISMATCH,               // "mismatch"
+            ("ret" | "att", _) => RETRY_ATTEMPTS, // "retry-attempts" | "attempts"
+            ("sto", _) => STORAGE,                // "storage"
+            ("par" | "uno" | "val", _) => VALIDATION,
             _ => {
                 return Err(anyhow!("invalid entry argument\n{}", ENTRY_DOCSTRING));
             }
         };
 
         let repo = Url::parse(FILMREEL_REPO)?;
-        let parser = Parser::new_ext(str::from_utf8(md)?, Options::empty())
+        let parser = Parser::new_ext(md, Options::empty())
             .filter(|event| {
                 if let Event::Html(_) = event {
                     return false;
