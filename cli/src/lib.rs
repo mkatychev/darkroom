@@ -6,9 +6,6 @@ use colored_json::{prelude::*, Color as Colour, Style, Styler};
 use serde::Serialize;
 use std::{fs, path::PathBuf};
 
-#[cfg(feature = "man")]
-use crate::man::Man;
-
 pub mod grpc;
 pub mod http;
 pub mod params;
@@ -132,7 +129,7 @@ pub enum SubCommand {
     Take(Take),
     Record(Record),
     #[cfg(feature = "man")]
-    Man(Man),
+    Man(crate::man::Man),
     VirtualRecord(VirtualRecord),
 }
 
