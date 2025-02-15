@@ -10,23 +10,22 @@ use std::str;
 use syntect::parsing::SyntaxSet;
 use url::Url;
 
-const README: &str = include_str!("../../filmreel_md/README.md");
-const FRAME: &str = include_str!("../../filmreel_md/frame.md");
-const FRAME_QUICK: &str = include_str!("../../filmreel_md/quickref/frame.md");
-const CUT: &str = include_str!("../../filmreel_md/cut.md");
-const CUT_QUICK: &str = include_str!("../../filmreel_md/quickref/cut.md");
-const REEL: &str = include_str!("../../filmreel_md/reel.md");
-const REEL_QUICK: &str = include_str!("../../filmreel_md/quickref/reel.md");
-const HIDDEN_VARIABLES: &str = include_str!("../../filmreel_md/extra_concepts/hidden_variables.md");
-const IGNORED_VARIABLES: &str =
-    include_str!("../../filmreel_md/extra_concepts/ignored_variables.md");
-const MERGE_CUTS: &str = include_str!("../../filmreel_md/extra_concepts/merge_cuts.md");
-const RETRY_ATTEMPTS: &str = include_str!("../../filmreel_md/extra_concepts/retry_attempts.md");
-const MISMATCH: &str = include_str!("../../filmreel_md/extra_concepts/mismatch.md");
-const COMPONENT: &str = include_str!("../../filmreel_md/extra_concepts/component.md");
-const FILENAME: &str = include_str!("../../filmreel_md/quickref/frame_type.md");
-const STORAGE: &str = include_str!("../../filmreel_md/extra_concepts/cut_storage.md");
-const VALIDATION: &str = include_str!("../../filmreel_md/extra_concepts/validation.md");
+const README: &str = include_str!("../filmreel_md/README.md");
+const FRAME: &str = include_str!("../filmreel_md/frame.md");
+const FRAME_QUICK: &str = include_str!("../filmreel_md/quickref/frame.md");
+const CUT: &str = include_str!("../filmreel_md/cut.md");
+const CUT_QUICK: &str = include_str!("../filmreel_md/quickref/cut.md");
+const REEL: &str = include_str!("../filmreel_md/reel.md");
+const REEL_QUICK: &str = include_str!("../filmreel_md/quickref/reel.md");
+const HIDDEN_VARIABLES: &str = include_str!("../filmreel_md/extra_concepts/hidden_variables.md");
+const IGNORED_VARIABLES: &str = include_str!("../filmreel_md/extra_concepts/ignored_variables.md");
+const MERGE_CUTS: &str = include_str!("../filmreel_md/extra_concepts/merge_cuts.md");
+const RETRY_ATTEMPTS: &str = include_str!("../filmreel_md/extra_concepts/retry_attempts.md");
+const MISMATCH: &str = include_str!("../filmreel_md/extra_concepts/mismatch.md");
+const COMPONENT: &str = include_str!("../filmreel_md/extra_concepts/component.md");
+const FILENAME: &str = include_str!("../filmreel_md/quickref/frame_type.md");
+const STORAGE: &str = include_str!("../filmreel_md/extra_concepts/cut_storage.md");
+const VALIDATION: &str = include_str!("../filmreel_md/extra_concepts/validation.md");
 
 const ENTRY_DOCSTRING: &str = r#"<entry>:
     readme
