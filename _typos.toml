@@ -5,6 +5,7 @@
 ignore-dot = true
 
 [default.extend-identifiers]
-cx = "ctx"
+cx = "cx"
+mis = "mis"
 [default.extend-words]
 parsef = "parsef"

@@ -12,7 +12,7 @@
 ```json
 {
   "USER_ID": "Hannibal_Barca",
-  "USER_TOKEN": "@LpIne"
+  "USER_TOKEN": "@Lpine"
 }
 ```
 
