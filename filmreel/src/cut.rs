@@ -191,12 +191,11 @@ impl Register {
             }
             if hide_vars && name.starts_with('_') {
                 let expected = format!("{}{}{}", "${", name, "}");
-                if let Value::String(val) = value {
-                    if val.contains(&expected) {
+                if let Value::String(val) = value
+                    && val.contains(&expected) {
                         Match::Hide.read_operation(value)?;
                         return Ok(());
                     }
-                }
             }
         }
 

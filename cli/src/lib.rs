@@ -307,11 +307,10 @@ impl Record {
             }
         }
 
-        if let Some(output) = &self.take_out {
-            if !output.is_dir() {
+        if let Some(output) = &self.take_out
+            && !output.is_dir() {
                 return Err(anyhow!("<output> must be a valid directory"));
             }
-        }
         Ok(())
     }
 

@@ -192,11 +192,10 @@ pub fn run_take<'a>(
                 attempts.ms.to_string().yellow(),
                 "ms",
             );
-            if let Ok(response) = run_request(params.clone(), frame.clone()) {
-                if process_response(&params, frame, register, response, output.clone()).is_ok() {
+            if let Ok(response) = run_request(params.clone(), frame.clone())
+                && process_response(&params, frame, register, response, output.clone()).is_ok() {
                     return Ok(());
                 }
-            }
             thread::sleep(time::Duration::from_millis(attempts.ms));
         }
         // for final retry attempt do not swallow error propagation
