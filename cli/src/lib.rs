@@ -1,8 +1,8 @@
 use crate::params::BaseParams;
 use anyhow::{Error, anyhow};
 use argh::FromArgs;
-//                             >:(      Colour
-use colored_json::{Color as Colour, Style, Styler, prelude::*};
+//        >:(      Colour
+use colored_json::{Color as Colour, Styler, prelude::*};
 use serde::Serialize;
 use std::{fs, path::PathBuf};
 
@@ -354,10 +354,10 @@ impl VirtualRecord {
 /// get_styler returns the custom syntax values for stdout json
 fn get_styler() -> Styler {
     Styler {
-        bool_value: Style::new(Colour::Magenta),
-        float_value: Style::new(Colour::RGB(255, 123, 0)),
-        integer_value: Style::new(Colour::RGB(255, 123, 0)),
-        nil_value: Style::new(Colour::Cyan),
+        bool_value: Colour::Magenta.foreground(),
+        float_value: Colour::Rgb(255, 123, 0).foreground(),
+        integer_value: Colour::Rgb(255, 123, 0).foreground(),
+        nil_value: Colour::Cyan.foreground(),
         string_include_quotation: false,
         ..Default::default()
     }
