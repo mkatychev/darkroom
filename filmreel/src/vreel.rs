@@ -22,7 +22,7 @@ impl VirtualReel<'_> {
         let reel_path = self.path.clone().unwrap();
 
         match &mut self.frames {
-            VirtualFrames::RenamedList(ref mut map) => {
+            VirtualFrames::RenamedList(map) => {
                 for (_, v) in map.iter_mut() {
                     *v = reel_path.join(v.clone());
                 }
@@ -35,12 +35,12 @@ impl VirtualReel<'_> {
         }
 
         match &mut self.cut {
-            VirtualCut::MergeCuts(ref mut list) => {
+            VirtualCut::MergeCuts(list) => {
                 for v in list.iter_mut() {
                     *v = reel_path.join(v.clone());
                 }
             }
-            VirtualCut::Cut(ref mut path) => *path = reel_path.join(path.clone()),
+            VirtualCut::Cut(path) => *path = reel_path.join(path.clone()),
             VirtualCut::Register(_) => (),
         }
     }
