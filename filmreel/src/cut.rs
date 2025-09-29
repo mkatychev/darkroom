@@ -347,7 +347,7 @@ impl<'a> Match<'a> {
                 Value::String(match_str) => match json_value {
                     // and the json value is as well, replace the range within
                     Value::String(str_val) => {
-                        str_val.replace_range(r, &match_str);
+                        str_val.replace_range(r, match_str);
                         Ok(())
                     }
                     _ => Err(FrError::ReadInstruction(
