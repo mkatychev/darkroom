@@ -1,5 +1,5 @@
 use crate::Command;
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use filmreel::frame::Request;
 use log::{error, warn};
 use serde::Deserialize;
@@ -87,7 +87,7 @@ impl From<&Command> for BaseParams {
 impl BaseParams {
     /// init provides a frame's request properties to override or populated
     /// parameter fields desired by a specific Frame
-    pub fn init(&self, request: Request) -> Result<Params, Error> {
+    pub fn init<'a>(&'a self, request: Request) -> Result<Params<'a>, Error> {
         // let request = frame.get_request();
 
         let header: Option<String> = match request.get_header() {

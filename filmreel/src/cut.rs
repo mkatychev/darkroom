@@ -9,7 +9,16 @@ use std::{collections::HashMap, convert::TryFrom, ops::Range, path::PathBuf};
 /// key/value pairs.
 ///
 /// [Cut Register](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-register)
-#[derive(Serialize, Clone, Deserialize, Default, Debug, PartialEq)]
+#[derive(
+    derive_more::Deref,
+    derive_more::DerefMut,
+    Serialize,
+    Clone,
+    Deserialize,
+    Default,
+    Debug,
+    PartialEq,
+)]
 pub struct Register {
     #[serde(serialize_with = "ordered_val_map", flatten)]
     vars: Variables,
@@ -38,45 +47,6 @@ impl Register {
     /// Pretty json formatting for Register serialization
     pub fn to_string_pretty(&self) -> String {
         serde_json::to_string_pretty(self).expect("serialization error")
-    }
-
-    /// Inserts entry into the Register's Cut Variables
-    fn insert<T>(&mut self, key: T, val: Value) -> Option<Value>
-    where
-        T: ToString,
-    {
-        self.vars.insert(key.to_string(), val)
-    }
-
-    /// Removes a single key value
-    fn remove(&mut self, key: &str) -> Option<Value> {
-        self.vars.remove(key)
-    }
-
-    /// Gets a reference to the string slice value for the given var name.
-    ///
-    /// [Cut Variable](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
-    pub fn get_key_value<K: AsRef<str>>(&self, key: K) -> Option<(&String, &Value)> {
-        self.vars.get_key_value(key.as_ref())
-    }
-
-    /// Gets a reference to the string slice value for the given var name.
-    ///
-    /// [Cut Variable](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
-    pub fn get<K: AsRef<str>>(&self, key: K) -> Option<&Value> {
-        self.vars.get(key.as_ref())
-    }
-
-    /// An iterator visiting all Cut Variables in arbitrary order.
-    pub fn iter(&self) -> std::collections::hash_map::Iter<String, Value> {
-        self.vars.iter()
-    }
-
-    /// Returns a boolean indicating whether [`Register.vars`] contains a given key.
-    ///
-    /// [Cut Variable](https://github.com/mkatychev/filmReel/blob/master/cut.md#cut-variable)
-    pub fn contains_key(&self, key: &str) -> bool {
-        self.vars.contains_key(key)
     }
 
     /// Merges foreign [`Register`] structs into the caller,
@@ -119,7 +89,7 @@ impl Register {
     /// use in cut operations.
     ///
     /// [Read Operation](https://github.com/mkatychev/filmReel/blob/master/cut.md#read-operation)
-    pub fn read_match(&self, json_string: &str) -> Result<Vec<Match>, FrError> {
+    pub fn read_match<'a>(&'a self, json_string: &str) -> Result<Vec<Match<'a>>, FrError> {
         lazy_static! {
             static ref VAR_MATCH: Regex = Regex::new(
                 r"(?x)
@@ -137,7 +107,7 @@ impl Register {
         for mat in VAR_MATCH.captures_iter(json_string) {
             // continue if the leading brace is escaped but strip "\\" from the match
             if let Some(esc_char) = mat.name("esc_char") {
-                matches.push(Match::Escape(esc_char.range().clone()));
+                matches.push(Match::Escape(esc_char.range()));
                 continue;
             }
 
@@ -156,7 +126,7 @@ impl Register {
                     // push valid match onto Match vec
                     matches.push(Match::Variable {
                         name: k,
-                        value: v.clone(),
+                        value: v,
                         range: full_match.range(),
                     });
                 }
@@ -192,10 +162,11 @@ impl Register {
             if hide_vars && name.starts_with('_') {
                 let expected = format!("{}{}{}", "${", name, "}");
                 if let Value::String(val) = value
-                    && val.contains(&expected) {
-                        Match::Hide.read_operation(value)?;
-                        return Ok(());
-                    }
+                    && val.contains(&expected)
+                {
+                    Match::Hide.read_operation(value)?;
+                    return Ok(());
+                }
             }
         }
 
@@ -279,7 +250,7 @@ impl Register {
         if !KEY_CHECK.is_match(key) {
             return Err(FrError::FrameParsef(VAR_NAME_ERR, key.to_string()));
         }
-        Ok(self.insert(key, val))
+        Ok(self.insert(key.to_owned(), val))
     }
 
     /// Flushes lowercase/ignored variable patters
@@ -329,7 +300,7 @@ pub enum Match<'a> {
     Escape(Range<usize>),
     Variable {
         name: &'a str,
-        value: Value,
+        value: &'a Value,
         range: Range<usize>,
     },
     Hide,
@@ -500,11 +471,13 @@ mod tests {
             ),
             4 => (
                 json!("Did you ever hear the tragedy of Darth Plagueis the Wise? ${INANE_RANT}"),
-                json!(&[
-                    "Did you ever hear the tragedy of Darth Plagueis the Wise? ",
-                    TRAGIC_STORY
-                ]
-                .concat()),
+                json!(
+                    &[
+                        "Did you ever hear the tragedy of Darth Plagueis the Wise? ",
+                        TRAGIC_STORY
+                    ]
+                    .concat()
+                ),
             ),
             5 => (json!("${OBJECT}"), json!({"key": "value"})),
             _ => (json!({}), json!({})),

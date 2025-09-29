@@ -33,8 +33,7 @@ serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
 which.workspace = true
-filmreel.path = "../filmreel"
-filmreel.version = "0.9.2"
+filmreel = { workspace = true }
 
 pulldown-cmark-mdcat = { workspace = true, optional = true }
 syntect = { workspace = true, optional = true }

@@ -1,8 +1,8 @@
 use crate::params::BaseParams;
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use argh::FromArgs;
 //                             >:(      Colour
-use colored_json::{prelude::*, Color as Colour, Style, Styler};
+use colored_json::{Color as Colour, Style, Styler, prelude::*};
 use serde::Serialize;
 use std::{fs, path::PathBuf};
 
@@ -308,9 +308,10 @@ impl Record {
         }
 
         if let Some(output) = &self.take_out
-            && !output.is_dir() {
-                return Err(anyhow!("<output> must be a valid directory"));
-            }
+            && !output.is_dir()
+        {
+            return Err(anyhow!("<output> must be a valid directory"));
+        }
         Ok(())
     }
 
@@ -331,7 +332,7 @@ impl Record {
 }
 
 impl VirtualRecord {
-    pub fn init(&self) -> Result<VirtualReel, Error> {
+    pub fn init<'a>(&'a self) -> Result<VirtualReel<'a>, Error> {
         let mut vreel = if guess_json_obj(&self.vreel) {
             serde_json::from_str(&self.vreel)?
         } else {
